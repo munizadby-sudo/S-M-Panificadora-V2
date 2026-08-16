@@ -5,6 +5,7 @@
 - **Autor:** Adby Muniz (com apoio de IA)
 - **Escopo:** Backend completo do sistema (`S-M-Panificadora-V2`)
 - **Documentos relacionados:**
+  - `docs/specs/` (V2) — cortes incrementais e testáveis deste PRD (`SPEC-001` … `SPEC-019`)
   - `docs/adr/ADR-001-clean-code-solid.md` (V2) — princípios de engenharia adotados
   - Repositório legado `S-M-Panificadora` (V1) — sistema em produção, usado como referência funcional
   - `docs/adr/*` (V1) — decisões técnicas já validadas em produção (JWT, RBAC, rate limiting, etc.)
@@ -405,17 +406,21 @@ Uma entrega de módulo só é considerada concluída quando:
 
 ## 9. Roadmap de entrega sugerido
 
-1. **Fundação:** Auth, Usuários/RBAC, Auditoria, estrutura de camadas (ADR-001 aplicada), Configurações.
-2. **Núcleo operacional:** Produtos/Categorias, Estoque, Produção, PDV/Vendas.
-3. **Caixa unificado:** Caixa por Turno + Fluxo de Caixa (modelo único, resolvendo débitos #1, #2, #9 da Seção 6).
-4. **Operação estendida:** Encomendas, Perdas, Clientes.
-5. **Gestão:** Funcionários/Folha (a partir da PRD específica já existente), Relatórios.
-6. **Integrações:** contratos de TEF e Fiscal (implementação concreta fica para quando houver necessidade real de negócio).
+A execução detalhada, com dependências e critérios de aceite testáveis por fatia, está em `docs/specs/README.md`. O agrupamento temático abaixo permanece válido; a ordem **implementável** ajusta caixa e perdas para antes do PDV (venda exige turno aberto; perda é o débito de estoque mais simples).
+
+1. **Fundação:** Auth, Usuários/RBAC, Auditoria, estrutura de camadas (ADR-001 aplicada), Configurações. → SPEC-001 a SPEC-006
+2. **Núcleo operacional:** Produtos/Categorias, Estoque, Produção. → SPEC-007 a SPEC-009
+3. **Caixa unificado e estoque de perda:** Caixa por Turno + Fluxo + Perdas (modelo único de caixa; perda debita estoque). → SPEC-010 a SPEC-012
+4. **PDV:** criar venda e cancelar venda (resolvendo débitos #2, #3). → SPEC-013 e SPEC-014
+5. **Operação estendida:** Clientes, Encomendas. → SPEC-015 e SPEC-016
+6. **Gestão:** Relatórios; Funcionários/Folha (macro; detalhe na PRD específica). → SPEC-017 e SPEC-018
+7. **Integrações:** contratos de TEF e Fiscal (implementação concreta fica para quando houver necessidade real de negócio). → SPEC-019
 
 ---
 
 ## 10. Relação com outros documentos
 
+- `docs/specs/` — specs incrementais (`SPEC-001` … `SPEC-019`) que fatiam este PRD em entregas testáveis.
 - `ADR-001-clean-code-solid.md` (V2) — princípios de engenharia que todo módulo aqui descrito deve seguir.
 - ADR de arquitetura do sistema (a criar) — vai formalizar a decisão de caixa único por turno (Seção 4.7).
 - ADR de banco de dados (a criar).

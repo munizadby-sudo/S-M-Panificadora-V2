@@ -28,6 +28,7 @@ Permitir que o administrador configure a identidade visual básica do sistema (n
 - Upload de logotipo com preview antes de salvar, validação de tamanho (máx. 3MB) e tipo de arquivo no próprio frontend, antes de enviar ao backend (feedback mais rápido ao usuário).
 - Aplicação do logotipo/nome atualizado em tempo real no shell após salvar, sem exigir recarregar a página.
 - Leitura de nome/slogan/logo disponível também para a tela de login, via endpoint público (ver correção no PRD-002).
+- **Fundo de troco padrão** *(requisito novo, ligado ao PRD-004)*: campo de configuração com o valor padrão de fundo em espécie e em moedas que a loja costuma deixar na gaveta de um turno para o outro (ex.: R$ 40 espécie / R$ 10 moedas). Esse valor é usado apenas para **pré-preencher** o modal de abertura de turno (PRD-004) — não é aplicado automaticamente sem confirmação, e a balconista sempre pode ajustá-lo na hora da abertura conforme a contagem física real.
 
 ---
 
@@ -41,6 +42,7 @@ Permitir que o administrador configure a identidade visual básica do sistema (n
 ## 5. Correções em relação ao V1
 
 - A leitura de nome/logo para a tela de login deixa de depender de cache local (`sessionStorage` de uma sessão anterior) e passa a vir de um endpoint público de configuração básica — correção já detalhada no PRD-002, Seção 5, mas que depende deste módulo expor esse dado de forma pública e somente leitura.
+- **Fundo de troco padrão** é um campo novo em relação ao V1, que não tinha nenhum conceito de valor padrão configurável para a abertura de caixa — cada abertura exigia digitação do zero.
 
 ---
 
@@ -56,3 +58,4 @@ Permitir que o administrador configure a identidade visual básica do sistema (n
 1. Alterar nome/slogan/logo reflete imediatamente no shell após salvar.
 2. Upload rejeita arquivo acima de 3MB ou de tipo não permitido antes mesmo de enviar ao backend.
 3. Tela de login exibe nome/logo corretos mesmo em navegador novo, sem sessão anterior.
+4. O valor de fundo de troco configurado aqui aparece pré-preenchido no modal de abertura de turno (PRD-004), permanecendo editável.

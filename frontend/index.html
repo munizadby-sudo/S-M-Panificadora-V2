@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>S&M Panificadora</title>
+  <style>
+    :root {
+      --fundo: #f6f1ea;
+      --superficie: #fffdf9;
+      --texto: #2b2118;
+      --muted: #6d5c4d;
+      --linha: #e6d9cc;
+      --destaque: #8b5a2b;
+      --destaque-escuro: #6e431d;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", Tahoma, sans-serif;
+      background: var(--fundo);
+      color: var(--texto);
+    }
+
+    #app-shell {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .topo {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.85rem 1.25rem;
+      background: var(--superficie);
+      border-bottom: 1px solid var(--linha);
+    }
+
+    .marca {
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .topo-direita {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+    }
+
+    #usuario-logado {
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    #btn-logout {
+      border: 1px solid var(--linha);
+      background: #fff;
+      color: var(--texto);
+      border-radius: 8px;
+      padding: 0.4rem 0.8rem;
+      cursor: pointer;
+    }
+
+    #menu-principal {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      padding: 0.7rem 1.25rem;
+      background: #efe6dc;
+      border-bottom: 1px solid var(--linha);
+    }
+
+    #menu-principal button {
+      border: 0;
+      background: transparent;
+      color: var(--texto);
+      padding: 0.45rem 0.75rem;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    #menu-principal button.ativo,
+    #menu-principal button:hover {
+      background: #fff;
+    }
+
+    #conteudo {
+      flex: 1;
+      padding: 1.25rem;
+    }
+
+    .estado-vazio {
+      color: var(--muted);
+    }
+
+    .caixa-turno-banner {
+      padding: 0.5rem 1.25rem;
+      background: #eadfd3;
+      border-bottom: 1px solid var(--linha);
+      font-size: 0.95rem;
+    }
+
+    .caixa-turno-banner[data-aberto="true"] {
+      background: #dce8d4;
+    }
+
+    .caixa-turno h1 {
+      margin: 0 0 0.5rem;
+    }
+
+    .caixa-turno-ajuda {
+      color: var(--muted);
+    }
+
+    .caixa-turno-form {
+      display: grid;
+      gap: 0.65rem;
+      max-width: 22rem;
+      margin-top: 1rem;
+    }
+
+    .caixa-turno-form label {
+      display: grid;
+      gap: 0.25rem;
+    }
+
+    .caixa-turno-form input,
+    .caixa-turno-form textarea,
+    .caixa-turno-form button,
+    .caixa-turno-fechamento button,
+    .caixa-turno-resumo button {
+      font: inherit;
+      padding: 0.45rem 0.6rem;
+    }
+
+    .caixa-turno-erro {
+      color: #9b2c2c;
+      min-height: 1.2em;
+    }
+
+    .caixa-turno-aviso {
+      margin: 0.75rem 0;
+      padding: 0.75rem 1rem;
+      background: #f7e6c4;
+      border: 1px solid #e0c48a;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+  <!--
+    Guarda síncrona: mesma chave de session.js (CHAVE_STORAGE_TOKEN).
+    Garante o redirecionamento mesmo se os ES modules ainda não tiverem carregado.
+  -->
+  <script>
+    (function () {
+      try {
+        if (!localStorage.getItem('sm.panificadora.token')) {
+          window.location.replace('login.html');
+        }
+      } catch (erro) {
+        window.location.replace('login.html');
+      }
+    })();
+  </script>
+
+  <div id="app-shell" hidden>
+    <header class="topo">
+      <span class="marca">S&amp;M Panificadora</span>
+      <div class="topo-direita">
+        <span id="usuario-logado"></span>
+        <button id="btn-logout" type="button">Sair</button>
+      </div>
+    </header>
+    <nav id="menu-principal" aria-label="Módulos"></nav>
+    <div id="caixa-turno-banner" class="caixa-turno-banner" role="status" hidden></div>
+    <main id="conteudo"></main>
+  </div>
+
+  <script type="module">
+    import { obterUrlBaseDaApi } from './src/core/ambiente.js';
+    import { definirApiBaseUrl } from './src/core/api.js';
+    import { protegerShell } from './src/modules/auth/guarda.js';
+    import { montarIdentidadeDoOperador } from './src/modules/auth/operador.js';
+    import { sair } from './src/modules/auth/sair.js';
+
+    definirApiBaseUrl(obterUrlBaseDaApi());
+
+    if (!protegerShell()) {
+      /* redirecionou para login — não monta router nem chama API */
+    } else if (!montarIdentidadeDoOperador(document.getElementById('usuario-logado'))) {
+      /* storage corrompido — já limpou sessão e redirecionou */
+    } else {
+      document.getElementById('app-shell').hidden = false;
+      document.getElementById('btn-logout').addEventListener('click', () => {
+        sair();
+      });
+
+      const { criarRouter } = await import('./src/core/router.js');
+      const { default: moduloCaixa } = await import('./src/modules/caixa-turno/index.js');
+      const { montarBanner } = await import('./src/modules/caixa-turno/banner.js');
+      const { temPermissao } = await import('./src/core/session.js');
+
+      const router = criarRouter();
+      router.registrarModulo(moduloCaixa);
+      await router.iniciar({
+        menu: document.getElementById('menu-principal'),
+        conteudo: document.getElementById('conteudo'),
+      });
+
+      if (temPermissao('caixa')) {
+        const banner = document.getElementById('caixa-turno-banner');
+        banner.hidden = false;
+        await montarBanner(banner);
+      }
+    }
+  </script>
+</body>
+</html>
