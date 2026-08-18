@@ -133,4 +133,55 @@ describe('HTTP /api/caixa-turno', () => {
       assert.equal(statusDepois.aberto, false);
     });
   });
+
+  test('fechar o mesmo turno_id duas vezes retorna 200 e idempotente true na segunda', async () => {
+    const ctx = montarAppMemoria();
+
+    await comServidor(ctx.app, async (porta) => {
+      const token = await tokenAdmin(porta, ctx);
+      const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+
+      const aberto = await fetch(`http://127.0.0.1:${porta}/api/caixa-turno/abrir`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ fundo_especie: 40, fundo_moedas: 10 }),
+      });
+      const corpoAberto = await json(aberto);
+      assert.equal(aberto.status, 200);
+
+      const payloadFechar = {
+        turno_id: corpoAberto.id,
+        contado_dinheiro: 40,
+        contado_moedas: 10,
+        contado_pix: 0,
+        contado_cartao: 0,
+        observacao: 'retry',
+        sem_impressao: true,
+      };
+
+      const primeiro = await fetch(`http://127.0.0.1:${porta}/api/caixa-turno/fechar`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payloadFechar),
+      });
+      const corpoPrimeiro = await json(primeiro);
+      assert.equal(primeiro.status, 200);
+      assert.equal(corpoPrimeiro.idempotente, false);
+      assert.equal(corpoPrimeiro.id, corpoAberto.id);
+
+      const segundo = await fetch(`http://127.0.0.1:${porta}/api/caixa-turno/fechar`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payloadFechar),
+      });
+      const corpoSegundo = await json(segundo);
+      assert.equal(segundo.status, 200);
+      assert.equal(corpoSegundo.idempotente, true);
+      assert.equal(corpoSegundo.id, corpoPrimeiro.id);
+      assert.equal(corpoSegundo.status_resumo, corpoPrimeiro.status_resumo);
+      assert.deepEqual(corpoSegundo.esperado, corpoPrimeiro.esperado);
+      assert.deepEqual(corpoSegundo.contado, corpoPrimeiro.contado);
+      assert.deepEqual(corpoSegundo.diferenca, corpoPrimeiro.diferenca);
+    });
+  });
 });

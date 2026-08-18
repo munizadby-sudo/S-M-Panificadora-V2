@@ -85,11 +85,60 @@ export class MySQLFluxoCaixaRepository {
       `SELECT forma,
               SUM(CASE WHEN tipo = 'entrada' THEN valor ELSE -valor END) AS total
          FROM fluxo_caixa
-        WHERE turno_id = ? AND categoria IN (${placeholders})
+        WHERE turno_id = ? AND ativo = 1 AND categoria IN (${placeholders})
         GROUP BY forma`,
       [turnoId, ...categorias],
     );
     return linhas.map((linha) => ({ forma: linha.forma, total: dinheiro(linha.total) }));
+  }
+
+  async agregarEntradasSaidasPorTurno(turnoId, categorias = ['vendas', 'estorno']) {
+    if (Array.isArray(categorias) && categorias.length === 0) {
+      return [];
+    }
+
+    let sql = `SELECT forma,
+              SUM(CASE WHEN tipo = 'entrada' THEN valor ELSE 0 END) AS entradas,
+              SUM(CASE WHEN tipo = 'saida' THEN valor ELSE 0 END) AS saidas
+         FROM fluxo_caixa
+        WHERE turno_id = ? AND ativo = 1`;
+    const params = [turnoId];
+
+    if (categorias !== null) {
+      const placeholders = categorias.map(() => '?').join(', ');
+      sql += ` AND categoria IN (${placeholders})`;
+      params.push(...categorias);
+    }
+
+    sql += ' GROUP BY forma';
+
+    const [linhas] = await this.pool.query(sql, params);
+    return linhas.map((linha) => ({
+      forma: linha.forma,
+      entradas: dinheiro(linha.entradas),
+      saidas: dinheiro(linha.saidas),
+    }));
+  }
+
+  async registrar(lancamento, conexao) {
+    const cliente = conexao || this.pool;
+    await cliente.query(
+      `INSERT INTO fluxo_caixa
+        (usuario_id, turno_id, tipo, descricao, categoria, forma, valor, data, gerado_auto, venda_id, ativo)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+      [
+        lancamento.usuarioId,
+        lancamento.turnoId,
+        lancamento.tipo,
+        lancamento.descricao,
+        lancamento.categoria,
+        lancamento.forma,
+        lancamento.valor,
+        lancamento.data,
+        lancamento.geradoAuto ? 1 : 0,
+        lancamento.vendaId ?? null,
+      ],
+    );
   }
 }
 

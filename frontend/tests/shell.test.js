@@ -25,7 +25,10 @@ describe('shell e guarda de rota', () => {
     assert.match(indexHtml, /type=["']module["']/);
     assert.match(indexHtml, /protegerShell/);
     assert.match(indexHtml, new RegExp(CHAVE_STORAGE_TOKEN));
-    assert.doesNotMatch(indexHtml, /modules\/(pdv|estoque|produtos)/);
+    assert.match(indexHtml, /modules\/pdv/);
+    assert.match(indexHtml, /modules\/produtos/);
+    assert.match(indexHtml, /modules\/estoque/);
+    assert.match(indexHtml, /modules\/perdas/);
 
     limparSessao();
     assert.equal(estaAutenticado(), false);

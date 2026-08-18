@@ -53,6 +53,7 @@ Especificar o modelo de dados, os contratos de API e a estrutura de classes do m
 | `valor` | `DECIMAL(10,2)` | obrigatório, > 0 |
 | `data` | `DATE` | obrigatório |
 | `gerado_auto` | `TINYINT(1)` | `1` = criado pelo sistema (venda/estorno); `0` = manual |
+| `venda_id` | `INT` FK `vendas.id`, nulo | **adicionado durante a implementação da SPEC-BE-007** (não previsto aqui originalmente) — rastreia qual venda gerou o lançamento automático, quando aplicável. Nulo para lançamentos manuais e para os que não se originam de uma venda. |
 | `criado_em` | `TIMESTAMP` | padrão `CURRENT_TIMESTAMP` |
 
 ---

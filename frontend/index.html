@@ -150,6 +150,688 @@
       border: 1px solid #e0c48a;
       border-radius: 8px;
     }
+
+    .produtos h1,
+    .produtos h2 {
+      margin: 0 0 0.5rem;
+    }
+
+    .produtos-filtros,
+    .produtos-form-categoria {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.65rem;
+      align-items: end;
+      margin: 1rem 0;
+    }
+
+    .produtos-filtros label,
+    .produtos-form-categoria label,
+    .produtos-form-produto label {
+      display: grid;
+      gap: 0.25rem;
+    }
+
+    .produtos-toggle {
+      display: flex !important;
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.85rem;
+      min-width: 16.5rem;
+      padding: 0.35rem 0.15rem 0.35rem 0;
+      cursor: pointer;
+    }
+
+    .produtos-toggle-texto {
+      display: grid;
+      gap: 0.1rem;
+    }
+
+    .produtos-toggle-titulo {
+      font-weight: 600;
+    }
+
+    .produtos-toggle-ajuda {
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+
+    .produtos-toggle-input {
+      position: absolute;
+      opacity: 0;
+      width: 0;
+      height: 0;
+      pointer-events: none;
+    }
+
+    .produtos-toggle-pista {
+      position: relative;
+      width: 2.7rem;
+      height: 1.5rem;
+      flex-shrink: 0;
+      background: #b7aea4;
+      border-radius: 999px;
+      transition: background 0.15s ease;
+    }
+
+    .produtos-toggle-pista::after {
+      content: '';
+      position: absolute;
+      top: 0.15rem;
+      left: 0.15rem;
+      width: 1.2rem;
+      height: 1.2rem;
+      background: #fff;
+      border-radius: 50%;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+      transition: transform 0.15s ease;
+    }
+
+    .produtos-toggle-input:checked + .produtos-toggle-pista {
+      background: #5dae63;
+    }
+
+    .produtos-toggle-input:checked + .produtos-toggle-pista::after {
+      transform: translateX(1.2rem);
+    }
+
+    .produtos-filtros input:not(.produtos-toggle-input),
+    .produtos-filtros select,
+    .produtos-filtros button,
+    .produtos-form-categoria input,
+    .produtos-form-categoria button,
+    .produtos-form-produto input,
+    .produtos-form-produto select,
+    .produtos-form-produto button,
+    .produtos-acoes button,
+    .produtos-categorias button {
+      font: inherit;
+      padding: 0.45rem 0.6rem;
+    }
+
+    .produtos-erro,
+    .campo-erro {
+      color: #9b2c2c;
+      min-height: 1.2em;
+      margin: 0.25rem 0;
+    }
+
+    .produtos-tabela {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .produtos-tabela th,
+    .produtos-tabela td {
+      text-align: left;
+      padding: 0.45rem 0.5rem;
+      border-bottom: 1px solid var(--linha);
+    }
+
+    .produtos-categorias {
+      margin-top: 2rem;
+      max-width: 28rem;
+    }
+
+    .produtos-categorias ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .produtos-categorias li {
+      display: flex;
+      justify-content: space-between;
+      gap: 0.75rem;
+      align-items: center;
+      padding: 0.4rem 0;
+      border-bottom: 1px solid var(--linha);
+    }
+
+    .produtos-inativo {
+      color: inherit;
+      font-size: 0.85em;
+      font-weight: 600;
+    }
+
+    .produtos-linha-ativa td {
+      background: #e7f3e4;
+    }
+
+    .produtos-linha-inativa td {
+      background: #f4e2e2;
+      color: #8a3a3a;
+    }
+
+    .produtos-categorias li.produtos-item-ativo {
+      background: #e7f3e4;
+      padding: 0.45rem 0.55rem;
+      border-radius: 6px;
+      border-bottom: none;
+      margin-bottom: 0.35rem;
+    }
+
+    .produtos-categorias li.produtos-item-inativo {
+      background: #f4e2e2;
+      color: #8a3a3a;
+      padding: 0.45rem 0.55rem;
+      border-radius: 6px;
+      border-bottom: none;
+      margin-bottom: 0.35rem;
+    }
+
+    .produtos-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(40, 28, 18, 0.4);
+      display: grid;
+      place-items: center;
+      padding: 1rem;
+    }
+
+    .produtos-modal-caixa {
+      background: #fff8f0;
+      border: 1px solid var(--linha);
+      border-radius: 10px;
+      padding: 1.25rem;
+      min-width: min(28rem, 100%);
+      display: grid;
+      gap: 0.65rem;
+    }
+
+    .estoque h1 {
+      margin: 0 0 0.5rem;
+    }
+
+    .estoque-erro,
+    .estoque .campo-erro {
+      color: #9b2c2c;
+      min-height: 1.2em;
+      margin: 0.25rem 0;
+    }
+
+    .estoque-tabela {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .estoque-tabela th,
+    .estoque-tabela td {
+      text-align: left;
+      padding: 0.45rem 0.5rem;
+      border-bottom: 1px solid var(--linha);
+    }
+
+    .estoque-disponivel {
+      font-weight: 700;
+    }
+
+    .estoque-linha-abaixo-minimo td {
+      background: #f7e6c4;
+    }
+
+    .estoque-alerta-minimo {
+      color: #8a5a12;
+      font-size: 0.85em;
+      font-weight: 600;
+    }
+
+    .estoque-filtros {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.65rem;
+      align-items: end;
+      margin: 1rem 0;
+    }
+
+    .estoque-filtros label {
+      display: grid;
+      gap: 0.25rem;
+    }
+
+    .estoque-filtros input,
+    .estoque-filtros select,
+    .estoque-filtros button,
+    .estoque-acoes button,
+    .estoque-form-edicao input,
+    .estoque-form-edicao button,
+    .estoque-lote input,
+    .estoque-lote button {
+      font: inherit;
+      padding: 0.45rem 0.6rem;
+    }
+
+    .estoque-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(40, 28, 18, 0.4);
+      display: grid;
+      place-items: center;
+      padding: 1rem;
+    }
+
+    .estoque-modal-caixa {
+      background: #fff8f0;
+      border: 1px solid var(--linha);
+      border-radius: 10px;
+      padding: 1.25rem;
+      min-width: min(28rem, 100%);
+      display: grid;
+      gap: 0.65rem;
+    }
+
+    .estoque-somente-leitura {
+      display: grid;
+      gap: 0.15rem;
+      color: var(--muted);
+    }
+
+    .estoque-somente-leitura strong {
+      color: var(--texto);
+    }
+
+    .estoque-lote-erro td,
+    .estoque-linha-lote-erro td {
+      background: #f4e2e2;
+    }
+
+    .perdas h1,
+    .perdas h2 {
+      margin: 0 0 0.5rem;
+    }
+
+    .perdas-erro,
+    .perdas .campo-erro {
+      color: #9b2c2c;
+      min-height: 1.2em;
+      margin: 0.25rem 0;
+    }
+
+    .perdas-filtros,
+    .perdas-form,
+    .perdas-acoes-topo {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.65rem;
+      align-items: end;
+      margin: 1rem 0;
+    }
+
+    .perdas-filtros label,
+    .perdas-form label,
+    .perdas-seletor-produto label {
+      display: grid;
+      gap: 0.25rem;
+    }
+
+    .perdas-filtros input,
+    .perdas-filtros select,
+    .perdas-filtros button,
+    .perdas-form input,
+    .perdas-form select,
+    .perdas-form button,
+    .perdas-acoes button,
+    .perdas-resultados-produto button,
+    .perdas-form-acoes button {
+      font: inherit;
+      padding: 0.45rem 0.6rem;
+    }
+
+    .perdas-tabela {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .perdas-tabela th,
+    .perdas-tabela td {
+      text-align: left;
+      padding: 0.45rem 0.5rem;
+      border-bottom: 1px solid var(--linha);
+    }
+
+    .perdas-linha-estornada td {
+      background: #f4e2e2;
+      color: #8a3a3a;
+    }
+
+    .perdas-marca-estornada {
+      font-size: 0.85em;
+      font-weight: 600;
+    }
+
+    .perdas-formulario {
+      margin-top: 1.5rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--linha);
+    }
+
+    .perdas-form {
+      flex-direction: column;
+      align-items: stretch;
+      max-width: 28rem;
+    }
+
+    .perdas-seletor-produto {
+      display: grid;
+      gap: 0.35rem;
+    }
+
+    .perdas-resultados-produto {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      border: 1px solid var(--linha);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .perdas-resultados-produto li + li {
+      border-top: 1px solid var(--linha);
+    }
+
+    .perdas-item-produto {
+      width: 100%;
+      text-align: left;
+      border: 0;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    .perdas-item-produto:hover {
+      background: #f6f1ea;
+    }
+
+    .perdas-previa-custo {
+      margin: 0.5rem 0;
+    }
+
+    .perdas-previa-ajuda {
+      color: var(--muted);
+      font-size: 0.85em;
+    }
+
+    .perdas-confirmacao {
+      margin-top: 1rem;
+      padding: 1rem;
+      background: #dce8d4;
+      border: 1px solid #b8d4ae;
+      border-radius: 8px;
+      max-width: 28rem;
+    }
+
+    .perdas-disponivel-confirmacao {
+      font-size: 1.1em;
+    }
+
+    .perdas-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(40, 28, 18, 0.4);
+      display: grid;
+      place-items: center;
+      padding: 1rem;
+    }
+
+    .perdas-modal-caixa {
+      background: #fff8f0;
+      border: 1px solid var(--linha);
+      border-radius: 10px;
+      padding: 1.25rem;
+      min-width: min(28rem, 100%);
+      display: grid;
+      gap: 0.65rem;
+    }
+
+    .perdas-form-acoes {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .pdv h1,
+    .pdv h2 {
+      margin: 0 0 0.5rem;
+    }
+
+    .pdv-aviso-fechado {
+      margin-top: 1rem;
+      padding: 1.25rem;
+      background: #f7e6c4;
+      border: 1px solid #e0c48a;
+      border-radius: 8px;
+      max-width: 28rem;
+    }
+
+    .pdv-aviso-fechado p {
+      margin: 0 0 0.85rem;
+      font-size: 1.05rem;
+    }
+
+    .pdv-painel {
+      display: grid;
+      grid-template-columns: minmax(0, 1.4fr) minmax(18rem, 0.8fr);
+      gap: 1.25rem;
+      align-items: start;
+    }
+
+    .pdv-filtros {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.65rem;
+      align-items: end;
+      margin: 0.75rem 0;
+    }
+
+    .pdv-filtros label {
+      display: grid;
+      gap: 0.25rem;
+    }
+
+    .pdv-grade-itens {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+      gap: 0.65rem;
+    }
+
+    .pdv-produto {
+      display: grid;
+      gap: 0.35rem;
+      min-height: 5.5rem;
+      padding: 0.7rem;
+      border: 1px solid var(--linha);
+      border-radius: 8px;
+      background: #fff;
+      cursor: pointer;
+      text-align: left;
+      font: inherit;
+    }
+
+    .pdv-produto:hover {
+      background: #f6f1ea;
+    }
+
+    .pdv-produto-preco {
+      color: var(--destaque-escuro);
+      font-weight: 700;
+    }
+
+    .pdv-carrinho ul {
+      list-style: none;
+      padding: 0;
+      margin: 0 0 0.75rem;
+    }
+
+    .pdv-carrinho li {
+      display: flex;
+      justify-content: space-between;
+      gap: 0.5rem;
+      align-items: center;
+      padding: 0.4rem 0;
+      border-bottom: 1px solid var(--linha);
+    }
+
+    .pdv-carrinho-acoes,
+    .pdv-formas {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin: 0.5rem 0;
+    }
+
+    .pdv-pagamento label {
+      display: grid;
+      gap: 0.25rem;
+      margin: 0.5rem 0;
+    }
+
+    .pdv-forma.ativo {
+      background: var(--destaque);
+      color: #fff;
+      border-color: var(--destaque-escuro);
+    }
+
+    .pdv-confirmacao {
+      margin: 0.75rem 0;
+      padding: 1rem;
+      background: #dce8d4;
+      border: 1px solid #b8d4ae;
+      border-radius: 8px;
+    }
+
+    .pdv-erro {
+      color: #9b2c2c;
+      min-height: 1.2em;
+      margin: 0.25rem 0;
+    }
+
+    .pdv-filtros input,
+    .pdv-filtros select,
+    .pdv-aviso-fechado button,
+    .pdv-carrinho button,
+    .pdv-pagamento button,
+    .pdv-pagamento input {
+      font: inherit;
+      padding: 0.45rem 0.6rem;
+    }
+
+    .fluxo-caixa h1,
+    .fluxo-caixa h2 {
+      margin: 0 0 0.5rem;
+    }
+
+    .fluxo-erro,
+    .fluxo-caixa .campo-erro {
+      color: #9b2c2c;
+      min-height: 1.2em;
+      margin: 0.25rem 0;
+    }
+
+    .fluxo-contexto-turno {
+      margin: 0.5rem 0 1rem;
+      color: var(--texto-suave, #555);
+    }
+
+    .fluxo-filtros,
+    .fluxo-form,
+    .fluxo-acoes-topo {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.65rem;
+      align-items: end;
+      margin: 1rem 0;
+    }
+
+    .fluxo-filtros label,
+    .fluxo-form label {
+      display: grid;
+      gap: 0.25rem;
+    }
+
+    .fluxo-filtros input,
+    .fluxo-filtros select,
+    .fluxo-filtros button,
+    .fluxo-form input,
+    .fluxo-form select,
+    .fluxo-form textarea,
+    .fluxo-form button,
+    .fluxo-acoes-topo button,
+    .fluxo-form-acoes button {
+      font: inherit;
+      padding: 0.45rem 0.6rem;
+    }
+
+    .fluxo-tabela,
+    .fluxo-kpis-tabela {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .fluxo-tabela th,
+    .fluxo-tabela td,
+    .fluxo-kpis-tabela th,
+    .fluxo-kpis-tabela td {
+      text-align: left;
+      padding: 0.45rem 0.5rem;
+      border-bottom: 1px solid var(--linha);
+    }
+
+    .fluxo-kpi-entrada {
+      color: #1f6b3a;
+    }
+
+    .fluxo-kpi-saida {
+      color: #9b2c2c;
+    }
+
+    .fluxo-formulario {
+      margin-top: 1.5rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--linha);
+    }
+
+    .fluxo-form {
+      flex-direction: column;
+      align-items: stretch;
+      max-width: 28rem;
+    }
+
+    .fluxo-form-ajuda {
+      font-size: 0.9em;
+      color: var(--texto-suave, #555);
+      margin: 0.25rem 0;
+    }
+
+    .fluxo-form-acoes {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+    }
+
+    .fluxo-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 20;
+    }
+
+    .fluxo-modal-caixa {
+      background: var(--fundo, #fff);
+      padding: 1rem 1.25rem;
+      border-radius: 8px;
+      max-width: 28rem;
+      width: calc(100% - 2rem);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    }
+
+    @media (max-width: 800px) {
+      .pdv-painel {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
 </head>
 <body>
@@ -202,12 +884,22 @@
       });
 
       const { criarRouter } = await import('./src/core/router.js');
+      const { default: moduloPdv } = await import('./src/modules/pdv/index.js');
       const { default: moduloCaixa } = await import('./src/modules/caixa-turno/index.js');
+      const { default: moduloProdutos } = await import('./src/modules/produtos/index.js');
+      const { default: moduloEstoque } = await import('./src/modules/estoque/index.js');
+      const { default: moduloPerdas } = await import('./src/modules/perdas/index.js');
+      const { default: moduloFluxo } = await import('./src/modules/fluxo-caixa/index.js');
       const { montarBanner } = await import('./src/modules/caixa-turno/banner.js');
       const { temPermissao } = await import('./src/core/session.js');
 
       const router = criarRouter();
+      router.registrarModulo(moduloPdv);
       router.registrarModulo(moduloCaixa);
+      router.registrarModulo(moduloProdutos);
+      router.registrarModulo(moduloEstoque);
+      router.registrarModulo(moduloPerdas);
+      router.registrarModulo(moduloFluxo);
       await router.iniciar({
         menu: document.getElementById('menu-principal'),
         conteudo: document.getElementById('conteudo'),

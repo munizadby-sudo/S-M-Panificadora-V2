@@ -97,6 +97,22 @@ describe('api', () => {
     );
   });
 
+  test('propaga codigo do corpo padronizado do backend', async () => {
+    mockFetch(async () =>
+      respostaJson(403, { erro: 'Caixa fechado.', codigo: 'CAIXA_FECHADO' }),
+    );
+
+    await assert.rejects(
+      () => apiPost('/vendas', { itens: [] }),
+      (erro) => {
+        assert.ok(erro instanceof ApiError);
+        assert.equal(erro.status, 403);
+        assert.equal(erro.codigo, 'CAIXA_FECHADO');
+        return true;
+      },
+    );
+  });
+
   test('falha de rede lança ErroDeRedeError com mensagem amigável', async () => {
     mockFetch(async () => {
       throw new TypeError('fetch failed');

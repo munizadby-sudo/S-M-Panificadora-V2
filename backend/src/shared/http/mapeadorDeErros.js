@@ -7,7 +7,11 @@ export function mapeadorDeErros(erro, _req, res, next) {
   }
 
   if (erro instanceof ErroDeDominio || (erro.status && erro.message)) {
-    res.status(erro.status).json({ erro: erro.message });
+    const corpo = { erro: erro.message };
+    if (erro.codigo) {
+      corpo.codigo = erro.codigo;
+    }
+    res.status(erro.status).json(corpo);
     return;
   }
 

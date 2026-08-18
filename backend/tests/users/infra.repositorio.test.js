@@ -27,12 +27,12 @@ describe('MySQLUsuarioRepository', { skip: !mysqlPronto }, () => {
   });
 
   test('salva, busca por username/id e lista', async () => {
-    await pool.query('DELETE FROM usuarios');
+    const username = `caixa.teste.${Date.now()}.${Math.random().toString(16).slice(2)}`;
 
     const criado = await repo.salvar(
       new Usuario({
         nome: 'Caixa',
-        username: 'caixa.teste',
+        username,
         senhaHash: 'hash-abc',
         role: 'operador',
         permissoes: ['caixa'],
@@ -40,15 +40,16 @@ describe('MySQLUsuarioRepository', { skip: !mysqlPronto }, () => {
     );
 
     assert.ok(criado.id);
-    const porUsername = await repo.buscarPorUsername('caixa.teste');
+    const porUsername = await repo.buscarPorUsername(username);
     const porId = await repo.buscarPorId(criado.id);
     assert.equal(porUsername.nome, 'Caixa');
-    assert.equal(porId.username, 'caixa.teste');
+    assert.equal(porId.username, username);
     assert.deepEqual(porId.permissoes, ['caixa']);
 
-    const lista = await repo.listar(1, 20);
-    assert.equal(lista.total, 1);
-    assert.equal(lista.data[0].id, criado.id);
+    const lista = await repo.listar(1, 100);
+    assert.ok(lista.data.some((item) => item.id === criado.id));
+
+    await pool.query('DELETE FROM usuarios WHERE id = ?', [criado.id]);
   });
 });
 

@@ -7,11 +7,12 @@ const MENSAGEM_ERRO_OPERACAO = 'Não foi possível concluir a operação.';
 let apiBaseUrl = (globalThis.__API_BASE_URL__ || '/api').replace(/\/$/, '');
 
 export class ApiError extends Error {
-  constructor({ status, mensagem }) {
+  constructor({ status, mensagem, codigo = null }) {
     super(mensagem);
     this.name = 'ApiError';
     this.status = status;
     this.mensagem = mensagem;
+    this.codigo = codigo;
   }
 }
 
@@ -49,8 +50,8 @@ export async function apiPut(caminho, corpo) {
   return requisitar('PUT', caminho, corpo);
 }
 
-export async function apiDelete(caminho) {
-  return requisitar('DELETE', caminho);
+export async function apiDelete(caminho, corpo) {
+  return requisitar('DELETE', caminho, corpo);
 }
 
 async function requisitar(metodo, caminho, corpo, params) {
@@ -89,6 +90,7 @@ async function requisitar(metodo, caminho, corpo, params) {
     throw new ApiError({
       status: resposta.status,
       mensagem: extrairMensagem(dados, resposta.status),
+      codigo: extrairCodigo(dados),
     });
   }
 
@@ -140,6 +142,13 @@ async function lerCorpo(resposta) {
   } catch {
     return null;
   }
+}
+
+function extrairCodigo(corpo) {
+  if (corpo && typeof corpo === 'object' && typeof corpo.codigo === 'string' && corpo.codigo.trim()) {
+    return corpo.codigo.trim();
+  }
+  return null;
 }
 
 function extrairMensagem(corpo, status) {

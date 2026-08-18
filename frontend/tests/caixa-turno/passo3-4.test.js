@@ -5,10 +5,13 @@ import { definirApiBaseUrl } from '../../src/core/api.js';
 import { salvarSessao } from '../../src/core/session.js';
 import { getTurnoAtual, invalidarCacheTurno, turnoEstaAberto } from '../../src/modules/caixa-turno/estado.js';
 import {
+  calcularRevisao,
   classificarDiferenca,
+  contagemPreenchida,
   criarControleImpressao,
   fecharTurno,
-  htmlPreviaImprimivel,
+  htmlComprovanteRevisao,
+  imprimirHtml,
 } from '../../src/modules/caixa-turno/fechamento.js';
 
 beforeEach(() => {
@@ -22,16 +25,57 @@ afterEach(() => {
   invalidarCacheTurno();
 });
 
-describe('Passo 3 — impressão obrigatória na prévia', () => {
-  test('Confirmar fechamento só libera depois de imprimir a prévia', async () => {
+describe('Passo 3 — contagem e revisão', () => {
+  test('contagem só fica válida com todos os campos preenchidos', () => {
+    assert.equal(contagemPreenchida({ dinheiro: '40', moedas: '10', pix: '0', cartao: '0' }), true);
+    assert.equal(contagemPreenchida({ dinheiro: '40', moedas: '', pix: '0', cartao: '0' }), false);
+    assert.equal(contagemPreenchida({ dinheiro: '40', moedas: '10', pix: '0' }), false);
+  });
+
+  test('calcula diferença provisória a partir do esperado e do contado', () => {
+    const revisao = calcularRevisao({
+      esperado: { dinheiro: 50, pix: 0, cartao: 0 },
+      contado: { dinheiro: 40, moedas: 5, pix: 0, cartao: 0 },
+    });
+    assert.equal(revisao.contado.dinheiro, 45);
+    assert.equal(revisao.diferenca.total, -5);
+    assert.equal(revisao.status_resumo, 'falta');
+    assert.equal(classificarDiferenca(revisao.status_resumo), 'Falta');
+  });
+
+  test('Confirmar e fechar só libera depois de imprimir o comprovante', async () => {
     const controle = criarControleImpressao({ imprimir: async () => {} });
     assert.equal(controle.confirmarHabilitado(), false);
     assert.equal(controle.mostrarProsseguirSemImpressao(), false);
 
-    await controle.imprimirPrevia(htmlPreviaImprimivel({ periodo: 'tarde', turno_id: 12, esperado: { dinheiro: 50, pix: 0, cartao: 0 } }));
+    await controle.imprimirPrevia(
+      htmlComprovanteRevisao({
+        periodo: 'tarde',
+        turno_id: 12,
+        esperado: { dinheiro: 50, pix: 0, cartao: 0 },
+        contado: { dinheiro: 50, pix: 0, cartao: 0 },
+        diferenca: { dinheiro: 0, pix: 0, cartao: 0, total: 0 },
+        status_resumo: 'bateu certo',
+      }),
+    );
     assert.equal(controle.confirmarHabilitado(), true);
     assert.equal(controle.mostrarProsseguirSemImpressao(), false);
     assert.equal(controle.semImpressao(), false);
+  });
+
+  test('comprovante imprimível detalha diferença por forma', () => {
+    const comprovante = htmlComprovanteRevisao({
+      periodo: 'tarde',
+      turno_id: 12,
+      esperado: { dinheiro: 50, pix: 10, cartao: 20 },
+      contado: { dinheiro: 45, pix: 10, cartao: 25 },
+      diferenca: { dinheiro: -5, pix: 0, cartao: 5, total: 0 },
+      status_resumo: 'bateu certo',
+    });
+    assert.match(
+      comprovante,
+      /<h2>Diferença<\/h2>\s*<p>Bateu certo<\/p>\s*<p>Dinheiro: .*?<\/p>\s*<p>Pix: .*?<\/p>\s*<p>Cartão: .*?<\/p>\s*<p>Total: .*?<\/p>/s,
+    );
   });
 
   test('Prosseguir sem impressão só aparece depois de uma tentativa que falha', async () => {
@@ -41,7 +85,7 @@ describe('Passo 3 — impressão obrigatória na prévia', () => {
       },
     });
     assert.equal(controle.mostrarProsseguirSemImpressao(), false);
-    await controle.imprimirPrevia('<p>previa</p>');
+    await controle.imprimirPrevia('<p>comprovante</p>');
     assert.equal(controle.confirmarHabilitado(), false);
     assert.equal(controle.mostrarProsseguirSemImpressao(), true);
 
@@ -49,6 +93,44 @@ describe('Passo 3 — impressão obrigatória na prévia', () => {
     assert.equal(controle.confirmarHabilitado(), true);
     assert.equal(controle.semImpressao(), true);
     assert.equal(controle.mostrarProsseguirSemImpressao(), false);
+  });
+});
+
+describe('Passo 3 — impressão sem about:blank vazio (ISSUE-001)', () => {
+  test('imprimirHtml abre janela sem noopener e escreve o HTML', async () => {
+    const chamadasOpen = [];
+    const docs = [];
+    globalThis.open = (url, target, features) => {
+      chamadasOpen.push({ url, target, features });
+      const doc = {
+        open() {
+          docs.push('open');
+        },
+        write(html) {
+          docs.push(html);
+        },
+        close() {
+          docs.push('close');
+        },
+      };
+      return {
+        document: doc,
+        focus() {},
+        print() {
+          docs.push('print');
+        },
+      };
+    };
+
+    await imprimirHtml('<h1>Comprovante</h1>');
+
+    assert.equal(chamadasOpen.length, 1);
+    assert.equal(chamadasOpen[0].url, '');
+    assert.equal(chamadasOpen[0].target, '_blank');
+    assert.equal(chamadasOpen[0].features, undefined);
+    assert.ok(!String(chamadasOpen[0].features || '').includes('noopener'));
+    assert.ok(docs.includes('<h1>Comprovante</h1>'));
+    assert.ok(docs.includes('print'));
   });
 });
 

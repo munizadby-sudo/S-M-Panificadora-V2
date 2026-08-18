@@ -19,6 +19,38 @@ import { AbrirCaixa } from '../../src/modules/cash-register/application/AbrirCai
 import { PreverFechamento } from '../../src/modules/cash-register/application/PreverFechamento.js';
 import { FecharCaixa } from '../../src/modules/cash-register/application/FecharCaixa.js';
 import { CaixaTurnoController } from '../../src/modules/cash-register/infrastructure/http/CaixaTurnoController.js';
+import { ListCategorias } from '../../src/modules/products/application/ListCategorias.js';
+import { CreateCategoria } from '../../src/modules/products/application/CreateCategoria.js';
+import { DeactivateCategoria } from '../../src/modules/products/application/DeactivateCategoria.js';
+import { ReactivateCategoria } from '../../src/modules/products/application/ReactivateCategoria.js';
+import { CategoriasController } from '../../src/modules/products/infrastructure/http/CategoriasController.js';
+import { ListProdutos } from '../../src/modules/products/application/ListProdutos.js';
+import { CreateProduto } from '../../src/modules/products/application/CreateProduto.js';
+import { UpdateProduto } from '../../src/modules/products/application/UpdateProduto.js';
+import { DeactivateProduto } from '../../src/modules/products/application/DeactivateProduto.js';
+import { ReactivateProduto } from '../../src/modules/products/application/ReactivateProduto.js';
+import { ProdutosController } from '../../src/modules/products/infrastructure/http/ProdutosController.js';
+import { ObterOuCriarEstoqueDoDia } from '../../src/modules/inventory/application/ObterOuCriarEstoqueDoDia.js';
+import { ListarEstoqueDoDia } from '../../src/modules/inventory/application/ListarEstoqueDoDia.js';
+import { UpsertEstoque } from '../../src/modules/inventory/application/UpsertEstoque.js';
+import { UpsertEstoqueEmLote } from '../../src/modules/inventory/application/UpsertEstoqueEmLote.js';
+import { DebitarEstoque } from '../../src/modules/inventory/application/DebitarEstoque.js';
+import { ReverterDebito } from '../../src/modules/inventory/application/ReverterDebito.js';
+import { EstoqueController } from '../../src/modules/inventory/infrastructure/http/EstoqueController.js';
+import { CreatePerda } from '../../src/modules/losses/application/CreatePerda.js';
+import { ListPerdas } from '../../src/modules/losses/application/ListPerdas.js';
+import { EstornarPerda } from '../../src/modules/losses/application/EstornarPerda.js';
+import { PerdasController } from '../../src/modules/losses/infrastructure/http/PerdasController.js';
+import { CreateSale } from '../../src/modules/sales/application/CreateSale.js';
+import { ListSales } from '../../src/modules/sales/application/ListSales.js';
+import { CancelSale } from '../../src/modules/sales/application/CancelSale.js';
+import { ResolverCorrecaoPendente } from '../../src/modules/sales/application/ResolverCorrecaoPendente.js';
+import { VendasController } from '../../src/modules/sales/infrastructure/http/VendasController.js';
+import { CreateLancamentoManual } from '../../src/modules/cash-flow/application/CreateLancamentoManual.js';
+import { ListLancamentos } from '../../src/modules/cash-flow/application/ListLancamentos.js';
+import { DeleteLancamento } from '../../src/modules/cash-flow/application/DeleteLancamento.js';
+import { GetResumoPorTurno } from '../../src/modules/cash-flow/application/GetResumoPorTurno.js';
+import { FluxoCaixaController } from '../../src/modules/cash-flow/infrastructure/http/FluxoCaixaController.js';
 import { criarApp } from '../../src/app.js';
 import { MemoriaUsuarioRepository } from './MemoriaUsuarioRepository.js';
 import { MemoriaConfiguracaoRepository } from './MemoriaConfiguracaoRepository.js';
@@ -28,6 +60,12 @@ import {
   MemoriaCorrecaoPendenteRepository,
   MemoriaFluxoCaixaRepository,
 } from './MemoriaCaixaTurnoRepository.js';
+import { MemoriaCategoriaRepository } from './MemoriaCategoriaRepository.js';
+import { MemoriaProdutoRepository } from './MemoriaProdutoRepository.js';
+import { MemoriaEstoqueRepository } from './MemoriaEstoqueRepository.js';
+import { MemoriaPerdaRepository } from './MemoriaPerdaRepository.js';
+import { MemoriaSequenciaRepository, MemoriaVendaRepository } from './MemoriaVendaRepository.js';
+import { MemoriaLancamentoFluxoCaixaRepository } from './MemoriaLancamentoFluxoCaixaRepository.js';
 
 export class HashEmMemoria {
   async hash(senha) {
@@ -61,9 +99,60 @@ export function montarAppMemoria() {
   const deps = { usuarioRepository, hashService, tokenService, auditoriaService: auditor, auditor };
 
   const caixaTurnoRepository = new MemoriaCaixaTurnoRepository();
-  const fluxoCaixaRepository = new MemoriaFluxoCaixaRepository();
+  const lancamentosFluxo = [];
+  const fluxoCaixaRepository = new MemoriaFluxoCaixaRepository(lancamentosFluxo);
+  const lancamentoFluxoCaixaRepository = new MemoriaLancamentoFluxoCaixaRepository(lancamentosFluxo, {
+    idProvider: fluxoCaixaRepository,
+  });
   const correcaoPendenteRepository = new MemoriaCorrecaoPendenteRepository();
   const depsCaixa = { caixaTurnoRepository, fluxoCaixaRepository, correcaoPendenteRepository, auditor };
+  const categoriaRepository = new MemoriaCategoriaRepository();
+  const produtoRepository = new MemoriaProdutoRepository();
+  const estoqueRepository = new MemoriaEstoqueRepository();
+  const depsCategorias = { categoriaRepository, auditor };
+  const depsProdutos = { produtoRepository, categoriaRepository, auditor };
+  const obterOuCriarEstoqueDoDia = new ObterOuCriarEstoqueDoDia({
+    estoqueRepository,
+    produtoRepository,
+  });
+  const upsertEstoque = new UpsertEstoque({
+    estoqueRepository,
+    produtoRepository,
+    obterOuCriarEstoqueDoDia,
+    auditor,
+  });
+  const debitarEstoque = new DebitarEstoque({
+    estoqueRepository,
+    produtoRepository,
+    obterOuCriarEstoqueDoDia,
+  });
+  const reverterDebito = new ReverterDebito({ estoqueRepository, obterOuCriarEstoqueDoDia });
+  const perdaRepository = new MemoriaPerdaRepository({ produtoRepository, usuarioRepository });
+  const depsPerdas = { perdaRepository, produtoRepository, debitarEstoque, reverterDebito, auditor };
+  const sequenciaRepository = new MemoriaSequenciaRepository();
+  const vendaRepository = new MemoriaVendaRepository({
+    estoqueRepository,
+    sequenciaRepository,
+    fluxoCaixaRepository,
+  });
+  const depsVendas = {
+    vendaRepository,
+    sequenciaRepository,
+    caixaTurnoRepository,
+    produtoRepository,
+    debitarEstoque,
+    reverterDebito,
+    fluxoCaixaRepository,
+    correcaoPendenteRepository,
+    auditor,
+  };
+
+  const depsFluxo = {
+    caixaTurnoRepository,
+    lancamentoRepository: lancamentoFluxoCaixaRepository,
+    fluxoCaixaRepository,
+    auditor,
+  };
 
   const app = criarApp({
     authController: new AuthController(new Login(deps)),
@@ -89,6 +178,48 @@ export function montarAppMemoria() {
       preverFechamento: new PreverFechamento(depsCaixa),
       fecharCaixa: new FecharCaixa(depsCaixa),
     }),
+    categoriasController: new CategoriasController({
+      listCategorias: new ListCategorias(depsCategorias),
+      createCategoria: new CreateCategoria(depsCategorias),
+      deactivateCategoria: new DeactivateCategoria(depsCategorias),
+      reactivateCategoria: new ReactivateCategoria(depsCategorias),
+    }),
+    produtosController: new ProdutosController({
+      listProdutos: new ListProdutos(depsProdutos),
+      createProduto: new CreateProduto(depsProdutos),
+      updateProduto: new UpdateProduto(depsProdutos),
+      deactivateProduto: new DeactivateProduto(depsProdutos),
+      reactivateProduto: new ReactivateProduto(depsProdutos),
+    }),
+    estoqueController: new EstoqueController({
+      listarEstoqueDoDia: new ListarEstoqueDoDia({
+        produtoRepository,
+        obterOuCriarEstoqueDoDia,
+      }),
+      upsertEstoque,
+      upsertEstoqueEmLote: new UpsertEstoqueEmLote({
+        upsertEstoque,
+        estoqueRepository,
+        auditor,
+      }),
+    }),
+    perdasController: new PerdasController({
+      createPerda: new CreatePerda(depsPerdas),
+      listPerdas: new ListPerdas({ perdaRepository }),
+      estornarPerda: new EstornarPerda(depsPerdas),
+    }),
+    vendasController: new VendasController({
+      createSale: new CreateSale(depsVendas),
+      listSales: new ListSales({ vendaRepository }),
+      cancelSale: new CancelSale(depsVendas),
+      resolverCorrecaoPendente: new ResolverCorrecaoPendente(depsVendas),
+    }),
+    fluxoCaixaController: new FluxoCaixaController({
+      createLancamentoManual: new CreateLancamentoManual(depsFluxo),
+      listLancamentos: new ListLancamentos({ lancamentoRepository: lancamentoFluxoCaixaRepository }),
+      deleteLancamento: new DeleteLancamento({ lancamentoRepository: lancamentoFluxoCaixaRepository, auditor }),
+      getResumoPorTurno: new GetResumoPorTurno(depsFluxo),
+    }),
     limitadorLogin: (_req, _res, next) => next(),
   });
 
@@ -100,6 +231,15 @@ export function montarAppMemoria() {
     logoStorage,
     caixaTurnoRepository,
     correcaoPendenteRepository,
+    fluxoCaixaRepository,
+    lancamentoFluxoCaixaRepository,
+    lancamentosFluxo,
+    categoriaRepository,
+    produtoRepository,
+    estoqueRepository,
+    perdaRepository,
+    vendaRepository,
+    sequenciaRepository,
     hashService,
     tokenService,
     deps,

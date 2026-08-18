@@ -11,7 +11,9 @@
 
 ## 1. Objetivo técnico
 
-Especificar a implementação do módulo de Caixa por Turno no frontend: abertura com fundo pré-preenchido, banner de status consumido por outros módulos (principalmente PDV), prévia de fechamento com impressão obrigatória antes de confirmar, e exibição de correções pendentes na abertura.
+Especificar a implementação do módulo de Caixa por Turno no frontend: abertura com fundo pré-preenchido, banner de status consumido por outros módulos (principalmente PDV), fechamento com contagem primeiro + conferência/impressão no final, e exibição de correções pendentes na abertura.
+
+> **Revisão de UX (2026-08-16):** a ordem anterior (imprimir prévia → contar → confirmar) exigia botões demais e invertia o fluxo mental da balconista. A ordem correta é **contar → ver esperado na tela → confirmar → box de pré-visualização/impressão → fechar de verdade**. Ver Passos 3–4 e PRD-004. Bug conhecido de impressão: `docs/issues/ISSUE-001-impressao-previa-caixa-em-branco.md`.
 
 ---
 
@@ -56,18 +58,25 @@ Nenhum outro módulo deve chamar `GET /api/caixa-turno/status` diretamente — s
 - Exibir os `correcoes_pendentes` retornados como aviso destacado, não bloqueante (ADR-002, Decisão 2).
 - **Testável:** abrir um turno de verdade, ver o banner mudar para "aberto", confirmar que valores pré-preenchidos aparecem e são editáveis antes de confirmar.
 
-### Passo 3 — Prévia de fechamento com impressão obrigatória
-- Botão "Fechar caixa" abre a prévia, consumindo `GET /api/caixa-turno/preview-fechamento` (SPEC-BE-002, Seção 6.3).
-- Renderizar o comprovante de prévia (esperado por forma de pagamento) em formato imprimível (`window.print()` de uma view dedicada, ou geração de PDF simples — decisão de implementação livre, desde que produza algo fisicamente imprimível).
-- Botão "Confirmar fechamento" **desabilitado** até o botão "Imprimir prévia" ser acionado ao menos uma vez nesta sessão de fechamento (PRD-004, Seção 3 e critério de aceite 8).
-- Botão "Prosseguir sem impressão" só aparece após uma tentativa de impressão que falhe (ex.: `window.print()` cancelado/erro de driver) — nunca visível por padrão.
-- **Testável:** tentar clicar "Confirmar fechamento" sem imprimir — deve estar desabilitado; imprimir — botão libera.
+### Passo 3 — Contagem + esperado na mesma tela (sem impressão ainda)
+- Botão **"Fechar caixa"** abre a tela de fechamento (não um modal intermediário só de prévia).
+- Ao abrir essa tela, consumir `GET /api/caixa-turno/preview-fechamento` (SPEC-BE-002, Seção 6.3) e **mostrar os valores esperados na própria tela** (dinheiro / pix / cartão), somente leitura — referência automática para a contagem.
+- Formulário de **contagem manual**: dinheiro, moedas, pix, cartão + observação.
+- Conforme o operador digita, a UI pode (opcional, recomendado) mostrar a diferença provisória contado − esperado — ainda **sem** chamar `POST /fechar`.
+- Nesta etapa **não** há botão "Imprimir prévia" nem "Prosseguir sem impressão". Um único CTA principal: **"Continuar"** / **"Revisar fechamento"** (habilitado quando os campos obrigatórios da contagem estiverem preenchidos).
+- **Testável:** com turno aberto, clicar Fechar caixa → ver esperado + campos de contagem; digitar valores; o botão Continuar só libera com contagem válida; ainda não existe chamada a `/fechar`.
 
-### Passo 4 — Confirmação de fechamento e resumo
-- Modal de fechamento captura valores contados por forma de pagamento + observação.
-- Submeter para `POST /api/caixa-turno/fechar` (SPEC-BE-002, Seção 6.4), incluindo `turno_id` (obtido de `estado.js`, nunca deduzido) e `sem_impressao: true/false` conforme o caminho usado no Passo 3. Se a resposta vier com `idempotente: true` (ex.: reenvio por falha de rede), tratar como sucesso normal, exibindo o mesmo resumo — nunca como erro.
-- Exibir resumo pós-fechamento com diferença classificada (bateu certo/sobra/falta), com opção de imprimir o resumo final.
-- **Testável:** fechar um turno de ponta a ponta e ver o resumo com a diferença correta.
+### Passo 4 — Box de revisão + impressão + fechamento definitivo
+- Ao continuar, abrir um **box/modal de revisão** com:
+  - esperado (da prévia),
+  - contado (digitado),
+  - diferença e classificação provisória (bateu certo / sobra / falta),
+  - texto claro pedindo para **imprimir o comprovante** antes de fechar.
+- No box: botão **"Imprimir"** (comprovante com esperado + contado + diferença + turno/data). A trava de negócio permanece: o botão **"Confirmar e fechar"** só habilita depois de impressão bem-sucedida **ou** do caminho de exceção.
+- **"Prosseguir sem impressão"** só aparece após tentativa de impressão sem sucesso — nunca como atalho padrão; envia `sem_impressao: true` na auditoria (SPEC-BE-002).
+- Só então submeter `POST /api/caixa-turno/fechar` com `turno_id` (de `estado.js`), valores contados e `sem_impressao`. Resposta com `idempotente: true` = sucesso normal.
+- Após sucesso: tela de resumo do turno (diferença definitiva) **somente na tela** — sem segundo botão de impressão. O comprovante já foi impresso no box de revisão.
+- **Testável:** fluxo ponta a ponta com poucos cliques; impressão não abre `about:blank` vazio (ver ISSUE-001); fechar duas vezes o mesmo `turno_id` continua idempotente.
 
 ---
 
@@ -78,9 +87,10 @@ Nenhum outro módulo deve chamar `GET /api/caixa-turno/status` diretamente — s
 | `BannerTurno` | Exibe status aberto/fechado + período; usado no shell e reaproveitado no PDV |
 | `ModalAberturaCaixa` | Formulário de abertura com pré-preenchimento |
 | `AvisoCorrecoesPendentes` | Lista as correções pendentes retornadas na abertura, não bloqueante |
-| `PreviaFechamentoImprimivel` | View dedicada para impressão da prévia (Passo 3) |
-| `ModalFechamentoCaixa` | Formulário de contagem + observação |
-| `ResumoFechamento` | Exibe diferença por forma de pagamento e total, com opção de impressão |
+| `TelaContagemFechamento` | Contagem manual + esperado automático na mesma tela (Passo 3) |
+| `BoxRevisaoFechamento` | Modal/box com pré-visualização, impressão e confirmação final (Passo 4) |
+| `ComprovanteFechamentoImprimivel` | HTML imprimível (esperado + contado + diferença) — corrigir ISSUE-001 |
+| `ResumoFechamento` | Exibe diferença por forma de pagamento e total após o POST (somente tela; impressão já ocorreu na revisão) |
 
 ---
 
@@ -94,7 +104,7 @@ Nenhum outro módulo deve chamar `GET /api/caixa-turno/status` diretamente — s
 ## 6. Critérios de aceite técnicos
 
 1. Nenhum outro módulo (especialmente PDV) chama `GET /api/caixa-turno/status` diretamente — todos passam por `estado.js`.
-2. O botão "Confirmar fechamento" é comprovadamente inacessível (desabilitado) antes de uma impressão bem-sucedida ou do caminho de exceção ser explicitamente acionado.
+2. O botão "Confirmar e fechar" (no box de revisão) é comprovadamente inacessível antes de uma impressão bem-sucedida ou do caminho de exceção ser explicitamente acionado; a tela de contagem não exige impressão.
 3. `correcoes_pendentes` aparece na tela de abertura sempre que o backend retornar a lista não vazia, sem bloquear a abertura.
 4. O banner de status reflete o estado real do turno imediatamente após abrir/fechar, sem exigir recarregar a página.
 5. Cada um dos 4 passos da Seção 3 é individualmente testável no navegador, na ordem descrita, sem exigir os passos seguintes implementados.

@@ -3,7 +3,12 @@ import {
   aplicarSchemaAuditoria,
   aplicarSchemaCaixaTurnos,
   aplicarSchemaConfiguracoes,
+  aplicarSchemaEstoque,
+  aplicarSchemaPerdas,
+  aplicarSchemaProdutos,
   aplicarSchemaUsuarios,
+  aplicarSchemaVendas,
+  aplicarSchemaFluxoCaixa,
   criarPool,
   garantirDatabase,
   semearConfiguracoes,
@@ -23,6 +28,11 @@ await aplicarSchemaUsuarios(pool);
 await aplicarSchemaConfiguracoes(pool);
 await aplicarSchemaAuditoria(pool);
 await aplicarSchemaCaixaTurnos(pool);
+await aplicarSchemaProdutos(pool);
+await aplicarSchemaEstoque(pool);
+await aplicarSchemaPerdas(pool);
+await aplicarSchemaVendas(pool);
+await aplicarSchemaFluxoCaixa(pool);
 await semearConfiguracoes(pool, padroesParaSeed());
 
 const { app } = montarAplicacao({

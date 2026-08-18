@@ -24,10 +24,30 @@ export class FluxoCaixaRepository {
   async somarPorFormaETurno(_turnoId, _categorias) {
     throw new Error('FluxoCaixaRepository.somarPorFormaETurno não implementado');
   }
+
+  async agregarEntradasSaidasPorTurno(_turnoId, _categorias) {
+    throw new Error('FluxoCaixaRepository.agregarEntradasSaidasPorTurno não implementado');
+  }
+
+  async registrar(_lancamento, _conexao) {
+    throw new Error('FluxoCaixaRepository.registrar não implementado');
+  }
 }
 
 export class CorrecaoPendenteRepository {
   async listarPendentes() {
     return [];
+  }
+
+  async criar(_correcao, _conexao) {
+    throw new Error('CorrecaoPendenteRepository.criar não implementado');
+  }
+
+  async buscarPorId(_id, _conexao) {
+    throw new Error('CorrecaoPendenteRepository.buscarPorId não implementado');
+  }
+
+  async marcarResolvida(_id, _resolvidoPor, _conexao) {
+    throw new Error('CorrecaoPendenteRepository.marcarResolvida não implementado');
   }
 }
