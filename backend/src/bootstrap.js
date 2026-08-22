@@ -46,6 +46,7 @@ import { UpsertEstoque } from './modules/inventory/application/UpsertEstoque.js'
 import { UpsertEstoqueEmLote } from './modules/inventory/application/UpsertEstoqueEmLote.js';
 import { DebitarEstoque } from './modules/inventory/application/DebitarEstoque.js';
 import { ReverterDebito } from './modules/inventory/application/ReverterDebito.js';
+import { IncrementarProduzido } from './modules/inventory/application/IncrementarProduzido.js';
 import { MySQLEstoqueRepository } from './modules/inventory/infrastructure/MySQLEstoqueRepository.js';
 import { EstoqueController } from './modules/inventory/infrastructure/http/EstoqueController.js';
 import { CreatePerda } from './modules/losses/application/CreatePerda.js';
@@ -53,6 +54,18 @@ import { ListPerdas } from './modules/losses/application/ListPerdas.js';
 import { EstornarPerda } from './modules/losses/application/EstornarPerda.js';
 import { MySQLPerdaRepository } from './modules/losses/infrastructure/MySQLPerdaRepository.js';
 import { PerdasController } from './modules/losses/infrastructure/http/PerdasController.js';
+import { CreateProducao } from './modules/production/application/CreateProducao.js';
+import { ListProducao } from './modules/production/application/ListProducao.js';
+import { MySQLProducaoRepository } from './modules/production/infrastructure/MySQLProducaoRepository.js';
+import { ProducaoController } from './modules/production/infrastructure/http/ProducaoController.js';
+import { CreateEncomenda } from './modules/orders/application/CreateEncomenda.js';
+import { UpdateEncomenda } from './modules/orders/application/UpdateEncomenda.js';
+import { UpdateStatusEncomenda } from './modules/orders/application/UpdateStatusEncomenda.js';
+import { CancelEncomenda } from './modules/orders/application/CancelEncomenda.js';
+import { ListEncomendas } from './modules/orders/application/ListEncomendas.js';
+import { GetEncomenda } from './modules/orders/application/GetEncomenda.js';
+import { MySQLEncomendaRepository } from './modules/orders/infrastructure/MySQLEncomendaRepository.js';
+import { EncomendasController } from './modules/orders/infrastructure/http/EncomendasController.js';
 import { CreateSale } from './modules/sales/application/CreateSale.js';
 import { ListSales } from './modules/sales/application/ListSales.js';
 import { CancelSale } from './modules/sales/application/CancelSale.js';
@@ -67,11 +80,24 @@ import { DeleteLancamento } from './modules/cash-flow/application/DeleteLancamen
 import { GetResumoPorTurno } from './modules/cash-flow/application/GetResumoPorTurno.js';
 import { MySQLLancamentoFluxoCaixaRepository } from './modules/cash-flow/infrastructure/MySQLLancamentoFluxoCaixaRepository.js';
 import { FluxoCaixaController } from './modules/cash-flow/infrastructure/http/FluxoCaixaController.js';
+import { CreateCliente } from './modules/customers/application/CreateCliente.js';
+import { UpdateCliente } from './modules/customers/application/UpdateCliente.js';
+import { ListClientes } from './modules/customers/application/ListClientes.js';
+import { DeactivateCliente } from './modules/customers/application/DeactivateCliente.js';
+import { ReactivateCliente } from './modules/customers/application/ReactivateCliente.js';
+import { MySQLClienteRepository } from './modules/customers/infrastructure/MySQLClienteRepository.js';
+import { ClientesController } from './modules/customers/infrastructure/http/ClientesController.js';
 import { criarApp } from './app.js';
 
 const pastaUploadsPadrao = join(dirname(fileURLToPath(import.meta.url)), '..', 'uploads');
 
-export function montarAplicacao({ pool, jwtSecret, jwtExpiresIn = '12h', pastaUploads = pastaUploadsPadrao }) {
+/**
+ * Composition root: instancia repositórios, casos de uso e controllers, e delega
+ * a montagem do Express para `criarApp` (app.js). Não é "criar a aplicação" —
+ * é resolver o grafo de dependências que a aplicação precisa.
+ */
+export function montarDependencias({ pool, config = {}, pastaUploads = pastaUploadsPadrao }) {
+  const { jwtSecret, jwtExpiresIn = '12h', corsOrigin = '*' } = config;
   const usuarioRepository = new MySQLUsuarioRepository(pool);
   const configuracaoRepository = new MySQLConfiguracaoRepository(pool);
   const hashService = new BcryptHashService();
@@ -155,6 +181,11 @@ export function montarAplicacao({ pool, jwtSecret, jwtExpiresIn = '12h', pastaUp
     obterOuCriarEstoqueDoDia,
   });
   const reverterDebito = new ReverterDebito({ estoqueRepository, obterOuCriarEstoqueDoDia });
+  const incrementarProduzido = new IncrementarProduzido({
+    estoqueRepository,
+    produtoRepository,
+    obterOuCriarEstoqueDoDia,
+  });
 
   const perdaRepository = new MySQLPerdaRepository(pool);
   const depsPerdas = { perdaRepository, produtoRepository, debitarEstoque, reverterDebito, auditor };
@@ -162,6 +193,13 @@ export function montarAplicacao({ pool, jwtSecret, jwtExpiresIn = '12h', pastaUp
     createPerda: new CreatePerda(depsPerdas),
     listPerdas: new ListPerdas({ perdaRepository }),
     estornarPerda: new EstornarPerda(depsPerdas),
+  });
+
+  const producaoRepository = new MySQLProducaoRepository(pool);
+  const depsProducao = { producaoRepository, produtoRepository, incrementarProduzido, auditor };
+  const producaoController = new ProducaoController({
+    createProducao: new CreateProducao(depsProducao),
+    listProducao: new ListProducao({ producaoRepository }),
   });
 
   const vendaRepository = new MySQLVendaRepository(pool);
@@ -198,6 +236,27 @@ export function montarAplicacao({ pool, jwtSecret, jwtExpiresIn = '12h', pastaUp
     getResumoPorTurno: new GetResumoPorTurno(depsFluxo),
   });
 
+  const clienteRepository = new MySQLClienteRepository(pool);
+  const depsClientes = { clienteRepository, auditor };
+  const clientesController = new ClientesController({
+    listClientes: new ListClientes({ clienteRepository }),
+    createCliente: new CreateCliente(depsClientes),
+    updateCliente: new UpdateCliente(depsClientes),
+    deactivateCliente: new DeactivateCliente(depsClientes),
+    reactivateCliente: new ReactivateCliente(depsClientes),
+  });
+
+  const encomendaRepository = new MySQLEncomendaRepository(pool);
+  const depsEncomendas = { encomendaRepository, produtoRepository, clienteRepository, sequenciaRepository, auditor };
+  const encomendasController = new EncomendasController({
+    createEncomenda: new CreateEncomenda(depsEncomendas),
+    updateEncomenda: new UpdateEncomenda(depsEncomendas),
+    updateStatusEncomenda: new UpdateStatusEncomenda(depsEncomendas),
+    cancelEncomenda: new CancelEncomenda(depsEncomendas),
+    listEncomendas: new ListEncomendas({ encomendaRepository }),
+    getEncomenda: new GetEncomenda({ encomendaRepository }),
+  });
+
   const app = criarApp({
     authController,
     usuariosController,
@@ -209,9 +268,13 @@ export function montarAplicacao({ pool, jwtSecret, jwtExpiresIn = '12h', pastaUp
     produtosController,
     estoqueController,
     perdasController,
+    producaoController,
+    encomendasController,
     vendasController,
     fluxoCaixaController,
+    clientesController,
     pastaUploads,
+    corsOrigin,
   });
-  return { app, usuarioRepository, hashService, tokenService, auditor, debitarEstoque, reverterDebito };
+  return { app };
 }

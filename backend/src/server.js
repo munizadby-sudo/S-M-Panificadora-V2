@@ -3,23 +3,32 @@ import {
   aplicarSchemaAuditoria,
   aplicarSchemaCaixaTurnos,
   aplicarSchemaConfiguracoes,
+  aplicarSchemaEncomendas,
   aplicarSchemaEstoque,
   aplicarSchemaPerdas,
+  aplicarSchemaProducao,
   aplicarSchemaProdutos,
   aplicarSchemaUsuarios,
   aplicarSchemaVendas,
   aplicarSchemaFluxoCaixa,
+  aplicarSchemaClientes,
   criarPool,
   garantirDatabase,
   semearConfiguracoes,
 } from './infrastructure/database/db.js';
 import { padroesParaSeed } from './modules/settings/domain/chaves.js';
-import { montarAplicacao } from './bootstrap.js';
+import { montarDependencias } from './bootstrap.js';
+import { carregarConfig, ConfigInvalidaError } from './config.js';
 
-const jwtSecret = process.env.JWT_SECRET;
-if (!jwtSecret) {
-  console.error('JWT_SECRET é obrigatório.');
-  process.exit(1);
+let config;
+try {
+  config = carregarConfig();
+} catch (erro) {
+  if (erro instanceof ConfigInvalidaError) {
+    console.error(erro.message);
+    process.exit(1);
+  }
+  throw erro;
 }
 
 await garantirDatabase();
@@ -31,17 +40,15 @@ await aplicarSchemaCaixaTurnos(pool);
 await aplicarSchemaProdutos(pool);
 await aplicarSchemaEstoque(pool);
 await aplicarSchemaPerdas(pool);
+await aplicarSchemaProducao(pool);
 await aplicarSchemaVendas(pool);
 await aplicarSchemaFluxoCaixa(pool);
+await aplicarSchemaClientes(pool);
+await aplicarSchemaEncomendas(pool);
 await semearConfiguracoes(pool, padroesParaSeed());
 
-const { app } = montarAplicacao({
-  pool,
-  jwtSecret,
-  jwtExpiresIn: process.env.JWT_EXPIRES || '12h',
-});
+const { app } = montarDependencias({ pool, config });
 
-const porta = Number(process.env.PORTA || process.env.PORT || 3001);
-app.listen(porta, '127.0.0.1', () => {
-  process.stdout.write(`API em http://127.0.0.1:${porta}\n`);
+app.listen(config.porta, '127.0.0.1', () => {
+  process.stdout.write(`API em http://127.0.0.1:${config.porta}\n`);
 });

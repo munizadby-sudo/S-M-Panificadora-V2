@@ -1,5 +1,8 @@
-export class MySQLAuditoriaRepository {
+import { AuditoriaRepository } from '../application/ports.js';
+
+export class MySQLAuditoriaRepository extends AuditoriaRepository {
   constructor(pool) {
+    super();
     this.pool = pool;
   }
 

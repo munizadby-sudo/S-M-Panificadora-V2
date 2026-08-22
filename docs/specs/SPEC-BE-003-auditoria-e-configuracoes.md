@@ -66,6 +66,8 @@ registrar({ usuarioId, acao, entidade, entidadeId, estadoAntes, estadoDepois, ip
 
 Todo módulo do sistema (Vendas, Caixa, Usuários, Estoque etc.) chama `Auditor.registrar()` diretamente — não existe uma API HTTP para *criar* auditoria, só para consultá-la (Seção 5.2).
 
+`Auditor` depende da interface `AuditoriaRepository` (`src/modules/audit/application/ports.js`, com `inserir`/`listar`), nunca da implementação concreta — mesmo padrão de Repository Interface usado em todos os demais módulos (revisão de código do José, 2026-08-22: este era o único módulo do backend sem essa interface formal, apesar de `MySQLAuditoriaRepository` e o dublê de teste já implementarem o mesmo contrato na prática).
+
 ### 3.2 Exceções de domínio
 - `ChaveConfiguracaoInvalidaError` (400)
 - `ArquivoLogoInvalidoError` (400) — tamanho ou tipo fora do permitido

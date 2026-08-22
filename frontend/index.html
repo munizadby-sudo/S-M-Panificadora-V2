@@ -340,6 +340,200 @@
       gap: 0.65rem;
     }
 
+    .clientes h1,
+    .clientes h2 {
+      margin: 0 0 0.5rem;
+    }
+
+    .clientes-filtros,
+    .clientes-form-cliente {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.65rem;
+      align-items: end;
+      margin: 1rem 0;
+    }
+
+    .clientes-filtros label,
+    .clientes-form-cliente label,
+    .clientes-seletor label {
+      display: grid;
+      gap: 0.25rem;
+    }
+
+    .clientes-toggle {
+      display: flex !important;
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.85rem;
+      min-width: 16.5rem;
+      padding: 0.35rem 0.15rem 0.35rem 0;
+      cursor: pointer;
+    }
+
+    .clientes-toggle-texto {
+      display: grid;
+      gap: 0.1rem;
+    }
+
+    .clientes-toggle-titulo {
+      font-weight: 600;
+    }
+
+    .clientes-toggle-ajuda {
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+
+    .clientes-toggle-input {
+      position: absolute;
+      opacity: 0;
+      width: 0;
+      height: 0;
+      pointer-events: none;
+    }
+
+    .clientes-toggle-pista {
+      position: relative;
+      width: 2.7rem;
+      height: 1.5rem;
+      flex-shrink: 0;
+      background: #b7aea4;
+      border-radius: 999px;
+      transition: background 0.15s ease;
+    }
+
+    .clientes-toggle-pista::after {
+      content: '';
+      position: absolute;
+      top: 0.15rem;
+      left: 0.15rem;
+      width: 1.2rem;
+      height: 1.2rem;
+      background: #fff;
+      border-radius: 50%;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+      transition: transform 0.15s ease;
+    }
+
+    .clientes-toggle-input:checked + .clientes-toggle-pista {
+      background: #5dae63;
+    }
+
+    .clientes-toggle-input:checked + .clientes-toggle-pista::after {
+      transform: translateX(1.2rem);
+    }
+
+    .clientes-filtros input:not(.clientes-toggle-input),
+    .clientes-filtros button,
+    .clientes-form-cliente input,
+    .clientes-form-cliente button,
+    .clientes-acoes button,
+    .clientes-seletor button,
+    .clientes-cadastro-rapido button {
+      font: inherit;
+      padding: 0.45rem 0.6rem;
+    }
+
+    .clientes-erro,
+    .clientes .campo-erro {
+      color: #9b2c2c;
+      min-height: 1.2em;
+      margin: 0.25rem 0;
+    }
+
+    .clientes-tabela {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .clientes-tabela th,
+    .clientes-tabela td {
+      text-align: left;
+      padding: 0.45rem 0.5rem;
+      border-bottom: 1px solid var(--linha);
+    }
+
+    .clientes-inativo {
+      color: inherit;
+      font-size: 0.85em;
+      font-weight: 600;
+    }
+
+    .clientes-linha-ativa td {
+      background: #e7f3e4;
+    }
+
+    .clientes-linha-inativa td {
+      background: #f4e2e2;
+      color: #8a3a3a;
+    }
+
+    .clientes-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(40, 28, 18, 0.4);
+      display: grid;
+      place-items: center;
+      padding: 1rem;
+      z-index: 100;
+    }
+
+    .clientes-modal-caixa {
+      background: #fff8f0;
+      border: 1px solid var(--linha);
+      border-radius: 10px;
+      padding: 1.25rem;
+      min-width: min(28rem, 100%);
+      display: grid;
+      gap: 0.65rem;
+    }
+
+    .clientes-seletor-demo {
+      margin-top: 2rem;
+      padding: 1rem;
+      border: 1px dashed var(--linha);
+      border-radius: 8px;
+    }
+
+    .clientes-seletor-ajuda {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .clientes-resultados-seletor {
+      list-style: none;
+      padding: 0;
+      margin: 0.35rem 0 0;
+      border: 1px solid var(--linha);
+      border-radius: 6px;
+      max-height: 12rem;
+      overflow: auto;
+    }
+
+    .clientes-resultados-seletor li + li {
+      border-top: 1px solid var(--linha);
+    }
+
+    .clientes-item-seletor {
+      display: block;
+      width: 100%;
+      text-align: left;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      padding: 0.45rem 0.6rem;
+    }
+
+    .clientes-item-seletor:hover {
+      background: #f5ebe0;
+    }
+
+    .clientes-cadastro-rapido {
+      margin: 0.35rem 0 0;
+    }
+
     .estoque h1 {
       margin: 0 0 0.5rem;
     }
@@ -584,6 +778,218 @@
     }
 
     .perdas-form-acoes {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .encomendas h1,
+    .encomendas h2 {
+      margin: 0 0 0.5rem;
+    }
+
+    .encomendas-erro,
+    .encomendas .campo-erro {
+      color: #9b2c2c;
+      min-height: 1.2em;
+      margin: 0.25rem 0;
+    }
+
+    .encomendas-filtros,
+    .encomendas-form,
+    .encomendas-acoes-topo {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.65rem;
+      align-items: end;
+      margin: 1rem 0;
+    }
+
+    .encomendas-filtros label,
+    .encomendas-form label {
+      display: grid;
+      gap: 0.25rem;
+    }
+
+    .encomendas-filtros input,
+    .encomendas-filtros select,
+    .encomendas-filtros button,
+    .encomendas-form input,
+    .encomendas-form textarea,
+    .encomendas-form button,
+    .encomendas-select-status,
+    .encomendas-acoes button,
+    .encomendas-form-acoes button {
+      font: inherit;
+      padding: 0.45rem 0.6rem;
+    }
+
+    .encomendas-tabela {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .encomendas-tabela th,
+    .encomendas-tabela td {
+      text-align: left;
+      padding: 0.45rem 0.5rem;
+      border-bottom: 1px solid var(--linha);
+    }
+
+    .encomendas-linha-cancelada td {
+      background: #f4e2e2;
+      color: #8a3a3a;
+    }
+
+    .encomendas-marca-cancelada {
+      font-size: 0.85em;
+      font-weight: 600;
+    }
+
+    .encomendas-formulario {
+      margin-top: 1.5rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--linha);
+    }
+
+    .encomendas-form {
+      flex-direction: column;
+      align-items: stretch;
+      max-width: 32rem;
+    }
+
+    .encomendas-itens {
+      border: 1px solid var(--linha);
+      border-radius: 8px;
+      padding: 0.85rem;
+      margin: 0.5rem 0;
+    }
+
+    .encomendas-itens-lista {
+      list-style: none;
+      padding: 0;
+      margin: 0.5rem 0;
+    }
+
+    .encomendas-itens-lista li {
+      display: flex;
+      justify-content: space-between;
+      gap: 0.5rem;
+      align-items: center;
+      padding: 0.35rem 0;
+      border-bottom: 1px solid var(--linha);
+    }
+
+    .encomendas-confirmacao {
+      margin-top: 1rem;
+      padding: 1rem;
+      background: #dce8d4;
+      border: 1px solid #b8d4ae;
+      border-radius: 8px;
+      max-width: 28rem;
+    }
+
+    .encomendas-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(40, 28, 18, 0.4);
+      display: grid;
+      place-items: center;
+      padding: 1rem;
+    }
+
+    .encomendas-modal-caixa {
+      background: #fff8f0;
+      border: 1px solid var(--linha);
+      border-radius: 10px;
+      padding: 1.25rem;
+      min-width: min(28rem, 100%);
+      display: grid;
+      gap: 0.65rem;
+    }
+
+    .encomendas-form-acoes {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .producao h1,
+    .producao h2 {
+      margin: 0 0 0.5rem;
+    }
+
+    .producao-erro,
+    .producao .campo-erro {
+      color: #9b2c2c;
+      min-height: 1.2em;
+      margin: 0.25rem 0;
+    }
+
+    .producao-filtros,
+    .producao-form,
+    .producao-acoes-topo {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.65rem;
+      align-items: end;
+      margin: 1rem 0;
+    }
+
+    .producao-filtros label,
+    .producao-form label {
+      display: grid;
+      gap: 0.25rem;
+    }
+
+    .producao-filtros input,
+    .producao-filtros select,
+    .producao-filtros button,
+    .producao-form input,
+    .producao-form button,
+    .producao-form-acoes button {
+      font: inherit;
+      padding: 0.45rem 0.6rem;
+    }
+
+    .producao-tabela {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .producao-tabela th,
+    .producao-tabela td {
+      text-align: left;
+      padding: 0.45rem 0.5rem;
+      border-bottom: 1px solid var(--linha);
+    }
+
+    .producao-formulario {
+      margin-top: 1.5rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--linha);
+    }
+
+    .producao-form {
+      flex-direction: column;
+      align-items: stretch;
+      max-width: 28rem;
+    }
+
+    .producao-confirmacao {
+      margin-top: 1rem;
+      padding: 1rem;
+      background: #dce8d4;
+      border: 1px solid #b8d4ae;
+      border-radius: 8px;
+      max-width: 28rem;
+    }
+
+    .producao-disponivel-confirmacao {
+      font-size: 1.1em;
+    }
+
+    .producao-form-acoes {
       display: flex;
       flex-wrap: wrap;
       gap: 0.5rem;
@@ -889,7 +1295,10 @@
       const { default: moduloProdutos } = await import('./src/modules/produtos/index.js');
       const { default: moduloEstoque } = await import('./src/modules/estoque/index.js');
       const { default: moduloPerdas } = await import('./src/modules/perdas/index.js');
+      const { default: moduloProducao } = await import('./src/modules/producao/index.js');
+      const { default: moduloEncomendas } = await import('./src/modules/encomendas/index.js');
       const { default: moduloFluxo } = await import('./src/modules/fluxo-caixa/index.js');
+      const { default: moduloClientes } = await import('./src/modules/clientes/index.js');
       const { montarBanner } = await import('./src/modules/caixa-turno/banner.js');
       const { temPermissao } = await import('./src/core/session.js');
 
@@ -899,7 +1308,10 @@
       router.registrarModulo(moduloProdutos);
       router.registrarModulo(moduloEstoque);
       router.registrarModulo(moduloPerdas);
+      router.registrarModulo(moduloProducao);
+      router.registrarModulo(moduloEncomendas);
       router.registrarModulo(moduloFluxo);
+      router.registrarModulo(moduloClientes);
       await router.iniciar({
         menu: document.getElementById('menu-principal'),
         conteudo: document.getElementById('conteudo'),

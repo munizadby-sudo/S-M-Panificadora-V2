@@ -50,6 +50,10 @@ export async function apiPut(caminho, corpo) {
   return requisitar('PUT', caminho, corpo);
 }
 
+export async function apiPatch(caminho, corpo) {
+  return requisitar('PATCH', caminho, corpo);
+}
+
 export async function apiDelete(caminho, corpo) {
   return requisitar('DELETE', caminho, corpo);
 }

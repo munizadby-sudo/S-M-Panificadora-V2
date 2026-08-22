@@ -1,139 +1,143 @@
-# Specs do Backend — S-M-Panificadora-V2
+# Specs do Backend e Frontend — S-M-Panificadora-V2
 
-- **Fonte:** `docs/prd/PRD-001-backend-S-M-Panificadora-V2.md`
-- **Arquitetura:** `docs/adr/ADR-001-clean-code-solid.md`
-- **Regra de execução:** implementar **na ordem numérica**. Uma spec só começa quando a anterior está no Definition of Done.
+- **Fonte:** `docs/prd/PRD-001-backend-S-M-Panificadora-V2.md` (backend) e `docs/prd/PRD-0XX-*.md` (frontend, um por módulo)
+- **Arquitetura:** `docs/adr/ADR-001-clean-code-solid.md`, `docs/adr/ADR-004-seguranca-e-testabilidade-do-backend.md`
+- **Convenção de nome:** `SPEC-BE-XXX-slug.md` (backend) e `SPEC-FE-XXX-slug.md` (frontend). Números de BE e FE **não precisam bater** — cada trilha numera na ordem em que foi implementada.
+- **Regra de execução:** implementar **na ordem numérica dentro de cada trilha** (BE ou FE). Uma spec só começa quando a anterior está no Definition of Done.
 
-Cada spec é uma **entrega vertical testável**: ao terminá-la, o sistema faz algo novo que dá para provar com testes automatizados (e, quando houver HTTP, com chamada real). Não se entrega “metade de regra de negócio” sem critério de aceite.
+> **Nota de manutenção (2026-08-22):** este README descrevia originalmente uma numeração linear única (`SPEC-001` … `SPEC-019`) prevista antes da implementação começar. Na prática, vários desses cortes foram consolidados em um único arquivo por módulo (ex.: "criar venda" e "cancelar venda" viraram um só `SPEC-BE-007-pdv-vendas.md`), e o projeto passou a nomear por trilha (`SPEC-BE-XXX`/`SPEC-FE-XXX`) em vez de numeração global. A tabela abaixo reflete o que existe de fato no repositório.
+
+Cada spec é uma **entrega vertical testável**: ao terminá-la, o sistema faz algo novo que dá para provar com testes automatizados (e, quando houver HTTP, com chamada real). Não se entrega "metade de regra de negócio" sem critério de aceite.
 
 ---
 
 ## 1. Como usar
 
-1. Abrir a spec da vez (`SPEC-00N-...md`).
-2. Implementar só o que está no escopo. O que está em “fora de escopo” pertence a uma spec posterior.
-3. Cobrir o **plano de testes** da própria spec (unidade sem banco + integração do fluxo crítico).
+1. Abrir a spec da vez (`SPEC-BE-XXX-...md` ou `SPEC-FE-XXX-...md`).
+2. Implementar só o que está no escopo. O que está em "fora de escopo" pertence a uma spec posterior.
+3. Cobrir o **plano de testes** implícito nos critérios de aceite da própria spec (unidade sem banco + integração do fluxo crítico).
 4. Só então avançar para a próxima.
 
-Não pular specs. Dependências circulares foram quebradas de propósito (ver seção 3).
-
 ---
 
-## 2. Ordem incremental
+## 2. Backend — o que já existe
 
-| Spec | Entrega | O que fica testável ao concluir |
+| Spec | Módulo | Cobre (do plano original) |
 |---|---|---|
-| [SPEC-001](./SPEC-001-fundacao-da-aplicacao.md) | Fundação HTTP e camadas | Health, erros sem stack, CORS, CSP, rate limit geral, abort sem `JWT_SECRET` |
-| [SPEC-002](./SPEC-002-persistencia-e-transacoes.md) | Banco, migrations, transação | Migrate up; rollback de transação; readiness com DB |
-| [SPEC-003](./SPEC-003-autenticacao-e-sessao.md) | Login, JWT, seed admin | Login ok/falha genérica; 401 em rota protegida; troca de senha do seed |
-| [SPEC-004](./SPEC-004-usuarios-e-rbac.md) | CRUD de usuários e permissões | Admin cria operador; operador é bloqueado; admin não tem permissão parcial |
-| [SPEC-005](./SPEC-005-auditoria.md) | Infra de auditoria | Mutação gera log; falha de auditoria não derruba a operação |
-| [SPEC-006](./SPEC-006-configuracoes.md) | Parâmetros da loja | Upsert nome/slogan; logo com limite; leitura pública para login |
-| [SPEC-007](./SPEC-007-produtos-e-categorias.md) | Catálogo | CRUD; unicidade de nome por categoria; soft delete |
-| [SPEC-008](./SPEC-008-estoque.md) | Estoque diário | Fórmula de disponível; rollover; upsert; erro de negócio (não 500) |
-| [SPEC-009](./SPEC-009-producao.md) | Produção | Lançamento incrementa `produzido` com rastro de quem/quando |
-| [SPEC-010](./SPEC-010-perdas.md) | Perdas | Registro debita estoque; custo automático; whitelist de motivo |
-| [SPEC-011](./SPEC-011-caixa-por-turno.md) | Caixa — abrir/fechar/prévia | Um turno aberto por período; período fixado na abertura; diferença |
-| [SPEC-012](./SPEC-012-fluxo-de-caixa.md) | Fluxo de caixa | Lançamento manual no turno; filtro por turno (não por data corrida) |
-| [SPEC-013](./SPEC-013-pdv-criar-venda.md) | PDV — criar venda | Transação única: venda + itens + estoque + fluxo; bloqueio sem turno |
-| [SPEC-014](./SPEC-014-pdv-cancelar-venda.md) | PDV — cancelar venda | Soft delete; estorno no fluxo; reversão de estoque na data original |
-| [SPEC-015](./SPEC-015-clientes.md) | Clientes | CRUD mínimo; soft delete |
-| [SPEC-016](./SPEC-016-encomendas.md) | Encomendas | Numeração própria; total no backend; soft delete |
-| [SPEC-017](./SPEC-017-relatorios.md) | Relatórios | Vendas, fechamento, ABC, resultado; paginação |
-| [SPEC-018](./SPEC-018-funcionarios-e-folha.md) | Folha (macro) | Cadastro mínimo; detalhe fica na PRD específica |
-| [SPEC-019](./SPEC-019-contratos-tef-e-fiscal.md) | Contratos TEF e fiscal | Ports + adapters no-op; caso de uso de venda não conhece provedor |
+| [SPEC-BE-001](./SPEC-BE-001-autenticacao-e-usuarios.md) | Autenticação + Usuários/RBAC | Login, JWT, seed admin, CRUD de usuários e permissões |
+| [SPEC-BE-002](./SPEC-BE-002-caixa-por-turno.md) | Caixa por Turno | Abrir/fechar/prévia, um turno aberto por período |
+| [SPEC-BE-003](./SPEC-BE-003-auditoria-e-configuracoes.md) | Auditoria + Configurações | Infra de auditoria best-effort; parâmetros da loja |
+| [SPEC-BE-004](./SPEC-BE-004-produtos-e-categorias.md) | Produtos e Categorias | Catálogo, unicidade de nome por categoria, soft delete |
+| [SPEC-BE-005](./SPEC-BE-005-estoque.md) | Estoque | Fórmula de disponível, rollover, `DebitarEstoque`/`ReverterDebito` |
+| [SPEC-BE-006](./SPEC-BE-006-perdas.md) | Perdas | Registro debita estoque; custo automático; whitelist de motivo |
+| [SPEC-BE-007](./SPEC-BE-007-pdv-vendas.md) | PDV — Vendas | Criar venda (transação única) **e** cancelar venda (estorno/correção pendente) |
+| [SPEC-BE-008](./SPEC-BE-008-fluxo-de-caixa.md) | Fluxo de Caixa | Lançamento manual no turno; filtro por turno |
+| [SPEC-BE-009](./SPEC-BE-009-clientes.md) | Clientes | CRUD mínimo; soft delete com reativação |
+| [SPEC-BE-010](./SPEC-BE-010-producao.md) | Produção | Lançamento incrementa `produzido` com rastro de quem/quando |
+| [SPEC-BE-011](./SPEC-BE-011-encomendas.md) | Encomendas | Numeração própria; total recalculado; vínculo opcional com Cliente; nunca debita estoque (ADR-002, Decisão 3) |
+| [SPEC-BE-012](./SPEC-BE-012-relatorios.md) | Relatórios | 4 relatórios só-leitura: vendas, fechamento de caixa, curva ABC, resultado — sem tabela própria |
 
-### Núcleo para operar a loja no balcão
+**Ainda não especificado:** Funcionários/Folha, Contratos TEF e Fiscal.
 
-Specs **001 → 014**. Sem isso não há venda íntegra (catálogo, estoque, turno, venda, cancelamento).
-
-Specs **015–016** habilitam encomendas. **017** é gestão. **018** não bloqueia o PDV. **019** é contrato, sem provedor real.
+Fundação HTTP (CORS, CSP, rate limit geral, abort sem `JWT_SECRET`) e persistência/migrations não têm spec própria — foram implementadas como parte da infraestrutura consumida desde a SPEC-BE-001 (ver `backend/src/server.js`, `bootstrap.js`, `app.js`).
 
 ---
 
-## 3. Por que esta ordem (e não o roadmap literal do PRD)
+## 3. Frontend — o que já existe
 
-O roadmap da Seção 9 do PRD agrupa por tema de produto. As specs reordenam **por dependência testável**:
+| Spec | Módulo |
+|---|---|
+| [SPEC-FE-001](./SPEC-FE-001-fundacao-e-arquitetura-do-frontend.md) | Fundação (shell, router, cliente HTTP, sessão) |
+| [SPEC-FE-002](./SPEC-FE-002-autenticacao-e-sessao.md) | Autenticação e Sessão |
+| [SPEC-FE-003](./SPEC-FE-003-caixa-por-turno.md) | Caixa por Turno |
+| [SPEC-FE-004](./SPEC-FE-004-produtos-e-categorias.md) | Produtos e Categorias |
+| [SPEC-FE-005](./SPEC-FE-005-estoque.md) | Estoque |
+| [SPEC-FE-006](./SPEC-FE-006-perdas.md) | Perdas |
+| [SPEC-FE-007](./SPEC-FE-007-pdv-vendas.md) | PDV — Vendas |
+| [SPEC-FE-008](./SPEC-FE-008-fluxo-de-caixa.md) | Fluxo de Caixa |
+| [SPEC-FE-009](./SPEC-FE-009-clientes.md) | Clientes |
+| [SPEC-FE-010](./SPEC-FE-010-producao.md) | Produção |
+| [SPEC-FE-011](./SPEC-FE-011-encomendas.md) | Encomendas |
+| [SPEC-FE-012](./SPEC-FE-012-relatorios.md) | Relatórios |
 
-| Ajuste | Roadmap do PRD | Specs | Motivo |
-|---|---|---|---|
-| Caixa antes do PDV | Fase 2 = PDV; Fase 3 = Caixa | SPEC-011/012 **antes** de SPEC-013 | Venda exige turno aberto validado no backend. Sem caixa, criar venda não é testável de ponta a ponta. O frontend (PRD-003) já declara essa dependência. |
-| Fechamento completo depois do fluxo | Caixa e fluxo juntos | SPEC-011 nasce com o cálculo de domínio; SPEC-012 alimenta o cálculo com lançamentos reais | Dá para fechar um turno só com fundo (testável). Sangria e venda entram depois, no mesmo caso de uso. |
-| Perdas antes do PDV | Fase 4 (operação estendida) | SPEC-010 logo após estoque/produção | Perda é o débito de estoque mais simples. Serve de ensaio da transação + auditoria + exceção de domínio **antes** da venda (que ainda mistura caixa). |
-| Clientes antes de encomendas | Fase 4 lista Encomendas, Perdas, Clientes | SPEC-015 **antes** de SPEC-016 | Encomenda tem vínculo opcional com cliente. Sem cadastro, o vínculo não é testável. |
-| Cancelar venda separado de criar | Um único módulo PDV | SPEC-013 depois SPEC-014 | Criar venda já é um fluxo crítico. Cancelamento (estorno + reversão) é o segundo fluxo crítico; cada um tem DoD próprio. |
-
-O conteúdo funcional do PRD não muda. Muda só o **corte de entrega**.
+**Ainda não especificado:** Usuários/Permissões (tela admin), Configurações (tela admin), Funcionários, Ponto por celular.
 
 ---
 
-## 4. Grafo de dependências
+## 4. Por que a ordem não segue o roadmap literal do PRD
+
+O roadmap da Seção 9 do `PRD-001-backend` agrupa por tema de produto. A implementação reordenou **por dependência testável**:
+
+| Ajuste | Motivo |
+|---|---|
+| Caixa antes do PDV | Venda exige turno aberto validado no backend. Sem caixa, criar venda não é testável de ponta a ponta. |
+| Perdas antes do PDV | Perda é o débito de estoque mais simples — serviu de ensaio da transação + auditoria + exceção de domínio antes da venda (que ainda mistura caixa). |
+| Clientes antes de Encomendas | Encomenda tem vínculo opcional com cliente. Sem cadastro, o vínculo não é testável. |
+| Criar e cancelar venda no mesmo arquivo | Na prática os dois fluxos compartilham o mesmo módulo (`sales`) e a mesma transação de domínio o suficiente para não justificar dois documentos separados. |
+
+O conteúdo funcional do PRD não muda. Muda só o **corte de entrega e o agrupamento em arquivos**.
+
+---
+
+## 5. Grafo de dependências (backend)
 
 ```mermaid
 flowchart TD
-  S001[001 Fundação] --> S002[002 Persistência]
-  S002 --> S003[003 Auth]
-  S003 --> S004[004 Usuários e RBAC]
-  S004 --> S005[005 Auditoria]
-  S004 --> S006[006 Configurações]
-  S005 --> S007[007 Produtos e categorias]
-  S007 --> S008[008 Estoque]
-  S008 --> S009[009 Produção]
-  S008 --> S010[010 Perdas]
-  S005 --> S011[011 Caixa por turno]
-  S011 --> S012[012 Fluxo de caixa]
-  S008 --> S013[013 Criar venda]
-  S011 --> S013
-  S012 --> S013
-  S007 --> S013
-  S013 --> S014[014 Cancelar venda]
-  S004 --> S015[015 Clientes]
-  S007 --> S016[016 Encomendas]
-  S015 --> S016
-  S013 --> S017[017 Relatórios]
-  S011 --> S017
-  S012 --> S017
-  S004 --> S018[018 Folha]
-  S013 --> S019[019 Contratos TEF e fiscal]
+  S001[BE-001 Auth + RBAC] --> S003[BE-003 Auditoria/Config]
+  S003 --> S004[BE-004 Produtos/Categorias]
+  S004 --> S005[BE-005 Estoque]
+  S005 --> S010[BE-010 Produção]
+  S005 --> S006[BE-006 Perdas]
+  S001 --> S002[BE-002 Caixa por turno]
+  S002 --> S008[BE-008 Fluxo de caixa]
+  S005 --> S007[BE-007 Vendas: criar + cancelar]
+  S002 --> S007
+  S008 --> S007
+  S004 --> S007
+  S001 --> S009[BE-009 Clientes]
+  S004 --> S011[BE-011 Encomendas]
+  S009 --> S011
+  S007 --> S012[BE-012 Relatórios]
+  S002 --> S012
+  S008 --> S012
+  S001 --> FOL[Funcionários/Folha — a criar]
+  S007 --> TEF[Contratos TEF e fiscal — a criar]
 ```
 
 ---
 
-## 5. Decisões de produto fixadas nas specs
+## 6. Decisões de produto fixadas fora do PRD
 
-O PRD deixa três pontos em aberto. Para cada spec ser testável, as specs adotam um default explícito. Qualquer mudança vira ADR e atualiza a spec correspondente.
-
-| Tema | Default nas specs | Onde |
+| Tema | Default adotado | Onde está registrado |
 |---|---|---|
-| Campo `mínimo` de estoque | **Informativo** (não bloqueia venda). Alerta fica a cargo do frontend. | SPEC-008 |
-| Cancelar venda de turno já fechado | **Rejeitado** com erro de negócio. Evita distorcer a conciliação do turno vigente (débito conhecido do V1). | SPEC-014 |
-| Encomenda debita/reserva estoque? | **Não** nesta fase (igual ao V1). Encomenda é pedido, não venda de balcão. | SPEC-016 |
+| Campo `mínimo` de estoque | **Informativo** (não bloqueia venda). Alerta fica a cargo do frontend. | `ADR-002-defaults-de-dominio-para-especificacao-do-backend.md`, Decisão 1; aplicado em SPEC-BE-005 |
+| Cancelar venda de turno já fechado | **Rejeitado** diretamente; vira `CorrecaoPendente`, resolvida no turno atual. | `ADR-002`, Decisão 2; aplicado em SPEC-BE-007 |
+| Encomenda debita/reserva estoque? | **Não** nesta fase (igual ao V1). | `ADR-002`, Decisão 3; aplicado em SPEC-BE-011 |
 
 ---
 
-## 6. Definition of Done transversal
+## 7. Definition of Done transversal
 
-Herdado da Seção 8 do PRD. Vale para **toda** spec que entregue regra de negócio ou rota:
+Vale para **toda** spec que entregue regra de negócio ou rota:
 
 1. Regra na camada de domínio/caso de uso — sem SQL no controller.
 2. Teste automatizado da regra crítica, sem banco quando for cálculo de domínio.
-3. Operação que altera dinheiro ou estoque gera auditoria (a partir da SPEC-005; obrigatório em 008+ que mutam estoque/dinheiro).
+3. Operação que altera dinheiro ou estoque gera auditoria.
 4. Erro de regra de negócio → HTTP e mensagem claros, nunca stack trace nem 500 para condição esperada.
 5. Rota protegida pela permissão correta (RBAC) e documentada na própria spec.
 6. Débito técnico da Seção 6 do PRD, se listado na spec, resolvido de fato.
 
 ---
 
-## 7. Estrutura de cada spec
+## 8. Estrutura real de cada spec de backend
 
-Todas seguem o mesmo esqueleto:
+Todas as specs de backend já escritas seguem este esqueleto (ver SPEC-BE-005/006/009 como referência):
 
-1. Metadados (fase, PRD, débitos V1, depende de, desbloqueia)
-2. Objetivo da entrega
-3. Escopo / fora de escopo
-4. Regras de negócio
-5. Casos de uso e contrato HTTP
-6. Modelo mínimo
-7. Critérios de aceite
-8. Plano de testes desta entrega
-9. Rastreabilidade
+1. Metadados (módulo, depende de, PRD de origem, consumido por)
+2. Objetivo técnico
+3. Modelo de dados
+4. Camada de domínio (entidade, invariantes, exceções)
+5. Camada de aplicação (casos de uso)
+6. Contratos de API
+7. Diferenças em relação ao V1 (rastreabilidade) — ou nota "módulo novo" quando não há equivalente legado
+8. Critérios de aceite técnicos

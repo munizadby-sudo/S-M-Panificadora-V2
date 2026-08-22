@@ -27,9 +27,13 @@ export function criarApp({
   produtosController,
   estoqueController,
   perdasController,
+  producaoController,
+  encomendasController,
   vendasController,
   fluxoCaixaController,
+  clientesController,
   pastaUploads,
+  corsOrigin = '*',
   limitadorLogin = criarLimitadorLogin(),
 }) {
   const app = express();
@@ -38,9 +42,9 @@ export function criarApp({
     app.use('/uploads', express.static(pastaUploads));
   }
   app.use((req, res, next) => {
-    res.setHeader('Access-Control-Allow-Origin', process.env.CORS_ORIGIN || '*');
+    res.setHeader('Access-Control-Allow-Origin', corsOrigin);
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
     if (req.method === 'OPTIONS') {
       res.status(204).end();
       return;
@@ -175,6 +179,38 @@ export function criarApp({
     });
   }
 
+  if (producaoController) {
+    const permissaoProducao = [exigirAuth, temPermissao('producao')];
+    app.post('/api/producao', ...permissaoProducao, (req, res, next) => {
+      producaoController.criar(req, res, next);
+    });
+    app.get('/api/producao', ...permissaoProducao, (req, res, next) => {
+      producaoController.listar(req, res, next);
+    });
+  }
+
+  if (encomendasController) {
+    const permissaoEncomendas = [exigirAuth, temPermissao('encomendas')];
+    app.post('/api/encomendas', ...permissaoEncomendas, (req, res, next) => {
+      encomendasController.criar(req, res, next);
+    });
+    app.get('/api/encomendas', ...permissaoEncomendas, (req, res, next) => {
+      encomendasController.listar(req, res, next);
+    });
+    app.get('/api/encomendas/:id', ...permissaoEncomendas, (req, res, next) => {
+      encomendasController.buscar(req, res, next);
+    });
+    app.put('/api/encomendas/:id', ...permissaoEncomendas, (req, res, next) => {
+      encomendasController.atualizar(req, res, next);
+    });
+    app.patch('/api/encomendas/:id/status', ...permissaoEncomendas, (req, res, next) => {
+      encomendasController.mudarStatus(req, res, next);
+    });
+    app.delete('/api/encomendas/:id', ...permissaoEncomendas, (req, res, next) => {
+      encomendasController.cancelar(req, res, next);
+    });
+  }
+
   if (vendasController) {
     const permissaoCaixa = [exigirAuth, temPermissao('caixa')];
     app.post('/api/vendas/correcoes/:id/resolver', ...soAdmin, (req, res, next) => {
@@ -204,6 +240,24 @@ export function criarApp({
     });
     app.delete('/api/fluxo-caixa/:id', ...permissaoFluxo, (req, res, next) => {
       fluxoCaixaController.excluir(req, res, next);
+    });
+  }
+
+  if (clientesController) {
+    app.get('/api/clientes', exigirAuth, (req, res, next) => {
+      clientesController.listar(req, res, next);
+    });
+    app.post('/api/clientes', exigirAuth, (req, res, next) => {
+      clientesController.criar(req, res, next);
+    });
+    app.put('/api/clientes/:id', exigirAuth, (req, res, next) => {
+      clientesController.atualizar(req, res, next);
+    });
+    app.post('/api/clientes/:id/reativar', exigirAuth, (req, res, next) => {
+      clientesController.reativar(req, res, next);
+    });
+    app.delete('/api/clientes/:id', exigirAuth, (req, res, next) => {
+      clientesController.desativar(req, res, next);
     });
   }
 

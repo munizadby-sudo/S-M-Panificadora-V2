@@ -1,12 +1,13 @@
 # PRD — Backend do Sistema de Gestão Souza & Moraes Panificadora (V2.0)
 
 - **Status:** Rascunho para revisão
-- **Data:** 2026-08-11
+- **Data:** 2026-08-11 (revisado em 2026-08-22)
 - **Autor:** Adby Muniz (com apoio de IA)
-- **Escopo:** Backend completo do sistema (`S-M-Panificadora-V2`)
+- **Escopo:** Backend completo do sistema (`S-M-Panificadora-V2`) — comportamento observável; decisões de tecnologia/arquitetura estão nas ADRs relacionadas
 - **Documentos relacionados:**
   - `docs/specs/` (V2) — cortes incrementais e testáveis deste PRD (`SPEC-001` … `SPEC-019`)
   - `docs/adr/ADR-001-clean-code-solid.md` (V2) — princípios de engenharia adotados
+  - `docs/adr/ADR-004-seguranca-e-testabilidade-do-backend.md` (V2) — decisões técnicas de autenticação (JWT, bcrypt), rate limiting e testabilidade que sustentam a Seção 4.1 e a Seção 5 deste PRD
   - Repositório legado `S-M-Panificadora` (V1) — sistema em produção, usado como referência funcional
   - `docs/adr/*` (V1) — decisões técnicas já validadas em produção (JWT, RBAC, rate limiting, etc.)
   - `docs/modules/pdv/Regras_de_Negocio_Padaria_PDV.md` (V1) — engenharia reversa das regras reais
@@ -61,21 +62,23 @@ Cada módulo abaixo segue o padrão: **Objetivo → Requisitos funcionais → Re
 
 ### 4.1 Autenticação e Sessão
 
-**Objetivo:** garantir que só usuários válidos e ativos acessem o sistema, com sessão stateless.
+> A tecnologia por trás desta seção (JWT, bcrypt, rate limiting) está decidida na `ADR-004-seguranca-e-testabilidade-do-backend.md`. Aqui só o comportamento observável.
+
+**Objetivo:** garantir que só usuários válidos e ativos acessem o sistema, com sessão que expira automaticamente sem exigir ação manual do usuário.
 
 **Requisitos funcionais**
 - Login por `username` + senha.
-- Emissão de JWT contendo identidade e permissões, com expiração configurável (padrão 12h).
-- Toda rota protegida exige `Authorization: Bearer <token>`; token inválido/expirado retorna 401 e força novo login.
+- Ao autenticar com sucesso: sessão válida por um período configurável (padrão 12h), suficiente para o ciclo de operação diário da loja.
+- Toda ação que exige usuário autenticado é bloqueada quando não há sessão válida, forçando novo login.
 
 **Regras herdadas do V1 (mantidas)**
-- Senha validada via hash (bcrypt); usuário inativo recebe a mesma mensagem genérica de erro que senha incorreta (evita enumeração de usuários).
-- Rate limiting no login (tentativas por IP).
+- Usuário inativo recebe a mesma mensagem genérica de erro que senha incorreta (evita enumeração de usuários).
+- Excesso de tentativas de login a partir da mesma origem é bloqueado temporariamente.
 
 **Correções em relação ao V1**
 - **Não haverá rota de debug pública** equivalente a `/api/debug/*` do V1 (que expunha dados sem autenticação). Qualquer rota de diagnóstico deve exigir `admin` e não expor amostras de dados de negócio.
 - Seed de usuário admin padrão, se existir para ambiente de desenvolvimento, deve **forçar troca de senha no primeiro login** — não apenas avisar no console.
-- Avaliar, como melhoria futura (fora do MVP), bloqueio por conta além de por IP.
+- Avaliar, como melhoria futura (fora do MVP), bloqueio por conta além de por origem de acesso.
 
 ---
 
@@ -129,7 +132,7 @@ Cada módulo abaixo segue o padrão: **Objetivo → Requisitos funcionais → Re
 **Correções em relação ao V1**
 - Corrigir o bug confirmado no V1: erro de "estoque não lançado" referenciava uma variável inexistente (`periodo`) e gerava erro genérico 500 em vez de erro de negócio 400 com mensagem clara. Na V2, todo erro de regra de negócio deve ser uma exceção de domínio tratada explicitamente, nunca um erro não tratado.
 - **Perdas devem debitar o estoque disponível.** No V1, o registro de perda é apenas contábil e não reduz o saldo mostrado — isso é uma inconsistência que a V2 deve eliminar (ver 4.10).
-- Definir regra explícita para o campo `mínimo`: hoje é apenas informativo no V1; a V2 deve decidir se haverá bloqueio/alerta de venda abaixo do mínimo (a decidir em ADR específica de estoque).
+- Campo `mínimo` decidido como **somente informativo** também na V2 — nunca bloqueia venda, só alimenta alerta visual na tela de Estoque (decisão registrada em `ADR-002-defaults-de-dominio-para-especificacao-do-backend.md`, Decisão 1, 2026-08-12).
 
 ---
 
@@ -333,32 +336,17 @@ O V2 terá **um único modelo de caixa**, por turno — não haverá um sistema 
 
 ## 5. Requisitos não funcionais
 
-Estes requisitos aplicam-se a todos os módulos e derivam diretamente da ADR-001 e das práticas de segurança já validadas em produção no V1.
+Estes requisitos aplicam-se a todos os módulos. A arquitetura, as decisões técnicas de segurança e a abordagem de testabilidade que sustentam estes requisitos estão em `ADR-001-clean-code-solid.md` e `ADR-004-seguranca-e-testabilidade-do-backend.md` — aqui ficam apenas os requisitos observáveis do ponto de vista de produto.
 
-### 5.1 Arquitetura
-- Estrutura em camadas: `Controller → Use Case → Domain → Repository Interface → Infrastructure → Database`, conforme ADR-001.
-- Organização modular por domínio (`src/modules/{sales,products,inventory,cash-register,production,customers,users}`), não por tipo técnico de arquivo.
-- Regras de negócio isoladas de framework web e de driver de banco.
-- Integrações externas (TEF, fiscal, impressora) sempre atrás de uma interface/contrato.
-
-### 5.2 Segurança
-- Autenticação JWT stateless, sem secret padrão em produção (processo deve abortar a subida se `JWT_SECRET` ausente em produção).
-- CORS restrito por whitelist de origem.
-- Content Security Policy **efetivamente habilitada** (não apenas comentada como estava divergente no V1).
-- Rate limiting no login **e** um limitador geral de API — o V1 tinha o limitador geral definido mas não aplicado; na V2 ambos devem estar ativos.
-- Nenhuma rota de diagnóstico/debug pode ficar pública sem autenticação.
-- Stack trace nunca exposto ao cliente; erros 500 genéricos em produção, log detalhado apenas no servidor.
-- Transações de banco obrigatórias em toda operação que afete múltiplas tabelas (venda, fechamento de caixa, perda com débito de estoque).
-
-### 5.3 Performance
-- Consultas de agregação (fechamento de turno, relatórios) devem ser indexadas adequadamente para responder de forma rápida mesmo em volume de meses de operação.
+### 5.1 Performance
 - Toda listagem que pode crescer sem limite (vendas, encomendas, fluxo, estoque histórico) deve ser paginada.
+- Relatórios e fechamento de turno devem responder de forma rápida mesmo com meses de operação acumulada.
 
-### 5.4 Testabilidade
-- Regras de domínio (cálculo de diferença de caixa, disponibilidade de estoque, numeração sequencial) devem ser testáveis por unidade, sem dependência de banco real.
-- Testes de integração cobrindo os fluxos críticos: criar venda, abrir/fechar turno, lançar/reverter estoque.
+### 5.2 Confiabilidade
+- Erros de regra de negócio nunca aparecem para o usuário como falha técnica genérica — sempre como mensagem de negócio clara.
+- Testes automatizados cobrem os fluxos críticos: criar venda, abrir/fechar turno, lançar/reverter estoque.
 
-### 5.5 Operação
+### 5.3 Operação
 - Deve continuar sendo possível rodar em um computador comum de loja, sem exigir infraestrutura cara ou internet de alta qualidade — mantém a proposta de valor original do V1.
 
 ---
@@ -422,9 +410,9 @@ A execução detalhada, com dependências e critérios de aceite testáveis por 
 
 - `docs/specs/` — specs incrementais (`SPEC-001` … `SPEC-019`) que fatiam este PRD em entregas testáveis.
 - `ADR-001-clean-code-solid.md` (V2) — princípios de engenharia que todo módulo aqui descrito deve seguir.
+- `ADR-004-seguranca-e-testabilidade-do-backend.md` (V2) — decisão técnica de autenticação (JWT/bcrypt), rate limiting, CORS/CSP e testabilidade de domínio que sustentam a Seção 4.1 e a Seção 5 deste PRD.
 - ADR de arquitetura do sistema (a criar) — vai formalizar a decisão de caixa único por turno (Seção 4.7).
 - ADR de banco de dados (a criar).
-- ADR de autenticação e autorização (a criar, pode referenciar as ADRs já validadas no V1).
 - ADR de integração TEF e ADR de integração fiscal (a criar quando o provedor for escolhido).
 - `PRD-modulo-funcionarios.md` (legado V1) — detalhamento do módulo de Folha, referenciado na Seção 4.12.
 

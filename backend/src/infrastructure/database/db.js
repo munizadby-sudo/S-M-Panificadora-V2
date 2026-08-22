@@ -203,6 +203,26 @@ export async function aplicarSchemaPerdas(pool) {
   `);
 }
 
+export async function aplicarSchemaProducao(pool) {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS producao (
+      id INT NOT NULL AUTO_INCREMENT,
+      produto_id INT NOT NULL,
+      data DATE NOT NULL,
+      quantidade DECIMAL(10,3) NOT NULL,
+      usuario_id INT NOT NULL,
+      criado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (id),
+      KEY producao_produto_data (produto_id, data),
+      KEY producao_data (data),
+      CONSTRAINT producao_produto_id_fk
+        FOREIGN KEY (produto_id) REFERENCES produtos(id),
+      CONSTRAINT producao_usuario_id_fk
+        FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+    )
+  `);
+}
+
 export async function aplicarSchemaVendas(pool) {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS sequencias (
@@ -265,6 +285,64 @@ export async function aplicarSchemaVendas(pool) {
     )
   `);
   await garantirColuna(pool, 'fluxo_caixa', 'venda_id', 'INT NULL');
+}
+
+export async function aplicarSchemaEncomendas(pool) {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS encomendas (
+      id INT NOT NULL AUTO_INCREMENT,
+      numero INT NOT NULL,
+      cliente_id INT NULL,
+      cliente_nome VARCHAR(100) NOT NULL,
+      cliente_telefone VARCHAR(20) NOT NULL,
+      data_entrega DATE NOT NULL,
+      sinal DECIMAL(10,2) NOT NULL DEFAULT 0,
+      observacoes TEXT NULL,
+      total DECIMAL(10,2) NOT NULL,
+      status ENUM('pendente','pronto','entregue') NOT NULL DEFAULT 'pendente',
+      ativo TINYINT(1) NOT NULL DEFAULT 1,
+      usuario_id INT NOT NULL,
+      criado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (id),
+      UNIQUE KEY encomendas_numero_unique (numero),
+      KEY encomendas_status (status),
+      KEY encomendas_cliente_id (cliente_id),
+      KEY encomendas_data_entrega (data_entrega),
+      CONSTRAINT encomendas_cliente_id_fk
+        FOREIGN KEY (cliente_id) REFERENCES clientes(id),
+      CONSTRAINT encomendas_usuario_id_fk
+        FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+    )
+  `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS encomenda_itens (
+      id INT NOT NULL AUTO_INCREMENT,
+      encomenda_id INT NOT NULL,
+      produto_id INT NOT NULL,
+      quantidade DECIMAL(10,3) NOT NULL,
+      preco_unitario DECIMAL(10,2) NOT NULL,
+      subtotal DECIMAL(10,2) NOT NULL,
+      PRIMARY KEY (id),
+      KEY encomenda_itens_encomenda_id (encomenda_id),
+      CONSTRAINT encomenda_itens_encomenda_id_fk FOREIGN KEY (encomenda_id) REFERENCES encomendas(id),
+      CONSTRAINT encomenda_itens_produto_id_fk FOREIGN KEY (produto_id) REFERENCES produtos(id)
+    )
+  `);
+}
+
+export async function aplicarSchemaClientes(pool) {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS clientes (
+      id INT NOT NULL AUTO_INCREMENT,
+      nome VARCHAR(100) NOT NULL,
+      telefone VARCHAR(20) NOT NULL,
+      ativo TINYINT(1) NOT NULL DEFAULT 1,
+      criado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      telefone_unico_ativo VARCHAR(20) GENERATED ALWAYS AS (IF(ativo = 1, telefone, NULL)) STORED,
+      PRIMARY KEY (id),
+      UNIQUE KEY clientes_telefone_ativo_unique (telefone_unico_ativo)
+    )
+  `);
 }
 
 export async function aplicarSchemaFluxoCaixa(pool) {

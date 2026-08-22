@@ -5,7 +5,7 @@
 - **Módulo:** `src/modules/inventory`
 - **Depende de:** ADR-001, ADR-002 (Decisão 1 — mínimo é informativo), SPEC-BE-001 (usuário executor), SPEC-BE-004 (produto precisa existir)
 - **PRD de origem:** `PRD-backend-S-M-Panificadora-V2.md`, Seção 4.4
-- **Consumido por:** SPEC-BE-006 (Perdas) e SPEC-BE-007 (Vendas) — ambos debitam estoque através deste módulo, nunca escrevendo direto na tabela.
+- **Consumido por:** SPEC-BE-006 (Perdas) e SPEC-BE-007 (Vendas) — ambos debitam estoque através deste módulo, nunca escrevendo direto na tabela; SPEC-BE-010 (Produção) — incrementa `produzido` através deste módulo, ver Seção 4.7.
 
 ---
 
@@ -89,6 +89,19 @@ Usado em cancelamento de venda (turno aberto) ou correção (SPEC-BE-002/ADR-002
 ### 4.6 `ListarEstoqueDoDia(data, filtros)`
 Paginado, com filtro por `produto_id`, `categoria_id`, busca por nome de produto. Para cada produto sem registro naquele dia, aplica `ObterOuCriarEstoqueDoDia` antes de listar — a listagem nunca mostra "sem dado", sempre mostra o saldo correto (com rollover já aplicado).
 
+### 4.7 `IncrementarProduzido(conexao, produtoId, data, quantidade)`
+**Interface consumida diretamente por SPEC-BE-010 (Produção) — mesmo padrão de `DebitarEstoque` (Seção 4.4): recebe a conexão/transação já aberta pelo chamador, não é exposta como rota HTTP própria.**
+
+**Fluxo:**
+1. Recebe a `conexao`/transação já aberta pelo chamador.
+2. Executa `SELECT ... FOR UPDATE` na linha de `estoque_diario` (mesmo lock de `DebitarEstoque` — evita condição de corrida entre dois lançamentos de produção do mesmo produto/dia acontecendo ao mesmo tempo).
+3. Chama `ObterOuCriarEstoqueDoDia` se a linha ainda não existir (mesmo lock aplicado).
+4. Incrementa `produzido` em `quantidade`, persiste.
+
+**Diferença importante em relação a `DebitarEstoque`:** não existe checagem de "insuficiente" — produzir nunca é bloqueado por falta de saldo (não faz sentido "faltar estoque" para registrar o que foi produzido). A única validação é `quantidade > 0`, igual às demais operações de estoque.
+
+Não existe operação simétrica de "reverter produção" nesta fase — nenhum PRD de Produção prevê edição ou exclusão de um lançamento já confirmado (ver SPEC-BE-010, Seção 6, Fora de escopo).
+
 ---
 
 ## 5. Contratos de API
@@ -160,3 +173,5 @@ Se qualquer item falhar (ex.: produto inexistente), **nenhum é aplicado** — a
 5. `minimo` abaixo do saldo nunca impede `DebitarEstoque` — é usado somente para o campo informativo `abaixo_do_minimo` nas consultas.
 6. `POST /api/estoque/lote` com um item inválido no meio da lista não aplica nenhum item — tudo ou nada.
 7. `ReverterDebito` sempre usa a data original da operação, nunca a data atual, mesmo que chamado dias depois.
+8. Duas chamadas concorrentes de `IncrementarProduzido` para o mesmo produto/dia somam corretamente (nenhuma sobrescreve a outra) — testável com requisições simultâneas de verdade.
+9. `IncrementarProduzido` nunca é bloqueado por saldo — sempre soma, independentemente do valor atual de `disponivel()`.

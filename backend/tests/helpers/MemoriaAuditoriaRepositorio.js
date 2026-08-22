@@ -1,5 +1,8 @@
-export class MemoriaAuditoriaRepositorio {
+import { AuditoriaRepository } from '../../src/modules/audit/application/ports.js';
+
+export class MemoriaAuditoriaRepositorio extends AuditoriaRepository {
   constructor() {
+    super();
     this.registros = [];
     this.proximoId = 1;
   }

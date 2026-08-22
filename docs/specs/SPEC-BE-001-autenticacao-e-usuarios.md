@@ -3,7 +3,7 @@
 - **Status:** Rascunho para revisão
 - **Data:** 2026-08-11
 - **Módulo:** `src/modules/users`
-- **Depende de:** ADR-001 (Clean Code/SOLID), PRD-backend (Seções 4.1 e 4.2), PRD-002 (frontend) e PRD-013 (frontend)
+- **Depende de:** ADR-001 (Clean Code/SOLID), ADR-004 (Segurança e Testabilidade do Backend — decisão de JWT/bcrypt/rate limiting), PRD-backend (Seções 4.1 e 4.2), PRD-002 (frontend) e PRD-013 (frontend)
 - **Referência de comportamento:** `S-M-Panificadora` (V1) — `backend/routes/auth.js`, `backend/routes/usuarios.js`, `backend/middlewares/auth.js`, `backend/middlewares/permission.js`, tabela `usuarios`
 
 ---

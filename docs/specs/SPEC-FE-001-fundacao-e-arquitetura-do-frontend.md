@@ -3,7 +3,7 @@
 - **Status:** Rascunho para revisão
 - **Data:** 2026-08-12
 - **Módulo:** `frontend/src/core` (shell, roteamento, sessão, cliente HTTP) — base para todos os demais módulos de frontend
-- **Depende de:** ADR-001 (Clean Code/SOLID), PRD-001 (Fundação e Arquitetura do Frontend), SPEC-001 (contrato de autenticação que este módulo consome)
+- **Depende de:** ADR-001 (Clean Code/SOLID), ADR-003 (Arquitetura de Fundação do Frontend), PRD-001 (Fundação e Arquitetura do Frontend — comportamento observável), SPEC-001 (contrato de autenticação que este módulo consome)
 - **Referência de comportamento:** `S-M-Panificadora` (V1) — `frontend/index.html`, `frontend/js/api.js`, `frontend/js/auth.js`, `frontend/js/app.js` (usados como referência funcional, não como base de código — ver ADR-001)
 
 ---
@@ -17,7 +17,7 @@ Especificar a base técnica do frontend: como o app inicializa, como os módulos
 ## 2. Stack e decisões técnicas
 
 - **Sem framework, sem bundler obrigatório** — mantém a linha do V1 (ADR-001 recomenda usar o V1 como referência funcional, não arquitetural; aqui a decisão de "sem build step" é mantida por ser um requisito operacional real: rodar em qualquer PC de loja).
-- **ES Modules nativos do navegador** (`<script type="module">`), em vez de um único arquivo `app.js` de 62KB como no V1 — isso é o que resolve, na prática, a violação de responsabilidade única identificada na PRD-001.
+- **ES Modules nativos do navegador** (`<script type="module">`), em vez de um único arquivo `app.js` de 62KB como no V1 — isso é o que resolve, na prática, a violação de responsabilidade única identificada na ADR-003.
 - Nenhuma dependência externa obrigatória. Bibliotecas de terceiros (se necessárias em algum módulo específico, ex. gráficos) são carregadas via `<script>` isolado, nunca via bundler.
 
 ---
@@ -59,7 +59,7 @@ Cada pasta em `modules/` corresponde a um PRD de frontend (PRD-003 a PRD-014) e 
 ## 4. `core/api.js` — cliente HTTP central
 
 ### 4.1 Responsabilidade
-Único ponto do sistema que chama `fetch()` contra a API. Nenhum módulo de negócio deve montar `fetch()` diretamente (requisito da PRD-001, Seção 3.2).
+Único ponto do sistema que chama `fetch()` contra a API. Nenhum módulo de negócio deve montar `fetch()` diretamente (requisito da ADR-003, Seção 2.2).
 
 ### 4.2 Interface
 ```js

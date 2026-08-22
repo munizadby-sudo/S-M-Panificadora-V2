@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
-import { montarAplicacao } from '../../src/bootstrap.js';
+import { montarDependencias } from '../../src/bootstrap.js';
 import { comServidor } from '../helpers/app-memoria.js';
 
 const poolFantasma = {
@@ -15,9 +15,9 @@ const poolFantasma = {
 };
 
 describe('bootstrap de produção registra as rotas de vendas', () => {
-  const { app } = montarAplicacao({
+  const { app } = montarDependencias({
     pool: poolFantasma,
-    jwtSecret: 'teste-bootstrap-vendas',
+    config: { jwtSecret: 'teste-bootstrap-vendas' },
   });
 
   test('POST /api/vendas existe no app montado por server.js (401, nunca 404)', async () => {

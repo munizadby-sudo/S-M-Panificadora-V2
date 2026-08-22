@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import { after, before, describe, test } from 'node:test';
 import { Auditor } from '../../src/modules/audit/domain/Auditor.js';
+import { AuditoriaRepository } from '../../src/modules/audit/application/ports.js';
 import { MySQLAuditoriaRepository } from '../../src/modules/audit/infrastructure/MySQLAuditoriaRepository.js';
+import { MemoriaAuditoriaRepositorio } from '../helpers/MemoriaAuditoriaRepositorio.js';
 import {
   aplicarSchemaAuditoria,
   aplicarSchemaConfiguracoes,
@@ -44,6 +46,24 @@ describe('Auditor best-effort', () => {
   test('sem repositório, registrar é no-op e não lança', async () => {
     const auditor = new Auditor({});
     await assert.doesNotReject(() => auditor.registrar({ acao: 'login', entidade: 'usuario' }));
+  });
+});
+
+describe('AuditoriaRepository — Dependency Inversion (achado do review do José, 2026-08-22)', () => {
+  test('MySQLAuditoriaRepository implementa a interface, não é uma classe solta', () => {
+    const repo = new MySQLAuditoriaRepository({});
+    assert.ok(repo instanceof AuditoriaRepository);
+  });
+
+  test('MemoriaAuditoriaRepositorio (dublê de teste) também implementa a interface', () => {
+    const repo = new MemoriaAuditoriaRepositorio();
+    assert.ok(repo instanceof AuditoriaRepository);
+  });
+
+  test('a interface base lança "não implementado" quando usada diretamente', async () => {
+    const repo = new AuditoriaRepository();
+    await assert.rejects(() => repo.inserir({}), /não implementado/);
+    await assert.rejects(() => repo.listar({}), /não implementado/);
   });
 });
 

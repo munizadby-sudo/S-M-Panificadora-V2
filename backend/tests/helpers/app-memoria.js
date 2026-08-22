@@ -36,11 +36,22 @@ import { UpsertEstoque } from '../../src/modules/inventory/application/UpsertEst
 import { UpsertEstoqueEmLote } from '../../src/modules/inventory/application/UpsertEstoqueEmLote.js';
 import { DebitarEstoque } from '../../src/modules/inventory/application/DebitarEstoque.js';
 import { ReverterDebito } from '../../src/modules/inventory/application/ReverterDebito.js';
+import { IncrementarProduzido } from '../../src/modules/inventory/application/IncrementarProduzido.js';
 import { EstoqueController } from '../../src/modules/inventory/infrastructure/http/EstoqueController.js';
 import { CreatePerda } from '../../src/modules/losses/application/CreatePerda.js';
 import { ListPerdas } from '../../src/modules/losses/application/ListPerdas.js';
 import { EstornarPerda } from '../../src/modules/losses/application/EstornarPerda.js';
 import { PerdasController } from '../../src/modules/losses/infrastructure/http/PerdasController.js';
+import { CreateProducao } from '../../src/modules/production/application/CreateProducao.js';
+import { ListProducao } from '../../src/modules/production/application/ListProducao.js';
+import { ProducaoController } from '../../src/modules/production/infrastructure/http/ProducaoController.js';
+import { CreateEncomenda } from '../../src/modules/orders/application/CreateEncomenda.js';
+import { UpdateEncomenda } from '../../src/modules/orders/application/UpdateEncomenda.js';
+import { UpdateStatusEncomenda } from '../../src/modules/orders/application/UpdateStatusEncomenda.js';
+import { CancelEncomenda } from '../../src/modules/orders/application/CancelEncomenda.js';
+import { ListEncomendas } from '../../src/modules/orders/application/ListEncomendas.js';
+import { GetEncomenda } from '../../src/modules/orders/application/GetEncomenda.js';
+import { EncomendasController } from '../../src/modules/orders/infrastructure/http/EncomendasController.js';
 import { CreateSale } from '../../src/modules/sales/application/CreateSale.js';
 import { ListSales } from '../../src/modules/sales/application/ListSales.js';
 import { CancelSale } from '../../src/modules/sales/application/CancelSale.js';
@@ -51,7 +62,14 @@ import { ListLancamentos } from '../../src/modules/cash-flow/application/ListLan
 import { DeleteLancamento } from '../../src/modules/cash-flow/application/DeleteLancamento.js';
 import { GetResumoPorTurno } from '../../src/modules/cash-flow/application/GetResumoPorTurno.js';
 import { FluxoCaixaController } from '../../src/modules/cash-flow/infrastructure/http/FluxoCaixaController.js';
+import { CreateCliente } from '../../src/modules/customers/application/CreateCliente.js';
+import { UpdateCliente } from '../../src/modules/customers/application/UpdateCliente.js';
+import { ListClientes } from '../../src/modules/customers/application/ListClientes.js';
+import { DeactivateCliente } from '../../src/modules/customers/application/DeactivateCliente.js';
+import { ReactivateCliente } from '../../src/modules/customers/application/ReactivateCliente.js';
+import { ClientesController } from '../../src/modules/customers/infrastructure/http/ClientesController.js';
 import { criarApp } from '../../src/app.js';
+import { MemoriaClienteRepository } from './MemoriaClienteRepository.js';
 import { MemoriaUsuarioRepository } from './MemoriaUsuarioRepository.js';
 import { MemoriaConfiguracaoRepository } from './MemoriaConfiguracaoRepository.js';
 import { MemoriaAuditoriaRepositorio } from './MemoriaAuditoriaRepositorio.js';
@@ -64,6 +82,8 @@ import { MemoriaCategoriaRepository } from './MemoriaCategoriaRepository.js';
 import { MemoriaProdutoRepository } from './MemoriaProdutoRepository.js';
 import { MemoriaEstoqueRepository } from './MemoriaEstoqueRepository.js';
 import { MemoriaPerdaRepository } from './MemoriaPerdaRepository.js';
+import { MemoriaProducaoRepository } from './MemoriaProducaoRepository.js';
+import { MemoriaEncomendaRepository } from './MemoriaEncomendaRepository.js';
 import { MemoriaSequenciaRepository, MemoriaVendaRepository } from './MemoriaVendaRepository.js';
 import { MemoriaLancamentoFluxoCaixaRepository } from './MemoriaLancamentoFluxoCaixaRepository.js';
 
@@ -127,8 +147,15 @@ export function montarAppMemoria() {
     obterOuCriarEstoqueDoDia,
   });
   const reverterDebito = new ReverterDebito({ estoqueRepository, obterOuCriarEstoqueDoDia });
+  const incrementarProduzido = new IncrementarProduzido({
+    estoqueRepository,
+    produtoRepository,
+    obterOuCriarEstoqueDoDia,
+  });
   const perdaRepository = new MemoriaPerdaRepository({ produtoRepository, usuarioRepository });
   const depsPerdas = { perdaRepository, produtoRepository, debitarEstoque, reverterDebito, auditor };
+  const producaoRepository = new MemoriaProducaoRepository({ produtoRepository, usuarioRepository });
+  const depsProducao = { producaoRepository, produtoRepository, incrementarProduzido, auditor };
   const sequenciaRepository = new MemoriaSequenciaRepository();
   const vendaRepository = new MemoriaVendaRepository({
     estoqueRepository,
@@ -153,6 +180,11 @@ export function montarAppMemoria() {
     fluxoCaixaRepository,
     auditor,
   };
+  const clienteRepository = new MemoriaClienteRepository();
+  const depsClientes = { clienteRepository, auditor };
+
+  const encomendaRepository = new MemoriaEncomendaRepository({ sequenciaRepository });
+  const depsEncomendas = { encomendaRepository, produtoRepository, clienteRepository, sequenciaRepository, auditor };
 
   const app = criarApp({
     authController: new AuthController(new Login(deps)),
@@ -208,6 +240,18 @@ export function montarAppMemoria() {
       listPerdas: new ListPerdas({ perdaRepository }),
       estornarPerda: new EstornarPerda(depsPerdas),
     }),
+    producaoController: new ProducaoController({
+      createProducao: new CreateProducao(depsProducao),
+      listProducao: new ListProducao({ producaoRepository }),
+    }),
+    encomendasController: new EncomendasController({
+      createEncomenda: new CreateEncomenda(depsEncomendas),
+      updateEncomenda: new UpdateEncomenda(depsEncomendas),
+      updateStatusEncomenda: new UpdateStatusEncomenda(depsEncomendas),
+      cancelEncomenda: new CancelEncomenda(depsEncomendas),
+      listEncomendas: new ListEncomendas({ encomendaRepository }),
+      getEncomenda: new GetEncomenda({ encomendaRepository }),
+    }),
     vendasController: new VendasController({
       createSale: new CreateSale(depsVendas),
       listSales: new ListSales({ vendaRepository }),
@@ -219,6 +263,13 @@ export function montarAppMemoria() {
       listLancamentos: new ListLancamentos({ lancamentoRepository: lancamentoFluxoCaixaRepository }),
       deleteLancamento: new DeleteLancamento({ lancamentoRepository: lancamentoFluxoCaixaRepository, auditor }),
       getResumoPorTurno: new GetResumoPorTurno(depsFluxo),
+    }),
+    clientesController: new ClientesController({
+      listClientes: new ListClientes({ clienteRepository }),
+      createCliente: new CreateCliente(depsClientes),
+      updateCliente: new UpdateCliente(depsClientes),
+      deactivateCliente: new DeactivateCliente(depsClientes),
+      reactivateCliente: new ReactivateCliente(depsClientes),
     }),
     limitadorLogin: (_req, _res, next) => next(),
   });
@@ -238,8 +289,11 @@ export function montarAppMemoria() {
     produtoRepository,
     estoqueRepository,
     perdaRepository,
+    producaoRepository,
     vendaRepository,
     sequenciaRepository,
+    clienteRepository,
+    encomendaRepository,
     hashService,
     tokenService,
     deps,

@@ -90,6 +90,12 @@ export class EstoqueDiario {
     return this;
   }
 
+  produzir(valor) {
+    const qtd = positivo(valor, 'quantidade');
+    this.produzido = quantidade(this.produzido + qtd);
+    return this;
+  }
+
   paraPublico(nome = null) {
     return {
       produto_id: this.produtoId,
