@@ -18,6 +18,10 @@ export class CaixaTurnoRepository {
   async fecharAtomico(_id, _dadosFechamento) {
     throw new Error('CaixaTurnoRepository.fecharAtomico não implementado');
   }
+
+  async listarFechadosNoPeriodo(_dataInicio, _dataFim) {
+    throw new Error('CaixaTurnoRepository.listarFechadosNoPeriodo não implementado');
+  }
 }
 
 export class FluxoCaixaRepository {

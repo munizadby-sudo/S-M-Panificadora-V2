@@ -22,7 +22,7 @@ export function htmlFiltrosProducao({ filtros, produtos }) {
 
 export function htmlTabelaProducao(itens) {
   if (!Array.isArray(itens) || itens.length === 0) {
-    return '<p class="estado-vazio">Nenhuma produção encontrada.</p>';
+    return '<p class="estado-vazio">Nenhuma produção encontrada.<span class="estado-vazio-dica">Aqui aparece o histórico de produção. Registre a primeira pelo formulário acima.</span></p>';
   }
 
   const linhas = itens

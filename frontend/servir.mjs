@@ -30,9 +30,17 @@ const servidor = http.createServer(async (req, res) => {
   }
 
   try {
+    const stat = await fs.stat(arquivo);
     const dados = await fs.readFile(arquivo);
     const tipo = mime[path.extname(arquivo)] || 'application/octet-stream';
-    res.writeHead(200, { 'Content-Type': tipo });
+    const etag = `"${stat.mtimeMs.toString(16)}-${stat.size.toString(16)}"`;
+    res.writeHead(200, {
+      'Content-Type': tipo,
+      'Cache-Control': 'no-store, no-cache, must-revalidate',
+      Pragma: 'no-cache',
+      ETag: etag,
+      'Last-Modified': stat.mtime.toUTCString(),
+    });
     res.end(dados);
   } catch {
     res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });

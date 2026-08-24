@@ -5,6 +5,7 @@ export const FORMAS_PAGAMENTO = Object.freeze(['dinheiro', 'pix', 'cartao']);
 
 export function htmlFormularioLancamento({ formulario, errosCampos = {}, erro = '', desabilitado = false }) {
   const atributoDesabilitado = desabilitado ? ' disabled' : '';
+  const tipo = formulario.tipo === 'entrada' ? 'entrada' : 'saida';
   const opcoesCategoria = CATEGORIAS_MANUAIS.map(
     (categoria) =>
       `<option value="${escapar(categoria)}"${
@@ -18,34 +19,46 @@ export function htmlFormularioLancamento({ formulario, errosCampos = {}, erro = 
       }>${escapar(forma)}</option>`,
   ).join('');
 
-  return `<section class="fluxo-formulario">
-    <h2>Lançamento manual</h2>
+  return `<section class="fluxo-formulario fluxo-novo-lancamento" aria-label="Novo lançamento">
+    <header class="fluxo-painel-cabecalho">
+      <h2>Novo lançamento</h2>
+      <p class="fluxo-form-ajuda">O turno é definido automaticamente pelo caixa aberto.</p>
+    </header>
     <form id="form-lancamento-fluxo" class="fluxo-form"${desabilitado ? ' aria-disabled="true"' : ''}>
-      <label>Tipo
-        <select id="fluxo-tipo" name="tipo"${atributoDesabilitado}>
-          <option value="entrada"${formulario.tipo === 'entrada' ? ' selected' : ''}>Entrada</option>
-          <option value="saida"${formulario.tipo === 'saida' ? ' selected' : ''}>Saída</option>
-        </select>
-      </label>
-      <label>Descrição
-        <input type="text" id="fluxo-descricao" name="descricao" maxlength="200" value="${escapar(formulario.descricao)}"${atributoDesabilitado}>
-        ${errosCampos.descricao ? `<span class="campo-erro">${escapar(errosCampos.descricao)}</span>` : ''}
-      </label>
-      <label>Categoria
-        <select id="fluxo-categoria" name="categoria"${atributoDesabilitado}>${opcoesCategoria}</select>
-      </label>
-      <label>Forma
-        <select id="fluxo-forma" name="forma"${atributoDesabilitado}>${opcoesForma}</select>
-      </label>
-      <label>Valor (R$)
-        <input type="number" id="fluxo-valor" name="valor" min="0.01" step="0.01" value="${escapar(formulario.valor)}"${atributoDesabilitado}>
-        ${errosCampos.valor ? `<span class="campo-erro">${escapar(errosCampos.valor)}</span>` : ''}
-      </label>
-      <p class="fluxo-form-ajuda">O turno é definido automaticamente pelo caixa aberto — não é possível escolher outro turno.</p>
-      <p id="fluxo-erro-form" class="fluxo-erro" role="alert">${escapar(erro)}</p>
-      <div class="fluxo-form-acoes">
-        <button type="submit"${atributoDesabilitado}>Registrar lançamento</button>
+      <input type="hidden" id="fluxo-tipo" name="tipo" value="${escapar(tipo)}">
+      <div class="fluxo-tipo-toggle" role="group" aria-label="Tipo do lançamento">
+        <button type="button" class="fluxo-tipo-btn${tipo === 'entrada' ? ' ativa entrada' : ''}"
+          data-fluxo-tipo="entrada"${atributoDesabilitado}>
+          <span aria-hidden="true">↑</span> Entrada
+        </button>
+        <button type="button" class="fluxo-tipo-btn${tipo === 'saida' ? ' ativa saida' : ''}"
+          data-fluxo-tipo="saida"${atributoDesabilitado}>
+          <span aria-hidden="true">↓</span> Saída
+        </button>
       </div>
+      <div class="fluxo-form-linha">
+        <label class="fluxo-campo-descricao">Descrição
+          <input type="text" id="fluxo-descricao" name="descricao" maxlength="200"
+            placeholder="Ex: Pagamento fornecedor..."
+            value="${escapar(formulario.descricao)}"${atributoDesabilitado}>
+          ${errosCampos.descricao ? `<span class="campo-erro">${escapar(errosCampos.descricao)}</span>` : ''}
+        </label>
+        <label>Categoria
+          <select id="fluxo-categoria" name="categoria"${atributoDesabilitado}>${opcoesCategoria}</select>
+        </label>
+        <label>Forma
+          <select id="fluxo-forma" name="forma"${atributoDesabilitado}>${opcoesForma}</select>
+        </label>
+        <label>Valor (R$)
+          <input type="number" id="fluxo-valor" name="valor" min="0.01" step="0.01"
+            placeholder="0.00" value="${escapar(formulario.valor)}"${atributoDesabilitado}>
+          ${errosCampos.valor ? `<span class="campo-erro">${escapar(errosCampos.valor)}</span>` : ''}
+        </label>
+        <div class="fluxo-form-acoes">
+          <button type="submit" class="fluxo-btn-lancar"${atributoDesabilitado}>+ Lançar</button>
+        </div>
+      </div>
+      <p id="fluxo-erro-form" class="fluxo-erro" role="alert">${escapar(erro)}</p>
     </form>
   </section>`;
 }

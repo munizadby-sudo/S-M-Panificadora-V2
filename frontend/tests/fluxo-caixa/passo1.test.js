@@ -83,6 +83,7 @@ describe('Passo 1 — listagem por turno', () => {
 
   test('tabela mostra tipo, descrição, categoria, forma, valor, origem e usuário', () => {
     const html = htmlTabelaFluxo([itemFluxo, { ...itemFluxo, id: 13, gerado_auto: 0, descricao: 'Sangria', tipo: 'saida' }]);
+    assert.match(html, /Hora/);
     assert.match(html, /Tipo/);
     assert.match(html, /Origem/);
     assert.match(html, /Automático/);

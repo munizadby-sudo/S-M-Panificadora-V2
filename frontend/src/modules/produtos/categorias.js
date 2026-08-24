@@ -25,7 +25,7 @@ export function htmlPainelCategorias(categorias, { podeDesativar = false, erro =
   const lista = Array.isArray(categorias) ? categorias : [];
   const itens =
     lista.length === 0
-      ? '<li class="estado-vazio">Nenhuma categoria cadastrada.</li>'
+      ? '<li class="estado-vazio">Nenhuma categoria cadastrada.<span class="estado-vazio-dica">Aqui ficam as categorias do cardápio. Cadastre a primeira no formulário ao lado.</span></li>'
       : lista
           .map((item) => {
             const inativa = Number(item.ativo) === 0;

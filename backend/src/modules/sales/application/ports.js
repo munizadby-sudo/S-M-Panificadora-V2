@@ -22,6 +22,24 @@ export class VendaRepository {
   async comTransacao(_fn) {
     throw new Error('VendaRepository.comTransacao não implementado');
   }
+
+  /**
+   * Itens de vendas confirmadas no período civil America/Recife.
+   * @returns {Promise<Array<{
+   *   vendaId: number,
+   *   produtoId: number,
+   *   produtoNome: string,
+   *   quantidade: number,
+   *   precoUnitario: number,
+   *   subtotal: number,
+   *   formaPagamento: string,
+   *   dataOperacao: string,
+   *   horaOperacao: number
+   * }>>}
+   */
+  async listarItensConfirmadosNoPeriodo(_dataInicio, _dataFim) {
+    throw new Error('VendaRepository.listarItensConfirmadosNoPeriodo não implementado');
+  }
 }
 
 export class SequenciaRepository {

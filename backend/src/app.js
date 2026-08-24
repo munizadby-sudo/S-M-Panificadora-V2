@@ -32,6 +32,8 @@ export function criarApp({
   vendasController,
   fluxoCaixaController,
   clientesController,
+  funcionariosController,
+  relatoriosController,
   pastaUploads,
   corsOrigin = '*',
   limitadorLogin = criarLimitadorLogin(),
@@ -258,6 +260,67 @@ export function criarApp({
     });
     app.delete('/api/clientes/:id', exigirAuth, (req, res, next) => {
       clientesController.desativar(req, res, next);
+    });
+  }
+
+  if (funcionariosController) {
+    app.get('/api/funcionarios', ...soAdmin, (req, res, next) => {
+      funcionariosController.listar(req, res, next);
+    });
+    app.post('/api/funcionarios', ...soAdmin, (req, res, next) => {
+      funcionariosController.criar(req, res, next);
+    });
+    app.put('/api/funcionarios/:id', ...soAdmin, (req, res, next) => {
+      funcionariosController.atualizar(req, res, next);
+    });
+    app.post('/api/funcionarios/:id/reativar', ...soAdmin, (req, res, next) => {
+      funcionariosController.reativar(req, res, next);
+    });
+    app.delete('/api/funcionarios/:id', ...soAdmin, (req, res, next) => {
+      funcionariosController.desativar(req, res, next);
+    });
+
+    app.post('/api/adiantamentos', ...soAdmin, (req, res, next) => {
+      funcionariosController.criarAdiantamento(req, res, next);
+    });
+    app.get('/api/adiantamentos', ...soAdmin, (req, res, next) => {
+      funcionariosController.listarAdiantamentos(req, res, next);
+    });
+
+    app.post('/api/ocorrencias-folha', ...soAdmin, (req, res, next) => {
+      funcionariosController.criarOcorrencia(req, res, next);
+    });
+    app.get('/api/ocorrencias-folha', ...soAdmin, (req, res, next) => {
+      funcionariosController.listarOcorrencias(req, res, next);
+    });
+
+    app.post('/api/folhas', ...soAdmin, (req, res, next) => {
+      funcionariosController.fechar(req, res, next);
+    });
+    app.get('/api/folhas', ...soAdmin, (req, res, next) => {
+      funcionariosController.listarFolhas(req, res, next);
+    });
+    app.post('/api/folhas/:id/pagar', ...soAdmin, (req, res, next) => {
+      funcionariosController.marcarPaga(req, res, next);
+    });
+  }
+
+  if (relatoriosController) {
+    const permissaoRel = [exigirAuth, temPermissao('rel')];
+    app.get('/api/relatorios/vendas', ...permissaoRel, (req, res, next) => {
+      relatoriosController.vendas(req, res, next);
+    });
+    app.get('/api/relatorios/vendas-por-hora', ...permissaoRel, (req, res, next) => {
+      relatoriosController.vendasPorHora(req, res, next);
+    });
+    app.get('/api/relatorios/fechamento-caixa', ...permissaoRel, (req, res, next) => {
+      relatoriosController.fechamentoCaixa(req, res, next);
+    });
+    app.get('/api/relatorios/curva-abc', ...permissaoRel, (req, res, next) => {
+      relatoriosController.curvaAbc(req, res, next);
+    });
+    app.get('/api/relatorios/resultado', ...permissaoRel, (req, res, next) => {
+      relatoriosController.resultado(req, res, next);
     });
   }
 

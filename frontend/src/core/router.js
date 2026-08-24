@@ -1,5 +1,8 @@
 import { temPermissao } from './session.js';
 
+/** Operacionais sempre visíveis (SPEC-FE-015 §4). Demais módulos vão em "Mais ▾". */
+export const IDS_OPERACIONAIS = new Set(['pdv', 'encomendas', 'estoque', 'fluxo']);
+
 export function criarRouter() {
   const modulos = [];
   let moduloAtual = null;
@@ -70,17 +73,48 @@ export function criarRouter() {
 
     containerMenu.innerHTML = '';
     const permitidos = listarModulosPermitidos();
+    const operacionais = permitidos.filter((modulo) => IDS_OPERACIONAIS.has(modulo.id));
+    const administrativos = permitidos.filter((modulo) => !IDS_OPERACIONAIS.has(modulo.id));
 
-    for (const modulo of permitidos) {
-      const botao = document.createElement('button');
-      botao.type = 'button';
-      botao.dataset.moduloId = modulo.id;
-      botao.textContent = modulo.label;
-      botao.addEventListener('click', () => {
-        navegarPara(modulo.id);
-      });
-      containerMenu.appendChild(botao);
+    for (const modulo of operacionais) {
+      containerMenu.appendChild(criarBotaoMenu(modulo));
     }
+
+    if (administrativos.length > 0) {
+      const select = document.createElement('select');
+      select.className = 'menu-mais';
+      select.setAttribute('aria-label', 'Mais módulos');
+
+      const placeholder = document.createElement('option');
+      placeholder.value = '';
+      placeholder.textContent = 'Mais ▾';
+      select.appendChild(placeholder);
+
+      for (const modulo of administrativos) {
+        const option = document.createElement('option');
+        option.value = modulo.id;
+        option.textContent = modulo.label;
+        select.appendChild(option);
+      }
+
+      select.addEventListener('change', () => {
+        if (select.value) {
+          navegarPara(select.value);
+        }
+      });
+      containerMenu.appendChild(select);
+    }
+  }
+
+  function criarBotaoMenu(modulo) {
+    const botao = document.createElement('button');
+    botao.type = 'button';
+    botao.dataset.moduloId = modulo.id;
+    botao.textContent = modulo.label;
+    botao.addEventListener('click', () => {
+      navegarPara(modulo.id);
+    });
+    return botao;
   }
 
   function destacarModuloAtivo(id) {
@@ -91,6 +125,15 @@ export function criarRouter() {
     const botoes = containerMenu.querySelectorAll('[data-modulo-id]');
     for (const botao of botoes) {
       botao.classList.toggle('ativo', botao.dataset.moduloId === id);
+    }
+
+    for (const filho of containerMenu.children || []) {
+      if (filho.tagName !== 'SELECT' && filho.tagName !== 'select') {
+        continue;
+      }
+      const opcoes = [...(filho.children || [])];
+      const encontrado = opcoes.some((op) => op.value === id);
+      filho.value = encontrado ? id : '';
     }
   }
 

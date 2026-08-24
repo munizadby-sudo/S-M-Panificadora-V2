@@ -12,7 +12,7 @@ export function nomeDaCategoria(produto, categorias = []) {
 
 export function htmlTabelaProdutos(produtos, categorias = [], { acoes = false, podeDesativar = false } = {}) {
   if (!Array.isArray(produtos) || produtos.length === 0) {
-    return '<p class="estado-vazio">Nenhum produto encontrado.</p>';
+    return '<p class="estado-vazio">Nenhum produto encontrado.<span class="estado-vazio-dica">Aqui aparece o catálogo. Cadastre o primeiro produto pela ação Novo produto.</span></p>';
   }
 
   const mostrarAcoes = acoes || podeDesativar;

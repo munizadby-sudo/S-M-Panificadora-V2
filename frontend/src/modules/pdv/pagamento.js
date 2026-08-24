@@ -2,10 +2,13 @@ import { formatarMoeda } from '../../core/utils.js';
 import { escapar } from '../produtos/html.js';
 import { dinheiroPdv, totalLocal } from './carrinho.js';
 
+/** Atalhos 1/2/3 no painel de pagamento (Passo 6). */
+export const ATALHOS_FORMA_PAGAMENTO = Object.freeze(['dinheiro', 'pix', 'cartao']);
+
 export const FORMAS_PAGAMENTO = Object.freeze([
   { id: 'dinheiro', label: 'Dinheiro' },
   { id: 'pix', label: 'Pix' },
-  { id: 'cartao', label: 'Cartão' },
+  { id: 'cartao', label: 'Débito' },
   { id: 'credito', label: 'Crédito' },
 ]);
 
@@ -50,8 +53,18 @@ export function atualizarTrocoNoDom(
   trocoEl.textContent = `Troco: ${formatarMoeda(troco)}`;
 }
 
-export function podeConfirmarVenda({ itens, formaPagamento }) {
-  return Boolean(Array.isArray(itens) && itens.length > 0 && formaPagamento);
+export function podeConfirmarVenda({ itens, formaPagamento, recebido = '' } = {}) {
+  if (!Array.isArray(itens) || itens.length === 0 || !formaPagamento) {
+    return false;
+  }
+  if (formaPagamento === 'dinheiro') {
+    const total = totalLocal(itens);
+    const valor = Number(recebido);
+    if (!Number.isFinite(valor) || valor < total) {
+      return false;
+    }
+  }
+  return true;
 }
 
 export function htmlSeletorFormaPagamento({
@@ -68,17 +81,19 @@ export function htmlSeletorFormaPagamento({
 
   const dinheiro = formaPagamento === 'dinheiro';
   const troco = dinheiro && recebido !== '' ? calcularTroco(recebido, total) : null;
-  const confirmarDesabilitado = podeConfirmarVenda({ itens, formaPagamento }) ? '' : ' disabled';
+  const confirmarDesabilitado = podeConfirmarVenda({ itens, formaPagamento, recebido }) ? '' : ' disabled';
 
-  return `<section class="pdv-pagamento" id="pdv-pagamento">
-    <h2>Pagamento</h2>
+  return `<section class="pdv-pagamento" id="pdv-pagamento" tabindex="-1">
+    <p class="pdv-pagamento-total">Total a pagar: <strong>${formatarMoeda(total)}</strong></p>
+    <h2>Forma de pagamento</h2>
     <div class="pdv-formas" role="group" aria-label="Forma de pagamento">${botoes}</div>
     <label id="pdv-recebido-wrap"${dinheiro ? '' : ' hidden'}>
       Valor recebido
-      <input type="number" min="0" step="0.01" id="pdv-recebido" value="${escapar(recebido)}">
+      <input type="number" min="0" step="0.01" id="pdv-recebido" value="${escapar(recebido)}" inputmode="decimal">
     </label>
     <p id="pdv-troco"${troco == null ? ' hidden' : ''}>${troco == null ? '' : `Troco: ${formatarMoeda(troco)}`}</p>
     <p id="pdv-erro-venda" class="pdv-erro" role="alert">${escapar(erro)}</p>
     <button type="button" id="btn-confirmar-venda"${confirmarDesabilitado}>Confirmar venda</button>
+    <p class="pdv-pagamento-atalhos">Atalhos: 1 Dinheiro · 2 Pix · 3 Débito · Enter confirma</p>
   </section>`;
 }

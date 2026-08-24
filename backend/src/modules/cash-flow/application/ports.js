@@ -14,4 +14,8 @@ export class LancamentoFluxoCaixaRepository {
   async marcarExcluido(_lancamento) {
     throw new Error('LancamentoFluxoCaixaRepository.marcarExcluido não implementado');
   }
+
+  async listarAtivosNoPeriodo(_dataInicio, _dataFim) {
+    throw new Error('LancamentoFluxoCaixaRepository.listarAtivosNoPeriodo não implementado');
+  }
 }

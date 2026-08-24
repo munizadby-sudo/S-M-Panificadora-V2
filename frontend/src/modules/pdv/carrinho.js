@@ -61,7 +61,7 @@ export function htmlCarrinho(itens) {
   if (lista.length === 0) {
     return `<aside class="pdv-carrinho" id="pdv-carrinho">
       <h2>Carrinho</h2>
-      <p class="estado-vazio">Carrinho vazio.</p>
+      <p class="estado-vazio">Carrinho vazio.<span class="estado-vazio-dica">Selecione produtos na grade ou use as setas e Enter para adicionar.</span></p>
       <p id="pdv-total-local">Total: ${formatarMoeda(0)}</p>
     </aside>`;
   }

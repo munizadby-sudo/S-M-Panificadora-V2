@@ -21,6 +21,7 @@ import { montarIdentidadeDoOperador } from '../src/modules/auth/operador.js';
 import {
   CAMINHO_IDENTIDADE_PUBLICA,
   aplicarIdentidadeVisual,
+  resolverUrlLogo,
 } from '../src/modules/auth/identidade-visual.js';
 
 const frontend = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -255,7 +256,21 @@ describe('Passo 8 — identidade visual sem cache de sessão', () => {
 
     const titulo = { textContent: 'S&M Panificadora' };
     const slogan = { textContent: 'Entre com seu usuário para acessar o sistema.' };
-    const logo = { src: '', hidden: true };
+    const logo = {
+      hidden: true,
+      complete: false,
+      naturalWidth: 0,
+      _src: '',
+      get src() {
+        return this._src;
+      },
+      set src(valor) {
+        this._src = valor;
+        this.complete = true;
+        this.naturalWidth = 1;
+        this.onload?.();
+      },
+    };
 
     await aplicarIdentidadeVisual({ titulo, slogan, logo });
 
@@ -280,6 +295,13 @@ describe('Passo 8 — identidade visual sem cache de sessão', () => {
     assert.doesNotMatch(loginHtml, /sessionStorage/);
     assert.match(loginHtml, /aplicarIdentidadeVisual/);
     assert.equal(CAMINHO_IDENTIDADE_PUBLICA, '/configuracoes/publico');
+  });
+
+  test('logo relativo /uploads aponta para o host da API em dev', () => {
+    definirApiBaseUrl('http://127.0.0.1:3001/api');
+    assert.equal(resolverUrlLogo('/uploads/logo.png'), 'http://127.0.0.1:3001/uploads/logo.png');
+    definirApiBaseUrl('/api');
+    assert.equal(resolverUrlLogo('/uploads/logo.png'), '/uploads/logo.png');
   });
 });
 

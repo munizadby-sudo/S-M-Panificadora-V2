@@ -124,6 +124,16 @@ export class Venda {
     return dataHoje();
   }
 
+  horaOperacao() {
+    if (this.criadoEm instanceof Date) {
+      return formatarHora(this.criadoEm);
+    }
+    if (typeof this.criadoEm === 'string' && this.criadoEm.trim()) {
+      return formatarHora(new Date(this.criadoEm));
+    }
+    return 0;
+  }
+
   paraPublico() {
     return {
       id: this.id,
@@ -197,4 +207,17 @@ function formatarData(valor) {
     }).format(valor);
   }
   return String(valor).slice(0, 10);
+}
+
+function formatarHora(valor) {
+  if (!(valor instanceof Date) || Number.isNaN(valor.getTime())) {
+    return 0;
+  }
+  return Number(
+    new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Recife',
+      hour: '2-digit',
+      hourCycle: 'h23',
+    }).format(valor),
+  );
 }

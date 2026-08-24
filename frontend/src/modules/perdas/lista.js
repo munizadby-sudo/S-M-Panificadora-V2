@@ -37,7 +37,7 @@ export function htmlFiltrosPerdas({ filtros, produtos, ehAdmin }) {
 
 export function htmlTabelaPerdas(itens, { ehAdmin = false } = {}) {
   if (!Array.isArray(itens) || itens.length === 0) {
-    return '<p class="estado-vazio">Nenhuma perda encontrada.</p>';
+    return '<p class="estado-vazio">Nenhuma perda encontrada.<span class="estado-vazio-dica">Aqui ficam as perdas registradas. Use Nova perda para lançar a primeira.</span></p>';
   }
 
   const cabecalhoEstorno = ehAdmin ? '<th>Ações</th>' : '';

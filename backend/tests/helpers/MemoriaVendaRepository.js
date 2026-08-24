@@ -24,7 +24,7 @@ export class MemoriaSequenciaRepository {
 }
 
 export class MemoriaVendaRepository extends VendaRepository {
-  constructor({ estoqueRepository, sequenciaRepository, fluxoCaixaRepository } = {}) {
+  constructor({ estoqueRepository, sequenciaRepository, fluxoCaixaRepository, produtoRepository } = {}) {
     super();
     this.vendas = [];
     this.proximoId = 1;
@@ -32,6 +32,7 @@ export class MemoriaVendaRepository extends VendaRepository {
     this.estoqueRepository = estoqueRepository;
     this.sequenciaRepository = sequenciaRepository;
     this.fluxoCaixaRepository = fluxoCaixaRepository;
+    this.produtoRepository = produtoRepository;
   }
 
   async salvar(venda, _conexao) {
@@ -113,6 +114,40 @@ export class MemoriaVendaRepository extends VendaRepository {
     return { data: pagina.map(clonarVenda), total };
   }
 
+  async listarItensConfirmadosNoPeriodo(dataInicio, dataFim) {
+    const itens = [];
+    for (const venda of this.vendas) {
+      if (venda.status !== 'confirmada') {
+        continue;
+      }
+      const dataOperacao = venda.dataOperacao();
+      if (dataOperacao < dataInicio || dataOperacao > dataFim) {
+        continue;
+      }
+      for (const item of venda.itens) {
+        let produtoNome = `Produto ${item.produtoId}`;
+        if (this.produtoRepository) {
+          const produto = await this.produtoRepository.buscarPorId(item.produtoId);
+          if (produto?.nome) {
+            produtoNome = produto.nome;
+          }
+        }
+        itens.push({
+          vendaId: venda.id,
+          produtoId: item.produtoId,
+          produtoNome,
+          quantidade: item.quantidade,
+          precoUnitario: item.precoUnitario,
+          subtotal: item.subtotal,
+          formaPagamento: venda.formaPagamento,
+          dataOperacao,
+          horaOperacao: obterHoraOperacao(venda),
+        });
+      }
+    }
+    return itens;
+  }
+
   async comTransacao(fn) {
     const snapshot = {
       vendas: this.vendas.map(clonarVenda),
@@ -142,6 +177,32 @@ export class MemoriaVendaRepository extends VendaRepository {
       throw erro;
     }
   }
+}
+
+function obterHoraOperacao(venda) {
+  if (typeof venda.horaOperacao === 'function') {
+    return Number(venda.horaOperacao());
+  }
+  const criado = venda.criadoEm;
+  if (criado instanceof Date) {
+    return Number(
+      new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/Recife',
+        hour: '2-digit',
+        hourCycle: 'h23',
+      }).format(criado),
+    );
+  }
+  if (typeof criado === 'string' && criado.trim()) {
+    return Number(
+      new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/Recife',
+        hour: '2-digit',
+        hourCycle: 'h23',
+      }).format(new Date(criado)),
+    );
+  }
+  return 0;
 }
 
 function clonarVenda(venda) {

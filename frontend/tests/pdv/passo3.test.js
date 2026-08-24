@@ -47,6 +47,30 @@ describe('Passo 3 — forma de pagamento e confirmação', () => {
     assert.match(html, /data-forma="credito"/);
   });
 
+  test('Passo 5 — dinheiro só confirma com recebido >= total', () => {
+    const itens = [{ produtoId: 12, nome: 'Pão Francês', quantidade: 1, subtotal: 10 }];
+    assert.equal(podeConfirmarVenda({ itens, formaPagamento: 'dinheiro' }), false);
+    assert.equal(podeConfirmarVenda({ itens, formaPagamento: 'dinheiro', recebido: '9.99' }), false);
+    assert.equal(podeConfirmarVenda({ itens, formaPagamento: 'dinheiro', recebido: '10' }), true);
+    assert.equal(podeConfirmarVenda({ itens, formaPagamento: 'dinheiro', recebido: '20' }), true);
+    assert.equal(podeConfirmarVenda({ itens, formaPagamento: 'pix', recebido: '' }), true);
+
+    const htmlCurto = htmlSeletorFormaPagamento({
+      itens,
+      formaPagamento: 'dinheiro',
+      recebido: '5',
+    });
+    assert.match(htmlCurto, /btn-confirmar-venda" disabled/);
+
+    const htmlOk = htmlSeletorFormaPagamento({
+      itens,
+      formaPagamento: 'dinheiro',
+      recebido: '10',
+    });
+    assert.match(htmlOk, /btn-confirmar-venda"/);
+    assert.doesNotMatch(htmlOk, /btn-confirmar-venda" disabled/);
+  });
+
   test('troco é recebido menos total quando a forma é dinheiro', () => {
     assert.equal(calcularTroco(20, 12.75), 7.25);
     const html = htmlSeletorFormaPagamento({

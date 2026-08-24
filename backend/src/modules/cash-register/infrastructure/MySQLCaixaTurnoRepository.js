@@ -69,6 +69,17 @@ export class MySQLCaixaTurnoRepository {
     );
     return { afetado: resultado.affectedRows > 0 };
   }
+
+  async listarFechadosNoPeriodo(dataInicio, dataFim) {
+    const [linhas] = await this.pool.query(
+      `SELECT * FROM caixa_turnos
+        WHERE status = 'fechado'
+          AND data BETWEEN ? AND ?
+        ORDER BY data ASC, periodo ASC, id ASC`,
+      [dataInicio, dataFim],
+    );
+    return linhas.map(deLinha);
+  }
 }
 
 export class MySQLFluxoCaixaRepository {

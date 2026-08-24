@@ -68,8 +68,31 @@ import { ListClientes } from '../../src/modules/customers/application/ListClient
 import { DeactivateCliente } from '../../src/modules/customers/application/DeactivateCliente.js';
 import { ReactivateCliente } from '../../src/modules/customers/application/ReactivateCliente.js';
 import { ClientesController } from '../../src/modules/customers/infrastructure/http/ClientesController.js';
+import { CreateFuncionario } from '../../src/modules/employees/application/CreateFuncionario.js';
+import { UpdateFuncionario } from '../../src/modules/employees/application/UpdateFuncionario.js';
+import { DeactivateFuncionario } from '../../src/modules/employees/application/DeactivateFuncionario.js';
+import { ReactivateFuncionario } from '../../src/modules/employees/application/ReactivateFuncionario.js';
+import { ListFuncionarios } from '../../src/modules/employees/application/ListFuncionarios.js';
+import { CreateAdiantamento } from '../../src/modules/employees/application/CreateAdiantamento.js';
+import { ListAdiantamentos } from '../../src/modules/employees/application/ListAdiantamentos.js';
+import { CreateOcorrenciaFolha } from '../../src/modules/employees/application/CreateOcorrenciaFolha.js';
+import { ListOcorrenciasFolha } from '../../src/modules/employees/application/ListOcorrenciasFolha.js';
+import { FecharFolha } from '../../src/modules/employees/application/FecharFolha.js';
+import { ListFolhas } from '../../src/modules/employees/application/ListFolhas.js';
+import { MarcarFolhaComoPaga } from '../../src/modules/employees/application/MarcarFolhaComoPaga.js';
+import { FuncionariosController } from '../../src/modules/employees/infrastructure/http/FuncionariosController.js';
+import { RelatorioVendas } from '../../src/modules/reports/application/RelatorioVendas.js';
+import { RelatorioFechamentoCaixa } from '../../src/modules/reports/application/RelatorioFechamentoCaixa.js';
+import { CurvaABCProdutos } from '../../src/modules/reports/application/CurvaABCProdutos.js';
+import { RelatorioResultado } from '../../src/modules/reports/application/RelatorioResultado.js';
+import { RelatorioVendasPorHora } from '../../src/modules/reports/application/RelatorioVendasPorHora.js';
+import { RelatoriosController } from '../../src/modules/reports/infrastructure/http/RelatoriosController.js';
 import { criarApp } from '../../src/app.js';
 import { MemoriaClienteRepository } from './MemoriaClienteRepository.js';
+import { MemoriaFuncionarioRepository } from './MemoriaFuncionarioRepository.js';
+import { MemoriaAdiantamentoRepository } from './MemoriaAdiantamentoRepository.js';
+import { MemoriaOcorrenciaFolhaRepository } from './MemoriaOcorrenciaFolhaRepository.js';
+import { MemoriaFolhaPagamentoRepository } from './MemoriaFolhaPagamentoRepository.js';
 import { MemoriaUsuarioRepository } from './MemoriaUsuarioRepository.js';
 import { MemoriaConfiguracaoRepository } from './MemoriaConfiguracaoRepository.js';
 import { MemoriaAuditoriaRepositorio } from './MemoriaAuditoriaRepositorio.js';
@@ -161,6 +184,7 @@ export function montarAppMemoria() {
     estoqueRepository,
     sequenciaRepository,
     fluxoCaixaRepository,
+    produtoRepository,
   });
   const depsVendas = {
     vendaRepository,
@@ -182,6 +206,18 @@ export function montarAppMemoria() {
   };
   const clienteRepository = new MemoriaClienteRepository();
   const depsClientes = { clienteRepository, auditor };
+
+  const funcionarioRepository = new MemoriaFuncionarioRepository();
+  const adiantamentoRepository = new MemoriaAdiantamentoRepository({ funcionarioRepository });
+  const ocorrenciaFolhaRepository = new MemoriaOcorrenciaFolhaRepository({ funcionarioRepository });
+  const folhaPagamentoRepository = new MemoriaFolhaPagamentoRepository({ funcionarioRepository });
+  const depsFuncionarios = {
+    funcionarioRepository,
+    adiantamentoRepository,
+    ocorrenciaFolhaRepository,
+    folhaPagamentoRepository,
+    auditor,
+  };
 
   const encomendaRepository = new MemoriaEncomendaRepository({ sequenciaRepository });
   const depsEncomendas = { encomendaRepository, produtoRepository, clienteRepository, sequenciaRepository, auditor };
@@ -271,6 +307,31 @@ export function montarAppMemoria() {
       deactivateCliente: new DeactivateCliente(depsClientes),
       reactivateCliente: new ReactivateCliente(depsClientes),
     }),
+    funcionariosController: new FuncionariosController({
+      listFuncionarios: new ListFuncionarios({ funcionarioRepository }),
+      createFuncionario: new CreateFuncionario(depsFuncionarios),
+      updateFuncionario: new UpdateFuncionario(depsFuncionarios),
+      deactivateFuncionario: new DeactivateFuncionario(depsFuncionarios),
+      reactivateFuncionario: new ReactivateFuncionario(depsFuncionarios),
+      createAdiantamento: new CreateAdiantamento(depsFuncionarios),
+      listAdiantamentos: new ListAdiantamentos({ adiantamentoRepository }),
+      createOcorrenciaFolha: new CreateOcorrenciaFolha(depsFuncionarios),
+      listOcorrenciasFolha: new ListOcorrenciasFolha({ ocorrenciaFolhaRepository }),
+      fecharFolha: new FecharFolha(depsFuncionarios),
+      listFolhas: new ListFolhas({ folhaPagamentoRepository }),
+      marcarFolhaComoPaga: new MarcarFolhaComoPaga(depsFuncionarios),
+    }),
+    relatoriosController: new RelatoriosController({
+      relatorioVendas: new RelatorioVendas({ vendaRepository }),
+      relatorioFechamentoCaixa: new RelatorioFechamentoCaixa({
+        caixaTurnoRepository,
+      }),
+      curvaABCProdutos: new CurvaABCProdutos({ vendaRepository }),
+      relatorioResultado: new RelatorioResultado({
+        lancamentoFluxoCaixaRepository,
+      }),
+      relatorioVendasPorHora: new RelatorioVendasPorHora({ vendaRepository }),
+    }),
     limitadorLogin: (_req, _res, next) => next(),
   });
 
@@ -293,6 +354,10 @@ export function montarAppMemoria() {
     vendaRepository,
     sequenciaRepository,
     clienteRepository,
+    funcionarioRepository,
+    adiantamentoRepository,
+    ocorrenciaFolhaRepository,
+    folhaPagamentoRepository,
     encomendaRepository,
     hashService,
     tokenService,

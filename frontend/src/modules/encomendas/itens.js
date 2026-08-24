@@ -43,7 +43,7 @@ export function totalLocalItens(itens) {
 export function htmlItensEncomenda(itens) {
   const lista = Array.isArray(itens) ? itens : [];
   if (lista.length === 0) {
-    return `<p class="estado-vazio" id="encomenda-itens-vazio">Nenhum item adicionado ainda.</p>`;
+    return `<p class="estado-vazio" id="encomenda-itens-vazio">Nenhum item adicionado ainda.<span class="estado-vazio-dica">Inclua produtos pela busca acima para montar a encomenda.</span></p>`;
   }
 
   const linhas = lista

@@ -129,9 +129,79 @@ export class MySQLVendaRepository extends VendaRepository {
     }
   }
 
+  /**
+   * Busca em janela UTC alargada e filtra pelo dia civil America/Recife (dataOperacao).
+   */
+  async listarItensConfirmadosNoPeriodo(dataInicio, dataFim) {
+    const inicioUtc = new Date(`${dataInicio}T00:00:00.000Z`);
+    inicioUtc.setUTCDate(inicioUtc.getUTCDate() - 1);
+    const fimUtc = new Date(`${dataFim}T00:00:00.000Z`);
+    fimUtc.setUTCDate(fimUtc.getUTCDate() + 2);
+
+    const [linhas] = await this.pool.query(
+      `SELECT v.id AS venda_id,
+              v.forma_pagamento,
+              v.criado_em,
+              vi.produto_id,
+              vi.quantidade,
+              vi.preco_unitario,
+              vi.subtotal,
+              p.nome AS produto_nome
+         FROM vendas v
+         INNER JOIN venda_itens vi ON vi.venda_id = v.id
+         INNER JOIN produtos p ON p.id = vi.produto_id
+        WHERE v.status = 'confirmada'
+          AND v.criado_em >= ?
+          AND v.criado_em < ?
+        ORDER BY v.id ASC, vi.id ASC`,
+      [inicioUtc, fimUtc],
+    );
+
+    const itens = [];
+    for (const linha of linhas) {
+      const dataOperacao = formatarDataOperacao(linha.criado_em);
+      if (dataOperacao < dataInicio || dataOperacao > dataFim) {
+        continue;
+      }
+      itens.push({
+        vendaId: Number(linha.venda_id),
+        produtoId: Number(linha.produto_id),
+        produtoNome: linha.produto_nome,
+        quantidade: Number(linha.quantidade),
+        precoUnitario: Number(linha.preco_unitario),
+        subtotal: Number(linha.subtotal),
+        formaPagamento: linha.forma_pagamento,
+        dataOperacao,
+        horaOperacao: formatarHoraOperacao(linha.criado_em),
+      });
+    }
+    return itens;
+  }
+
   cliente(conexao) {
     return conexao || this.pool;
   }
+}
+
+function formatarDataOperacao(valor) {
+  const data = valor instanceof Date ? valor : new Date(valor);
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Recife',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(data);
+}
+
+function formatarHoraOperacao(valor) {
+  const data = valor instanceof Date ? valor : new Date(valor);
+  return Number(
+    new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Recife',
+      hour: '2-digit',
+      hourCycle: 'h23',
+    }).format(data),
+  );
 }
 
 function deLinha(linha, itens) {

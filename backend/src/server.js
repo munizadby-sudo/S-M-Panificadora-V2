@@ -12,6 +12,7 @@ import {
   aplicarSchemaVendas,
   aplicarSchemaFluxoCaixa,
   aplicarSchemaClientes,
+  aplicarSchemaFuncionarios,
   criarPool,
   garantirDatabase,
   semearConfiguracoes,
@@ -45,6 +46,7 @@ await aplicarSchemaVendas(pool);
 await aplicarSchemaFluxoCaixa(pool);
 await aplicarSchemaClientes(pool);
 await aplicarSchemaEncomendas(pool);
+await aplicarSchemaFuncionarios(pool);
 await semearConfiguracoes(pool, padroesParaSeed());
 
 const { app } = montarDependencias({ pool, config });

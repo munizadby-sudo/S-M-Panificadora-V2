@@ -5,14 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Entrar — S&M Panificadora</title>
   <style>
+    /* SPEC-FE-015 / PRD-016 — tokens alinhados ao shell (tema escuro clean) */
     :root {
-      --fundo: #f6f1ea;
-      --superficie: #fffdf9;
-      --texto: #2b2118;
-      --muted: #6d5c4d;
-      --linha: #e6d9cc;
-      --destaque: #8b5a2b;
-      --erro: #9b2c2c;
+      --fundo: #14171c;
+      --superficie: #1b1f27;
+      --superficie-elevada: #232833;
+      --linha: #2e3440;
+      --texto: #eef1f5;
+      --muted: #8b93a3;
+      --destaque: #e0913a;
+      --destaque-escuro: #f2a94f;
+      --perigo: #e5484d;
+      --selecao: #5b9dd9;
+      --raio: 14px;
+      --sombra: 0 10px 32px rgba(0, 0, 0, 0.45);
     }
 
     * { box-sizing: border-box; }
@@ -23,7 +29,7 @@
       display: grid;
       place-items: center;
       font-family: "Segoe UI", Tahoma, sans-serif;
-      background: var(--fundo);
+      background: radial-gradient(ellipse at center, #1f2430 0%, var(--fundo) 62%);
       color: var(--texto);
     }
 
@@ -31,63 +37,94 @@
       width: min(100% - 2rem, 22rem);
       background: var(--superficie);
       border: 1px solid var(--linha);
-      border-radius: 16px;
-      padding: 1.75rem;
+      border-radius: 20px;
+      padding: 2rem 1.75rem 1.75rem;
+      box-shadow: var(--sombra), 0 0 56px rgba(224, 145, 58, 0.08);
     }
 
     #logo-loja {
       display: block;
       max-height: 3.5rem;
       max-width: 100%;
-      margin: 0 auto 0.75rem;
+      margin: 0 auto 0.85rem;
     }
 
     h1 {
       margin: 0 0 0.35rem;
       font-size: 1.35rem;
+      font-weight: 700;
+      text-align: center;
+      color: var(--destaque-escuro);
+      letter-spacing: 0.02em;
     }
 
     .login-slogan {
-      margin: 0 0 1.25rem;
+      margin: 0 0 1.5rem;
       color: var(--muted);
+      text-align: center;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
     }
 
     label {
       display: block;
-      font-size: 0.9rem;
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
       margin-bottom: 0.35rem;
     }
 
     input {
       width: 100%;
-      margin-bottom: 0.9rem;
-      padding: 0.6rem 0.7rem;
+      margin-bottom: 0.95rem;
+      padding: 0.7rem 0.85rem;
       border: 1px solid var(--linha);
-      border-radius: 8px;
+      border-radius: 10px;
+      background: var(--superficie-elevada);
+      color: var(--texto);
       font: inherit;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    input:focus {
+      border-color: var(--selecao);
+      box-shadow: 0 0 0 3px rgba(91, 157, 217, 0.2);
     }
 
     button[type="submit"] {
       width: 100%;
       border: 0;
-      border-radius: 8px;
-      padding: 0.7rem;
-      background: var(--destaque);
-      color: #fff;
+      border-radius: 10px;
+      padding: 0.8rem;
+      background: linear-gradient(135deg, var(--destaque), var(--destaque-escuro));
+      color: #1a1410;
       font: inherit;
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
       cursor: pointer;
+      transition: opacity 0.15s ease, transform 0.1s ease;
     }
 
+    button[type="submit"]:hover { opacity: 0.92; }
+    button[type="submit"]:active { transform: scale(0.98); }
+
     button[type="submit"]:disabled {
-      opacity: 0.65;
+      opacity: 0.6;
       cursor: wait;
     }
 
     #login-erro {
       min-height: 1.25rem;
       margin: 0 0 0.85rem;
-      color: var(--erro);
-      font-size: 0.9rem;
+      color: var(--perigo);
+      font-size: 0.88rem;
+      text-align: center;
     }
   </style>
 </head>

@@ -45,6 +45,21 @@ export class MemoriaCaixaTurnoRepository extends CaixaTurnoRepository {
     turno.observacao = dados.observacao;
     return { afetado: true };
   }
+
+  async listarFechadosNoPeriodo(dataInicio, dataFim) {
+    return this.turnos
+      .filter(
+        (item) =>
+          item.status === 'fechado' && item.data >= dataInicio && item.data <= dataFim,
+      )
+      .sort(
+        (a, b) =>
+          String(a.data).localeCompare(String(b.data)) ||
+          String(a.periodo).localeCompare(String(b.periodo)) ||
+          a.id - b.id,
+      )
+      .map((item) => new CaixaTurno({ ...item }));
+  }
 }
 
 export class MemoriaFluxoCaixaRepository extends FluxoCaixaRepository {

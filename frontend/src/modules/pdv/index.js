@@ -1,26 +1,37 @@
 import { debounce } from '../../core/utils.js';
 import { getTurnoAtual, onMudancaDeTurno, turnoEstaAberto } from '../caixa-turno/estado.js';
-import { montarBanner } from '../caixa-turno/banner.js';
 import { listarCategorias, listarProdutos, mensagemErroProduto } from '../produtos/api.js';
 import { montarSeletorCategoria } from '../produtos/categorias.js';
-import { htmlAvisoCaixaFechado, irParaTelaDeCaixa } from './aviso.js';
+import { htmlAvisoCaixaFechado } from './aviso.js';
 import { htmlGradeProdutos } from './grade.js';
+import { ligarNavegacaoGrade } from './navegacao-grade.js';
 import {
   adicionarAoCarrinho,
   htmlCarrinho,
   limparCarrinho,
   removerDoCarrinho,
   removerUltimoDoCarrinho,
+  totalLocal,
 } from './carrinho.js';
-import { htmlSeletorFormaPagamento, atualizarTrocoNoDom } from './pagamento.js';
+import {
+  ATALHOS_FORMA_PAGAMENTO,
+  atualizarTrocoNoDom,
+  htmlSeletorFormaPagamento,
+  podeConfirmarVenda,
+} from './pagamento.js';
+import {
+  abrirModalPagamento,
+  fecharModalPagamento,
+  modalPagamentoEstaAberto,
+} from './modal-pagamento.js';
 import { htmlConfirmacaoVenda } from './confirmacao.js';
 import { criarVenda, mensagemErroVenda } from './api.js';
 
 let containerAtual;
 let estado;
-let cancelarBanner;
 let cancelarTurno;
 let buscarDebounced;
+let listenerF10;
 
 export default {
   id: 'pdv',
@@ -41,15 +52,32 @@ export default {
         return;
       }
       estado.aberto = aberto;
+      if (!aberto) {
+        fecharModalPagamento();
+      }
       renderizar().catch(() => {});
     });
+    listenerF10 = (evento) => {
+      if (evento.key !== 'F10') {
+        return;
+      }
+      if (!estado?.aberto) {
+        return;
+      }
+      evento.preventDefault();
+      tentarAbrirPagamento();
+    };
+    globalThis.document?.addEventListener?.('keydown', listenerF10);
     await renderizar();
   },
   desmontar() {
-    cancelarBanner?.();
-    cancelarBanner = undefined;
     cancelarTurno?.();
     cancelarTurno = undefined;
+    if (listenerF10) {
+      globalThis.document?.removeEventListener?.('keydown', listenerF10);
+      listenerF10 = undefined;
+    }
+    fecharModalPagamento();
     buscarDebounced = undefined;
     containerAtual = undefined;
     estado = undefined;
@@ -68,9 +96,19 @@ function estadoInicial() {
     formaPagamento: '',
     recebido: '',
     erroVenda: '',
+    avisoFinalizar: '',
     ultimaVenda: null,
     confirmando: false,
   };
+}
+
+function resetarEstadoPagamento() {
+  if (!estado) {
+    return;
+  }
+  estado.formaPagamento = '';
+  estado.recebido = '';
+  estado.erroVenda = '';
 }
 
 async function renderizar() {
@@ -78,20 +116,14 @@ async function renderizar() {
   if (!container || !estado) {
     return;
   }
-  cancelarBanner?.();
-
   if (!estado.aberto) {
+    fecharModalPagamento();
     container.innerHTML = `
       <section class="pdv">
         <h1>Vendas</h1>
-        <div id="pdv-banner" class="caixa-turno-banner" role="status"></div>
         ${htmlAvisoCaixaFechado()}
       </section>
     `;
-    cancelarBanner = await montarBanner(container.querySelector('#pdv-banner'));
-    container.querySelector('#btn-ir-para-caixa')?.addEventListener('click', () => {
-      irParaTelaDeCaixa();
-    });
     return;
   }
 
@@ -99,10 +131,11 @@ async function renderizar() {
     await carregarCatalogo();
   }
 
+  const carrinhoVazio = estado.carrinho.length === 0 || totalLocal(estado.carrinho) <= 0;
+
   container.innerHTML = `
     <section class="pdv">
       <h1>Vendas</h1>
-      <div id="pdv-banner" class="caixa-turno-banner" role="status"></div>
       ${htmlConfirmacaoVenda(estado.ultimaVenda)}
       <div class="pdv-painel">
         ${htmlGradeProdutos({
@@ -112,24 +145,36 @@ async function renderizar() {
         })}
         <div class="pdv-lateral">
           ${htmlCarrinho(estado.carrinho)}
-          ${htmlSeletorFormaPagamento({
-            formaPagamento: estado.formaPagamento,
-            recebido: estado.recebido,
-            itens: estado.carrinho,
-            erro: estado.erroVenda,
-          })}
+          <p id="pdv-aviso-finalizar" class="pdv-erro" role="alert">${escaparAviso(estado.avisoFinalizar)}</p>
+          <button type="button" id="btn-finalizar-venda"${carrinhoVazio ? ' disabled' : ''}>
+            Finalizar Venda <span class="atalho">F10</span>
+          </button>
         </div>
       </div>
     </section>
   `;
 
-  cancelarBanner = await montarBanner(container.querySelector('#pdv-banner'));
   montarSeletorCategoria(container.querySelector('#pdv-categoria'), estado.categorias, {
     incluirTodos: true,
     rotuloTodos: 'Todas',
     valor: estado.categoriaId,
   });
   ligarEventos(container);
+
+  if (modalPagamentoEstaAberto()) {
+    abrirModalPagamento({
+      renderizarConteudo: (conteudo) => preencherConteudoPagamento(conteudo),
+      aoFechar: aoFecharModalPagamento,
+    });
+  }
+}
+
+function escaparAviso(valor) {
+  return String(valor ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
 async function carregarCatalogo() {
@@ -189,6 +234,7 @@ function ligarEventos(container) {
       estado.carrinho = adicionarAoCarrinho(estado.carrinho, produto);
       estado.ultimaVenda = null;
       estado.erroVenda = '';
+      estado.avisoFinalizar = '';
       renderizar();
     });
   }
@@ -210,13 +256,68 @@ function ligarEventos(container) {
     renderizar();
   });
 
+  container.querySelector('#btn-finalizar-venda')?.addEventListener('click', () => {
+    tentarAbrirPagamento();
+  });
+
+  ligarNavegacaoGrade(container.querySelector('#pdv-grade-itens'), {
+    aoAtivar(card) {
+      card.click();
+    },
+  });
+}
+
+function tentarAbrirPagamento() {
+  if (!estado?.aberto) {
+    return;
+  }
+  if (!estado.carrinho.length || totalLocal(estado.carrinho) <= 0) {
+    estado.avisoFinalizar = 'Adicione itens ao carrinho para finalizar a venda.';
+    const aviso = containerAtual?.querySelector?.('#pdv-aviso-finalizar');
+    if (aviso) {
+      aviso.textContent = estado.avisoFinalizar;
+    } else {
+      renderizar();
+    }
+    return;
+  }
+  estado.avisoFinalizar = '';
+  const aviso = containerAtual?.querySelector?.('#pdv-aviso-finalizar');
+  if (aviso) {
+    aviso.textContent = '';
+  }
+  abrirModalPagamento({
+    renderizarConteudo: (conteudo) => preencherConteudoPagamento(conteudo),
+    aoFechar: aoFecharModalPagamento,
+  });
+}
+
+function aoFecharModalPagamento() {
+  resetarEstadoPagamento();
+}
+
+function preencherConteudoPagamento(conteudo) {
+  if (!conteudo || !estado) {
+    return;
+  }
+  conteudo.innerHTML = htmlSeletorFormaPagamento({
+    formaPagamento: estado.formaPagamento,
+    recebido: estado.recebido,
+    itens: estado.carrinho,
+    erro: estado.erroVenda,
+  });
+  ligarEventosPagamento(conteudo);
+  if (estado.formaPagamento === 'dinheiro') {
+    conteudo.querySelector('#pdv-recebido')?.focus?.();
+  } else {
+    conteudo.querySelector('#pdv-pagamento')?.focus?.();
+  }
+}
+
+function ligarEventosPagamento(container) {
   for (const botao of container.querySelectorAll?.('[data-forma]') || []) {
     botao.addEventListener('click', () => {
-      estado.formaPagamento = botao.getAttribute('data-forma');
-      if (estado.formaPagamento !== 'dinheiro') {
-        estado.recebido = '';
-      }
-      renderizar();
+      selecionarForma(botao.getAttribute('data-forma'));
     });
   }
 
@@ -227,18 +328,77 @@ function ligarEventos(container) {
       itens: estado.carrinho,
       formaPagamento: estado.formaPagamento,
     });
+    const botao = container.querySelector('#btn-confirmar-venda');
+    if (botao) {
+      botao.disabled = !podeConfirmarVenda({
+        itens: estado.carrinho,
+        formaPagamento: estado.formaPagamento,
+        recebido: estado.recebido,
+      });
+    }
   });
 
   container.querySelector('#btn-confirmar-venda')?.addEventListener('click', async () => {
     await confirmarVenda();
   });
+
+  container.querySelector('#pdv-pagamento')?.addEventListener('keydown', (evento) => {
+    tratarAtalhoPagamento(evento, container);
+  });
+}
+
+function selecionarForma(forma) {
+  if (!forma || !estado) {
+    return;
+  }
+  estado.formaPagamento = forma;
+  if (forma !== 'dinheiro') {
+    estado.recebido = '';
+  }
+  estado.erroVenda = '';
+  if (modalPagamentoEstaAberto()) {
+    const conteudo = globalThis.document?.getElementById?.('pdv-pagamento-conteudo-modal');
+    if (conteudo) {
+      preencherConteudoPagamento(conteudo);
+    }
+  }
+}
+
+function tratarAtalhoPagamento(evento, container) {
+  const noRecebido = evento.target?.id === 'pdv-recebido';
+
+  if (evento.key === 'Enter') {
+    const botao = container.querySelector('#btn-confirmar-venda');
+    if (botao && !botao.disabled) {
+      evento.preventDefault();
+      confirmarVenda();
+    }
+    return;
+  }
+
+  if (noRecebido) {
+    return;
+  }
+
+  const indice = ['1', '2', '3'].indexOf(evento.key);
+  if (indice < 0) {
+    return;
+  }
+  evento.preventDefault();
+  selecionarForma(ATALHOS_FORMA_PAGAMENTO[indice]);
 }
 
 async function confirmarVenda() {
   if (!estado || estado.confirmando) {
     return;
   }
-  if (!estado.carrinho.length || !estado.formaPagamento) {
+  if (
+    !podeConfirmarVenda({
+      itens: estado.carrinho,
+      formaPagamento: estado.formaPagamento,
+      recebido: estado.recebido,
+    })
+  ) {
     return;
   }
 
@@ -254,17 +414,30 @@ async function confirmarVenda() {
     });
     estado.ultimaVenda = venda;
     estado.carrinho = limparCarrinho();
-    estado.formaPagamento = '';
-    estado.recebido = '';
-    estado.erroVenda = '';
+    resetarEstadoPagamento();
+    estado.avisoFinalizar = '';
+    fecharModalPagamento();
+    await renderizar();
   } catch (erro) {
     estado.erroVenda = mensagemErroVenda(erro, estado.carrinho);
     if (erro?.codigo === 'CAIXA_FECHADO' || erro?.status === 403) {
       await getTurnoAtual({ forcar: true });
       estado.aberto = turnoEstaAberto();
+      if (!estado.aberto) {
+        fecharModalPagamento();
+        await renderizar();
+        return;
+      }
+    }
+    if (modalPagamentoEstaAberto()) {
+      const conteudo = globalThis.document?.getElementById?.('pdv-pagamento-conteudo-modal');
+      if (conteudo) {
+        preencherConteudoPagamento(conteudo);
+      }
+    } else {
+      await renderizar();
     }
   } finally {
     estado.confirmando = false;
   }
-  await renderizar();
 }

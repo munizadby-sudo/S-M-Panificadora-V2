@@ -87,6 +87,29 @@ import { DeactivateCliente } from './modules/customers/application/DeactivateCli
 import { ReactivateCliente } from './modules/customers/application/ReactivateCliente.js';
 import { MySQLClienteRepository } from './modules/customers/infrastructure/MySQLClienteRepository.js';
 import { ClientesController } from './modules/customers/infrastructure/http/ClientesController.js';
+import { CreateFuncionario } from './modules/employees/application/CreateFuncionario.js';
+import { UpdateFuncionario } from './modules/employees/application/UpdateFuncionario.js';
+import { DeactivateFuncionario } from './modules/employees/application/DeactivateFuncionario.js';
+import { ReactivateFuncionario } from './modules/employees/application/ReactivateFuncionario.js';
+import { ListFuncionarios } from './modules/employees/application/ListFuncionarios.js';
+import { CreateAdiantamento } from './modules/employees/application/CreateAdiantamento.js';
+import { ListAdiantamentos } from './modules/employees/application/ListAdiantamentos.js';
+import { CreateOcorrenciaFolha } from './modules/employees/application/CreateOcorrenciaFolha.js';
+import { ListOcorrenciasFolha } from './modules/employees/application/ListOcorrenciasFolha.js';
+import { FecharFolha } from './modules/employees/application/FecharFolha.js';
+import { ListFolhas } from './modules/employees/application/ListFolhas.js';
+import { MarcarFolhaComoPaga } from './modules/employees/application/MarcarFolhaComoPaga.js';
+import { MySQLFuncionarioRepository } from './modules/employees/infrastructure/MySQLFuncionarioRepository.js';
+import { MySQLAdiantamentoRepository } from './modules/employees/infrastructure/MySQLAdiantamentoRepository.js';
+import { MySQLOcorrenciaFolhaRepository } from './modules/employees/infrastructure/MySQLOcorrenciaFolhaRepository.js';
+import { MySQLFolhaPagamentoRepository } from './modules/employees/infrastructure/MySQLFolhaPagamentoRepository.js';
+import { FuncionariosController } from './modules/employees/infrastructure/http/FuncionariosController.js';
+import { RelatorioVendas } from './modules/reports/application/RelatorioVendas.js';
+import { RelatorioFechamentoCaixa } from './modules/reports/application/RelatorioFechamentoCaixa.js';
+import { CurvaABCProdutos } from './modules/reports/application/CurvaABCProdutos.js';
+import { RelatorioResultado } from './modules/reports/application/RelatorioResultado.js';
+import { RelatorioVendasPorHora } from './modules/reports/application/RelatorioVendasPorHora.js';
+import { RelatoriosController } from './modules/reports/infrastructure/http/RelatoriosController.js';
 import { criarApp } from './app.js';
 
 const pastaUploadsPadrao = join(dirname(fileURLToPath(import.meta.url)), '..', 'uploads');
@@ -246,6 +269,32 @@ export function montarDependencias({ pool, config = {}, pastaUploads = pastaUplo
     reactivateCliente: new ReactivateCliente(depsClientes),
   });
 
+  const funcionarioRepository = new MySQLFuncionarioRepository(pool);
+  const adiantamentoRepository = new MySQLAdiantamentoRepository(pool);
+  const ocorrenciaFolhaRepository = new MySQLOcorrenciaFolhaRepository(pool);
+  const folhaPagamentoRepository = new MySQLFolhaPagamentoRepository(pool);
+  const depsFuncionarios = {
+    funcionarioRepository,
+    adiantamentoRepository,
+    ocorrenciaFolhaRepository,
+    folhaPagamentoRepository,
+    auditor,
+  };
+  const funcionariosController = new FuncionariosController({
+    listFuncionarios: new ListFuncionarios({ funcionarioRepository }),
+    createFuncionario: new CreateFuncionario(depsFuncionarios),
+    updateFuncionario: new UpdateFuncionario(depsFuncionarios),
+    deactivateFuncionario: new DeactivateFuncionario(depsFuncionarios),
+    reactivateFuncionario: new ReactivateFuncionario(depsFuncionarios),
+    createAdiantamento: new CreateAdiantamento(depsFuncionarios),
+    listAdiantamentos: new ListAdiantamentos({ adiantamentoRepository }),
+    createOcorrenciaFolha: new CreateOcorrenciaFolha(depsFuncionarios),
+    listOcorrenciasFolha: new ListOcorrenciasFolha({ ocorrenciaFolhaRepository }),
+    fecharFolha: new FecharFolha(depsFuncionarios),
+    listFolhas: new ListFolhas({ folhaPagamentoRepository }),
+    marcarFolhaComoPaga: new MarcarFolhaComoPaga(depsFuncionarios),
+  });
+
   const encomendaRepository = new MySQLEncomendaRepository(pool);
   const depsEncomendas = { encomendaRepository, produtoRepository, clienteRepository, sequenciaRepository, auditor };
   const encomendasController = new EncomendasController({
@@ -255,6 +304,16 @@ export function montarDependencias({ pool, config = {}, pastaUploads = pastaUplo
     cancelEncomenda: new CancelEncomenda(depsEncomendas),
     listEncomendas: new ListEncomendas({ encomendaRepository }),
     getEncomenda: new GetEncomenda({ encomendaRepository }),
+  });
+
+  const relatoriosController = new RelatoriosController({
+    relatorioVendas: new RelatorioVendas({ vendaRepository }),
+    relatorioFechamentoCaixa: new RelatorioFechamentoCaixa({ caixaTurnoRepository }),
+    curvaABCProdutos: new CurvaABCProdutos({ vendaRepository }),
+    relatorioResultado: new RelatorioResultado({
+      lancamentoFluxoCaixaRepository: lancamentoFluxoCaixaRepository,
+    }),
+    relatorioVendasPorHora: new RelatorioVendasPorHora({ vendaRepository }),
   });
 
   const app = criarApp({
@@ -273,6 +332,8 @@ export function montarDependencias({ pool, config = {}, pastaUploads = pastaUplo
     vendasController,
     fluxoCaixaController,
     clientesController,
+    funcionariosController,
+    relatoriosController,
     pastaUploads,
     corsOrigin,
   });

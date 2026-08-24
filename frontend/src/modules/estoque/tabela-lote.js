@@ -41,7 +41,7 @@ export function ligarPreviaDisponivelLote(container, linhas) {
 
 export function htmlTabelaLoteEstoque(linhas) {
   if (!Array.isArray(linhas) || linhas.length === 0) {
-    return '<p class="estado-vazio">Nenhum item de estoque encontrado.</p>';
+    return '<p class="estado-vazio">Nenhum item de estoque encontrado.<span class="estado-vazio-dica">Aqui aparece o estoque do dia para ajuste em lote.</span></p>';
   }
 
   const corpo = linhas

@@ -80,6 +80,19 @@ export class MySQLLancamentoFluxoCaixaRepository {
     );
     return this.buscarPorId(lancamento.id);
   }
+
+  async listarAtivosNoPeriodo(dataInicio, dataFim) {
+    const [linhas] = await this.pool.query(
+      `SELECT f.*, u.nome AS usuario_nome
+         FROM fluxo_caixa f
+         LEFT JOIN usuarios u ON u.id = f.usuario_id
+        WHERE f.ativo = 1
+          AND f.data BETWEEN ? AND ?
+        ORDER BY f.data ASC, f.id ASC`,
+      [dataInicio, dataFim],
+    );
+    return linhas.map((linha) => deLinha(linha));
+  }
 }
 
 function montarWhere(filtros) {

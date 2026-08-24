@@ -2,7 +2,7 @@ import { escapar } from './html.js';
 
 export function htmlTabelaClientes(clientes, { acoes = false } = {}) {
   if (!Array.isArray(clientes) || clientes.length === 0) {
-    return '<p class="estado-vazio">Nenhum cliente encontrado.</p>';
+    return '<p class="estado-vazio">Nenhum cliente encontrado.<span class="estado-vazio-dica">Aqui ficam os clientes cadastrados. Use Novo cliente para incluir o primeiro.</span></p>';
   }
 
   const cabecalhoAcoes = acoes ? '<th>Ações</th>' : '';

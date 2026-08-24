@@ -7,7 +7,6 @@ import {
   turnoEstaAberto,
 } from '../caixa-turno/estado.js';
 import { obterPreviaFechamento } from '../caixa-turno/fechamento.js';
-import { htmlAvisoCaixaFechado, irParaTelaDeCaixa } from '../pdv/aviso.js';
 import {
   criarLancamentoManual,
   excluirLancamento,
@@ -17,13 +16,28 @@ import {
 } from './api.js';
 import { formularioVazio, htmlFormularioLancamento } from './formulario.js';
 import { dataHoje, escapar } from './html.js';
-import { htmlContextoTurno, htmlFiltrosFluxo, htmlTabelaFluxo } from './lista.js';
+import {
+  htmlContextoTurno,
+  htmlFiltrosFluxo,
+  htmlPainelLancamentos,
+  htmlTabelaFluxo,
+} from './lista.js';
 import { htmlModalExclusao, podeExcluirLancamento } from './modal-exclusao.js';
-import { htmlResumoKPIs } from './resumo.js';
+import { htmlCardsKpiFluxo, htmlResumoKPIs } from './resumo.js';
 import { montarLinhasCsv, validarFormularioLancamento, validarMotivoExclusao } from './util.js';
 
-export { htmlTabelaFluxo, htmlFiltrosFluxo, htmlContextoTurno } from './lista.js';
-export { htmlResumoKPIs, bateComEsperadoFechamento, extrairLiquidoPorForma } from './resumo.js';
+export {
+  htmlTabelaFluxo,
+  htmlFiltrosFluxo,
+  htmlContextoTurno,
+  htmlPainelLancamentos,
+} from './lista.js';
+export {
+  htmlCardsKpiFluxo,
+  htmlResumoKPIs,
+  bateComEsperadoFechamento,
+  extrairLiquidoPorForma,
+} from './resumo.js';
 export { htmlFormularioLancamento, formularioVazio } from './formulario.js';
 export { htmlModalExclusao, podeExcluirLancamento } from './modal-exclusao.js';
 export { montarLinhasCsv } from './util.js';
@@ -163,8 +177,9 @@ function renderizar() {
   }
 
   const caixaFechado = !estado.turnoAberto;
-  const kpis = estado.turnoAberto ? htmlResumoKPIs(estado.resumo) : '';
-  const aviso = caixaFechado ? htmlAvisoCaixaFechado() : '';
+  const kpis = estado.turnoAberto
+    ? `${htmlCardsKpiFluxo(estado.resumo)}${htmlResumoKPIs(estado.resumo)}`
+    : '';
   const formulario = htmlFormularioLancamento({
     formulario: estado.formulario,
     errosCampos: estado.errosCampos,
@@ -174,17 +189,23 @@ function renderizar() {
 
   container.innerHTML = `
     <section class="fluxo-caixa">
-      <h1>Fluxo de Caixa</h1>
+      <header class="pagina-cabecalho">
+        <div>
+          <p class="dashboard-eyebrow">Operação</p>
+          <h1>Fluxo de Caixa</h1>
+          <p class="dashboard-subtitulo">Resumo do turno, novo lançamento e movimentações.</p>
+        </div>
+      </header>
       ${htmlContextoTurno(estado)}
       ${kpis}
-      ${htmlFiltrosFluxo({ filtros: estado.filtros, turnoAberto: estado.turnoAberto })}
-      <div class="fluxo-acoes-topo">
-        <button type="button" id="btn-exportar-fluxo-csv"${estado.itens.length ? '' : ' disabled'}>Exportar CSV</button>
-      </div>
-      <p id="fluxo-erro-lista" class="fluxo-erro" role="alert">${escapar(estado.erro)}</p>
-      <div id="lista-fluxo">${htmlTabelaFluxo(estado.itens, { ehAdmin: estado.ehAdmin })}</div>
-      ${aviso}
       ${formulario}
+      ${htmlPainelLancamentos({
+        itens: estado.itens,
+        filtros: estado.filtros,
+        turnoAberto: estado.turnoAberto,
+        ehAdmin: estado.ehAdmin,
+        erro: estado.erro,
+      })}
       ${htmlModalExclusao({ lancamento: estado.exclusaoModal, erro: estado.erroExclusao })}
     </section>
   `;
@@ -210,9 +231,25 @@ function ligarEventos(container) {
     exportarCsvAtual();
   });
 
-  container.querySelector('#btn-ir-para-caixa')?.addEventListener('click', () => {
-    irParaTelaDeCaixa(container.ownerDocument || globalThis.document);
-  });
+  for (const botao of container.querySelectorAll?.('[data-fluxo-tipo]') || []) {
+    botao.addEventListener('click', () => {
+      if (botao.disabled) {
+        return;
+      }
+      const tipo = botao.getAttribute('data-fluxo-tipo') === 'entrada' ? 'entrada' : 'saida';
+      const campoTipo = container.querySelector('#fluxo-tipo');
+      if (campoTipo) {
+        campoTipo.value = tipo;
+      }
+      estado.formulario.tipo = tipo;
+      for (const outro of container.querySelectorAll('[data-fluxo-tipo]')) {
+        const ativo = outro.getAttribute('data-fluxo-tipo') === tipo;
+        outro.classList.toggle('ativa', ativo);
+        outro.classList.toggle('entrada', ativo && tipo === 'entrada');
+        outro.classList.toggle('saida', ativo && tipo === 'saida');
+      }
+    });
+  }
 
   container.querySelector('#form-lancamento-fluxo')?.addEventListener('submit', async (evento) => {
     evento.preventDefault();
@@ -246,14 +283,20 @@ function ligarEventos(container) {
   });
 }
 
+function lerFormularioDoDom(container) {
+  return {
+    tipo: container.querySelector('#fluxo-tipo')?.value || 'saida',
+    descricao: container.querySelector('#fluxo-descricao')?.value || '',
+    categoria: container.querySelector('#fluxo-categoria')?.value || 'sangria',
+    forma: container.querySelector('#fluxo-forma')?.value || 'dinheiro',
+    valor: container.querySelector('#fluxo-valor')?.value || '',
+  };
+}
+
 async function salvarLancamento(container) {
-  const validacao = validarFormularioLancamento({
-    tipo: container.querySelector('#fluxo-tipo')?.value,
-    descricao: container.querySelector('#fluxo-descricao')?.value,
-    categoria: container.querySelector('#fluxo-categoria')?.value,
-    forma: container.querySelector('#fluxo-forma')?.value,
-    valor: container.querySelector('#fluxo-valor')?.value,
-  });
+  const valoresDom = lerFormularioDoDom(container);
+  estado.formulario = valoresDom;
+  const validacao = validarFormularioLancamento(valoresDom);
 
   if (!validacao.ok) {
     estado.errosCampos = validacao.erros;

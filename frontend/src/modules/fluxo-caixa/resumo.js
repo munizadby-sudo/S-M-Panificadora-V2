@@ -1,5 +1,44 @@
 import { escapar, formatarMoeda } from './html.js';
 
+export function htmlCardsKpiFluxo(resumo) {
+  if (!resumo) {
+    return '';
+  }
+
+  const entradas =
+    Number(resumo.entradas?.dinheiro || 0) +
+    Number(resumo.entradas?.pix || 0) +
+    Number(resumo.entradas?.cartao || 0);
+  const saidas =
+    Number(resumo.saidas?.dinheiro || 0) +
+    Number(resumo.saidas?.pix || 0) +
+    Number(resumo.saidas?.cartao || 0);
+  const liquido = Math.round((entradas - saidas) * 100) / 100;
+
+  return `<section class="fluxo-dashboard" aria-label="Dashboard do turno">
+    <div class="dashboard-kpis fluxo-dashboard-kpis" aria-label="Indicadores do turno">
+      ${htmlKpiCard({
+        icone: '↑',
+        rotulo: 'Entradas',
+        valor: formatarMoeda(entradas),
+        variante: 'entrada',
+      })}
+      ${htmlKpiCard({
+        icone: '↓',
+        rotulo: 'Saídas',
+        valor: formatarMoeda(saidas),
+        variante: 'saida',
+      })}
+      ${htmlKpiCard({
+        icone: 'Σ',
+        rotulo: 'Saldo do turno',
+        valor: formatarMoeda(liquido),
+        variante: liquido < 0 ? 'saida' : 'entrada',
+      })}
+    </div>
+  </section>`;
+}
+
 export function htmlResumoKPIs(resumo) {
   if (!resumo) {
     return '';
@@ -21,20 +60,36 @@ export function htmlResumoKPIs(resumo) {
     })
     .join('');
 
-  return `<section class="fluxo-kpis" aria-label="Resumo por forma de pagamento">
-    <h2>Resumo do turno</h2>
-    <table class="fluxo-kpis-tabela">
-      <thead>
-        <tr>
-          <th>Forma</th>
-          <th>Entradas</th>
-          <th>Saídas</th>
-          <th>Líquido</th>
-        </tr>
-      </thead>
-      <tbody>${linhas}</tbody>
-    </table>
+  return `<section class="fluxo-kpis dashboard-secao" aria-label="Resumo por forma de pagamento">
+    <header class="dashboard-secao-cabecalho">
+      <h2>Por forma de pagamento</h2>
+      <p class="dashboard-secao-subtitulo">Detalhe do turno aberto — mesmos totais dos cards acima.</p>
+    </header>
+    <div class="dashboard-secao-corpo">
+      <table class="fluxo-kpis-tabela">
+        <thead>
+          <tr>
+            <th>Forma</th>
+            <th>Entradas</th>
+            <th>Saídas</th>
+            <th>Líquido</th>
+          </tr>
+        </thead>
+        <tbody>${linhas}</tbody>
+      </table>
+    </div>
   </section>`;
+}
+
+function htmlKpiCard({ icone, rotulo, valor, variante = '' }) {
+  const classeValor = variante ? ` dashboard-kpi-valor--${variante}` : '';
+  return `<article class="dashboard-kpi-card">
+    <div class="dashboard-kpi-topo">
+      <span class="dashboard-kpi-icone" aria-hidden="true">${icone}</span>
+      <p class="dashboard-kpi-rotulo">${escapar(rotulo)}</p>
+    </div>
+    <p class="dashboard-kpi-valor${classeValor}">${valor}</p>
+  </article>`;
 }
 
 export function extrairLiquidoPorForma(resumo) {

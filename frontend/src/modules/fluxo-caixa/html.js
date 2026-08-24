@@ -32,3 +32,19 @@ export function dataHoje(agora = new Date()) {
     day: '2-digit',
   }).format(agora);
 }
+
+export function formatarHora(valor) {
+  if (valor === undefined || valor === null || valor === '') {
+    return '—';
+  }
+  const data = valor instanceof Date ? valor : new Date(valor);
+  if (Number.isNaN(data.getTime())) {
+    return '—';
+  }
+  return new Intl.DateTimeFormat('pt-BR', {
+    timeZone: 'America/Recife',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(data);
+}

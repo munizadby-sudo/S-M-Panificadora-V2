@@ -2,7 +2,7 @@ import { escapar, formatarQuantidade } from './html.js';
 
 export function htmlTabelaEstoque(itens, { acoes = false } = {}) {
   if (!Array.isArray(itens) || itens.length === 0) {
-    return '<p class="estado-vazio">Nenhum item de estoque encontrado.</p>';
+    return '<p class="estado-vazio">Nenhum item de estoque encontrado.<span class="estado-vazio-dica">Aqui aparece o estoque do dia. Ajuste quantidades pela edição em lote ou individual.</span></p>';
   }
 
   const cabecalhoAcoes = acoes ? '<th>Ações</th>' : '';

@@ -37,9 +37,11 @@ export function criarDocumentoMinimo() {
   return {
     createElement(tag) {
       const classes = new Set();
+      const attrs = {};
       const el = {
         tagName: String(tag).toUpperCase(),
         type: '',
+        value: '',
         dataset: {},
         textContent: '',
         className: '',
@@ -54,6 +56,12 @@ export function criarDocumentoMinimo() {
             }
             el.className = [...classes].join(' ');
           },
+        },
+        setAttribute(nome, valor) {
+          attrs[nome] = String(valor);
+        },
+        getAttribute(nome) {
+          return Object.prototype.hasOwnProperty.call(attrs, nome) ? attrs[nome] : null;
         },
         addEventListener(evento, fn) {
           el.listeners[evento] = fn;

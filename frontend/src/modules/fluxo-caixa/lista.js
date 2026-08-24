@@ -1,4 +1,4 @@
-import { escapar, formatarMoeda, rotuloOrigem, rotuloTipo } from './html.js';
+import { escapar, formatarHora, formatarMoeda, rotuloOrigem, rotuloTipo } from './html.js';
 
 export function htmlContextoTurno({ turnoAberto, turnoId, turnoPeriodo, modoConsulta }) {
   if (turnoAberto && turnoId) {
@@ -49,9 +49,24 @@ export function htmlFiltrosFluxo({ filtros, turnoAberto }) {
   </form>`;
 }
 
+export function htmlPainelLancamentos({ itens, filtros, turnoAberto, ehAdmin, erro }) {
+  const titulo = turnoAberto ? 'Lançamentos do turno' : 'Lançamentos';
+  return `<section class="fluxo-lancamentos" aria-label="${escapar(titulo)}">
+    <header class="fluxo-painel-cabecalho fluxo-lancamentos-cabecalho">
+      <h2>${escapar(titulo)}</h2>
+      <button type="button" id="btn-exportar-fluxo-csv" class="fluxo-btn-csv"${
+        itens.length ? '' : ' disabled'
+      }>CSV</button>
+    </header>
+    ${htmlFiltrosFluxo({ filtros, turnoAberto })}
+    <p id="fluxo-erro-lista" class="fluxo-erro" role="alert">${escapar(erro)}</p>
+    <div id="lista-fluxo">${htmlTabelaFluxo(itens, { ehAdmin })}</div>
+  </section>`;
+}
+
 export function htmlTabelaFluxo(itens, { ehAdmin = false } = {}) {
   if (!Array.isArray(itens) || itens.length === 0) {
-    return '<p class="estado-vazio">Nenhum lançamento encontrado.</p>';
+    return '<p class="estado-vazio">Nenhum lançamento encontrado.<span class="estado-vazio-dica">Aqui aparecem entradas e saídas do turno. Use Novo lançamento para registrar.</span></p>';
   }
 
   const linhas = itens
@@ -61,13 +76,20 @@ export function htmlTabelaFluxo(itens, { ehAdmin = false } = {}) {
       const acoes = podeExcluir
         ? `<td class="fluxo-acoes"><button type="button" data-excluir-fluxo="${escapar(item.id)}">Excluir</button></td>`
         : '<td></td>';
+      const tipoClasse = item.tipo === 'saida' ? 'saida' : 'entrada';
+      const valorClasse = item.tipo === 'saida' ? 'fluxo-kpi-saida' : 'fluxo-kpi-entrada';
+      const auto = Number(item.gerado_auto) === 1 ? ' [auto]' : '';
+      const hora = formatarHora(item.criado_em || item.criadoEm || item.data);
 
       return `<tr data-fluxo-id="${escapar(item.id)}">
-        <td>${escapar(rotuloTipo(item.tipo))}</td>
-        <td>${escapar(item.descricao)}</td>
+        <td class="fluxo-col-hora">${escapar(hora)}</td>
+        <td><span class="fluxo-tipo-badge ${tipoClasse}">${
+          item.tipo === 'saida' ? '↓' : '↑'
+        } ${escapar(rotuloTipo(item.tipo))}</span></td>
+        <td>${escapar(item.descricao)}${escapar(auto)}</td>
         <td>${escapar(item.categoria)}</td>
         <td>${escapar(item.forma)}</td>
-        <td>${formatarMoeda(item.valor)}</td>
+        <td class="${valorClasse}">${formatarMoeda(item.valor)}</td>
         <td>${escapar(rotuloOrigem(item.gerado_auto))}</td>
         <td>${escapar(item.usuario || '—')}</td>
         ${acoes}
@@ -78,6 +100,7 @@ export function htmlTabelaFluxo(itens, { ehAdmin = false } = {}) {
   return `<table class="fluxo-tabela">
     <thead>
       <tr>
+        <th>Hora</th>
         <th>Tipo</th>
         <th>Descrição</th>
         <th>Categoria</th>

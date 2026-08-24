@@ -23,7 +23,7 @@ export function htmlFiltrosEncomendas({ filtros }) {
 
 export function htmlTabelaEncomendas(itens) {
   if (!Array.isArray(itens) || itens.length === 0) {
-    return '<p class="estado-vazio">Nenhuma encomenda encontrada.</p>';
+    return '<p class="estado-vazio">Nenhuma encomenda encontrada.<span class="estado-vazio-dica">Aqui aparecem as encomendas do período. Cadastre a primeira pela ação Nova encomenda.</span></p>';
   }
 
   const linhas = itens

@@ -345,6 +345,74 @@ export async function aplicarSchemaClientes(pool) {
   `);
 }
 
+export async function aplicarSchemaFuncionarios(pool) {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS funcionarios (
+      id INT NOT NULL AUTO_INCREMENT,
+      nome VARCHAR(100) NOT NULL,
+      cargo VARCHAR(60) NOT NULL,
+      salario_base DECIMAL(10,2) NOT NULL,
+      data_admissao DATE NOT NULL,
+      ativo TINYINT(1) NOT NULL DEFAULT 1,
+      criado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (id)
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS adiantamentos (
+      id INT NOT NULL AUTO_INCREMENT,
+      funcionario_id INT NOT NULL,
+      valor DECIMAL(10,2) NOT NULL,
+      data DATE NOT NULL,
+      observacao TEXT NULL,
+      usuario_id INT NOT NULL,
+      criado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (id),
+      CONSTRAINT fk_adiantamentos_funcionario FOREIGN KEY (funcionario_id) REFERENCES funcionarios(id),
+      CONSTRAINT fk_adiantamentos_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS ocorrencias_folha (
+      id INT NOT NULL AUTO_INCREMENT,
+      funcionario_id INT NOT NULL,
+      tipo ENUM('falta','atestado','hora_extra') NOT NULL,
+      data DATE NOT NULL,
+      valor DECIMAL(10,2) NOT NULL DEFAULT 0,
+      observacao TEXT NULL,
+      usuario_id INT NOT NULL,
+      criado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (id),
+      CONSTRAINT fk_ocorrencias_folha_funcionario FOREIGN KEY (funcionario_id) REFERENCES funcionarios(id),
+      CONSTRAINT fk_ocorrencias_folha_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS folhas_pagamento (
+      id INT NOT NULL AUTO_INCREMENT,
+      funcionario_id INT NOT NULL,
+      periodo_inicio DATE NOT NULL,
+      periodo_fim DATE NOT NULL,
+      salario_base DECIMAL(10,2) NOT NULL,
+      total_adiantamentos DECIMAL(10,2) NOT NULL DEFAULT 0,
+      total_faltas DECIMAL(10,2) NOT NULL DEFAULT 0,
+      total_horas_extras DECIMAL(10,2) NOT NULL DEFAULT 0,
+      valor_liquido DECIMAL(10,2) NOT NULL,
+      status ENUM('pendente','paga') NOT NULL DEFAULT 'pendente',
+      pago_em DATETIME NULL,
+      usuario_id INT NOT NULL,
+      criado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (id),
+      UNIQUE KEY folhas_pagamento_funcionario_periodo_unique (funcionario_id, periodo_inicio, periodo_fim),
+      CONSTRAINT fk_folhas_pagamento_funcionario FOREIGN KEY (funcionario_id) REFERENCES funcionarios(id),
+      CONSTRAINT fk_folhas_pagamento_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+    )
+  `);
+}
+
 export async function aplicarSchemaFluxoCaixa(pool) {
   await garantirColuna(pool, 'fluxo_caixa', 'ativo', 'TINYINT(1) NOT NULL DEFAULT 1');
   await garantirColuna(pool, 'fluxo_caixa', 'excluido_por', 'INT NULL');

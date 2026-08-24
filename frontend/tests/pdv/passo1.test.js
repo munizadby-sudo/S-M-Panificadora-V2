@@ -7,7 +7,7 @@ import { instalarAmbienteDeTeste } from '../helpers/ambiente.js';
 import { definirApiBaseUrl } from '../../src/core/api.js';
 import { salvarSessao } from '../../src/core/session.js';
 import { invalidarCacheTurno } from '../../src/modules/caixa-turno/estado.js';
-import { htmlAvisoCaixaFechado, irParaTelaDeCaixa } from '../../src/modules/pdv/aviso.js';
+import { htmlAvisoCaixaFechado } from '../../src/modules/pdv/aviso.js';
 import moduloPdv from '../../src/modules/pdv/index.js';
 
 const frontend = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -76,25 +76,19 @@ describe('Passo 1 — banner e bloqueio com caixa fechado', () => {
     assert.equal(typeof moduloPdv.desmontar, 'function');
   });
 
-  test('aviso de caixa fechado tem mensagem de negócio e atalho para Caixa', () => {
+  test('aviso de caixa fechado explica o bloqueio sem botão duplicado', () => {
     const html = htmlAvisoCaixaFechado();
-    assert.match(html, /Abra o caixa para começar a vender/);
-    assert.match(html, /btn-ir-para-caixa/);
-    assert.match(html, /Ir para Caixa/);
+    assert.match(html, /Caixa fechado/);
+    assert.match(html, /canto superior direito/);
+    assert.doesNotMatch(html, /btn-ir-para-caixa/);
+    assert.doesNotMatch(html, /Abrir caixa/);
   });
 
-  test('atalho dispara o módulo de caixa no menu', () => {
-    let clicado = false;
-    globalThis.document = {
-      querySelector(sel) {
-        if (sel === '[data-modulo-id="caixa-turno"]') {
-          return { click() { clicado = true; } };
-        }
-        return null;
-      },
-    };
-    irParaTelaDeCaixa();
-    assert.equal(clicado, true);
+  test('aviso do PDV não abre modal — abertura fica no header', () => {
+    const fonte = readFileSync(join(frontend, 'src', 'modules', 'pdv', 'aviso.js'), 'utf8');
+    assert.doesNotMatch(fonte, /abrirModalCaixa/);
+    assert.doesNotMatch(fonte, /btn-ir-para-caixa/);
+    assert.doesNotMatch(fonte, /data-modulo-id="caixa-turno"/);
   });
 
   test('com turno fechado monta o aviso e não monta grade nem carrinho', async () => {
@@ -107,9 +101,10 @@ describe('Passo 1 — banner e bloqueio com caixa fechado', () => {
     const container = criarContainerPdv();
     await moduloPdv.montar(container);
 
-    assert.match(container.innerHTML, /Abra o caixa para começar a vender/);
+    assert.match(container.innerHTML, /Caixa fechado/);
     assert.match(container.innerHTML, /aviso-caixa-fechado/);
-    assert.match(container.innerHTML, /pdv-banner/);
+    assert.doesNotMatch(container.innerHTML, /btn-ir-para-caixa/);
+    assert.doesNotMatch(container.innerHTML, /pdv-banner/);
     assert.doesNotMatch(container.innerHTML, /pdv-grade/);
     assert.doesNotMatch(container.innerHTML, /pdv-carrinho/);
     assert.equal(urls.every((url) => !url.includes('/produtos')), true);
@@ -150,11 +145,11 @@ describe('Passo 1 — banner e bloqueio com caixa fechado', () => {
     assert.match(indexFonte, /turnoEstaAberto/);
   });
 
-  test('index.html registra o módulo pdv como primeiro do menu', () => {
+  test('index.html registra o módulo pdv sem rota de caixa no menu', () => {
     assert.match(indexHtml, /modules\/pdv\/index\.js/);
+    assert.doesNotMatch(indexHtml, /registrarModulo\(moduloCaixa\)/);
     const trecho = indexHtml.split('criarRouter()')[1];
     const pdv = trecho.indexOf('registrarModulo(moduloPdv)');
-    const caixa = trecho.indexOf('registrarModulo(moduloCaixa)');
-    assert.ok(pdv >= 0 && caixa > pdv);
+    assert.ok(pdv >= 0);
   });
 });

@@ -36,8 +36,10 @@ Cada spec é uma **entrega vertical testável**: ao terminá-la, o sistema faz a
 | [SPEC-BE-010](./SPEC-BE-010-producao.md) | Produção | Lançamento incrementa `produzido` com rastro de quem/quando |
 | [SPEC-BE-011](./SPEC-BE-011-encomendas.md) | Encomendas | Numeração própria; total recalculado; vínculo opcional com Cliente; nunca debita estoque (ADR-002, Decisão 3) |
 | [SPEC-BE-012](./SPEC-BE-012-relatorios.md) | Relatórios | 4 relatórios só-leitura: vendas, fechamento de caixa, curva ABC, resultado — sem tabela própria |
+| [SPEC-BE-013](./SPEC-BE-013-funcionarios-e-folha.md) | Funcionários e Folha | Cadastro, adiantamento, ocorrências (falta/atestado/hora extra), fechamento simplificado — admin-only, sem PRD legado disponível (ver Seção 0 da spec) |
+| [SPEC-BE-014](./SPEC-BE-014-dashboard-relatorios.md) | Dashboard de Relatórios | Extensão do relatório de Vendas (ticket médio, itens, nº de vendas) + relatório novo de vendas por hora, sem faixa fixa (correção do V1) |
 
-**Ainda não especificado:** Funcionários/Folha, Contratos TEF e Fiscal.
+**Em stand-by (aguardando priorização):** Contratos TEF e Fiscal.
 
 Fundação HTTP (CORS, CSP, rate limit geral, abort sem `JWT_SECRET`) e persistência/migrations não têm spec própria — foram implementadas como parte da infraestrutura consumida desde a SPEC-BE-001 (ver `backend/src/server.js`, `bootstrap.js`, `app.js`).
 
@@ -59,8 +61,12 @@ Fundação HTTP (CORS, CSP, rate limit geral, abort sem `JWT_SECRET`) e persist�
 | [SPEC-FE-010](./SPEC-FE-010-producao.md) | Produção |
 | [SPEC-FE-011](./SPEC-FE-011-encomendas.md) | Encomendas |
 | [SPEC-FE-012](./SPEC-FE-012-relatorios.md) | Relatórios |
+| [SPEC-FE-013](./SPEC-FE-013-funcionarios-e-folha.md) | Funcionários e Folha |
+| [SPEC-FE-014](./SPEC-FE-014-usuarios-e-permissoes.md) | Usuários e Permissões — tela admin (backend já existia via SPEC-BE-001) |
+| [SPEC-FE-015](./SPEC-FE-015-design-system.md) | Design System — tokens, componentes e navegação, transversal a todos os módulos (ver `PRD-016-redesign-de-interface.md`) |
+| [SPEC-FE-016](./SPEC-FE-016-dashboard-relatorios-e-fluxo.md) | Dashboard de Relatórios e Fluxo — cards de KPI e gráficos CSS-only sobre dado já existente (ver `PRD-017-dashboard-de-vendas-e-fluxo.md`) |
 
-**Ainda não especificado:** Usuários/Permissões (tela admin), Configurações (tela admin), Funcionários, Ponto por celular.
+**Ainda não especificado:** Configurações (tela admin), Ponto por celular.
 
 ---
 
@@ -100,8 +106,9 @@ flowchart TD
   S007 --> S012[BE-012 Relatórios]
   S002 --> S012
   S008 --> S012
-  S001 --> FOL[Funcionários/Folha — a criar]
-  S007 --> TEF[Contratos TEF e fiscal — a criar]
+  S001 --> S013[BE-013 Funcionários e Folha]
+  S012 --> S014[BE-014 Dashboard de Relatórios]
+  S007 --> TEF[Contratos TEF e fiscal — em stand-by]
 ```
 
 ---

@@ -58,6 +58,31 @@ export default {
 - Após venda confirmada: exibir número da venda (`numero`, retornado pelo backend), total, forma de pagamento, e limpar o carrinho automaticamente para a próxima venda.
 - **Testável:** confirmar uma venda e ver o carrinho voltar vazio, pronto para a próxima, sem exigir recarregar a página.
 
+### Passo 5 — Bloquear confirmação com troco insuficiente (correção de bug, achado em 2026-08-23)
+
+Comparação com a spec de checkout de uma referência externa (`padaria-pdv`, projeto separado, só como inspiração de requisito — nunca código importado) expôs uma falha real: `podeConfirmarVenda({ itens, formaPagamento })` (`modules/pdv/pagamento.js`) hoje só verifica se há item no carrinho e se uma forma foi selecionada — **nunca** se o valor recebido é suficiente quando a forma é `dinheiro`. Um operador pode confirmar uma venda em dinheiro com valor recebido menor que o total, sem nenhum bloqueio.
+
+- `podeConfirmarVenda` passa a receber também `recebido`, e retorna `false` quando `formaPagamento === 'dinheiro'` e `Number(recebido) < total` (ou `recebido` vazio/inválido).
+- Para `pix`/`cartao`/`credito`, comportamento não muda — sempre habilitado com item + forma selecionada (troco não se aplica).
+- **Testável:** selecionar dinheiro, digitar um valor menor que o total → botão "Confirmar venda" desabilitado; corrigir para um valor ≥ total → habilita.
+
+### Passo 6 — Atalhos de teclado no painel de pagamento
+
+Mesma inspiração de requisito da referência externa, adaptada ao layout inline já existente da V2 (sem exigir modal — ver Passo 7 para essa opção separada):
+
+- Com o foco dentro da seção `#pdv-pagamento`: teclas `1`/`2`/`3` selecionam Dinheiro/Pix/Cartão (mesma ordem visual dos botões já existentes); `Enter` aciona "Confirmar venda" se estiver habilitado.
+- Ao selecionar Dinheiro por teclado ou clique, foco vai automaticamente para o campo "Valor recebido" (`#pdv-recebido`).
+- Enquanto o foco estiver em `#pdv-recebido`, as teclas `1`/`2`/`3` **não** trocam a forma de pagamento (precisa poder digitar o número livremente) — mesma ressalva já usada na referência.
+- Este atalho não interfere com a navegação por setas da grade de produtos (SPEC-FE-015 §3.5) — são áreas de foco distintas.
+- **Testável:** com item no carrinho, navegar até o painel de pagamento só com teclado, apertar `2`, digitar um valor, apertar `Enter`, confirmar que a venda registra sem uso de mouse.
+
+### Passo 7 — Pagamento como modal acionado por atalho (opcional, decisão de produto pendente)
+
+A referência externa faz todo o checkout dentro de um modal, acionado por `F10` ou pelo botão principal, em vez do painel sempre visível que a V2 usa hoje. É uma mudança de layout, não uma correção — só deve ser feita se o dono do produto confirmar que quer esse formato (mesmo padrão que já usamos para o modal de Caixa, SPEC-FE-015 §7). Se aprovado:
+- O painel de pagamento (`#pdv-pagamento`) sai do fluxo normal da tela e passa a abrir como overlay de tela cheia ao apertar `F10`/clicar em um botão "Finalizar Venda", só quando o carrinho tem ao menos 1 item.
+- Todo o comportamento dos Passos 3, 5 e 6 (seleção, troco, atalhos, bloqueio) continua igual — só muda o container de apresentação.
+- `Esc` fecha o modal sem limpar o carrinho (mesma regra já usada no modal de Caixa).
+
 ---
 
 ## 4. Componentes de UI
@@ -97,4 +122,7 @@ export default {
 2. Com turno fechado, a grade de produtos e o carrinho nunca chegam a ser montados — o bloqueio aparece primeiro.
 3. Erro de estoque insuficiente identifica o produto específico, nunca é uma mensagem genérica cobrindo o carrinho inteiro.
 4. O total exibido após confirmar é sempre o valor devolvido pelo backend, nunca o somado localmente antes de enviar.
-5. Cada um dos 4 passos da Seção 3 é individualmente testável no navegador, na ordem descrita.
+5. Cada um dos passos da Seção 3 é individualmente testável no navegador, na ordem descrita.
+6. `podeConfirmarVenda` nunca habilita "Confirmar venda" com forma `dinheiro` e valor recebido menor que o total.
+7. Atalhos de teclado do painel de pagamento (`1`/`2`/`3`/`Enter`) não interferem com a navegação por setas da grade de produtos — são tratados por handlers de `keydown` em containers diferentes.
+8. Suíte completa de `frontend/` passa 100% depois de cada passo novo (5, 6 e, se aprovado, 7).

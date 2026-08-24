@@ -3,7 +3,6 @@ import { beforeEach, describe, test } from 'node:test';
 import { instalarAmbienteDeTeste } from '../helpers/ambiente.js';
 import { definirApiBaseUrl } from '../../src/core/api.js';
 import { salvarSessao } from '../../src/core/session.js';
-import { htmlAvisoCaixaFechado } from '../../src/modules/pdv/aviso.js';
 import { criarLancamentoManual } from '../../src/modules/fluxo-caixa/api.js';
 import { htmlFormularioLancamento } from '../../src/modules/fluxo-caixa/formulario.js';
 import { validarFormularioLancamento } from '../../src/modules/fluxo-caixa/util.js';
@@ -40,19 +39,22 @@ describe('Passo 3 — lançamento manual', () => {
     assert.match(html, /fluxo-categoria/);
     assert.match(html, /fluxo-forma/);
     assert.match(html, /fluxo-valor/);
+    assert.match(html, /data-fluxo-tipo="entrada"/);
+    assert.match(html, /data-fluxo-tipo="saida"/);
+    assert.match(html, /Novo lançamento/);
     assert.doesNotMatch(html, /select[^>]*turno/i);
     assert.doesNotMatch(html, /name="turno/i);
-    assert.match(html, /automaticamente pelo caixa aberto/);
+    assert.match(html, /turno é definido automaticamente/);
   });
 
-  test('formulário desabilitado reutiliza aviso de caixa fechado do PDV', () => {
+  test('formulário fica desabilitado quando o caixa está fechado', () => {
     const htmlForm = htmlFormularioLancamento({
       formulario: { tipo: 'saida', descricao: '', categoria: 'sangria', forma: 'dinheiro', valor: '' },
       desabilitado: true,
     });
-    const aviso = htmlAvisoCaixaFechado();
     assert.match(htmlForm, /disabled/);
-    assert.match(aviso, /Abra o caixa para começar a vender/);
+    assert.doesNotMatch(htmlForm, /Abra o caixa para começar a vender/);
+    assert.doesNotMatch(htmlForm, /btn-ir-para-caixa/);
   });
 
   test('validação exige valor maior que zero e descrição', () => {

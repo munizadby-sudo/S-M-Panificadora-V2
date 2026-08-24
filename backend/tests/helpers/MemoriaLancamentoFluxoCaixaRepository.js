@@ -74,6 +74,19 @@ export class MemoriaLancamentoFluxoCaixaRepository extends LancamentoFluxoCaixaR
     });
     return normalizado;
   }
+
+  async listarAtivosNoPeriodo(dataInicio, dataFim) {
+    return this.lancamentos
+      .map(normalizarLancamento)
+      .filter(
+        (item) =>
+          item.ativo && item.data >= dataInicio && item.data <= dataFim,
+      )
+      .sort(
+        (a, b) =>
+          String(a.data).localeCompare(String(b.data)) || a.id - b.id,
+      );
+  }
 }
 
 function correspondeFiltros(item, filtros) {

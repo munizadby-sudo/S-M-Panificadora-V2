@@ -1,5 +1,4 @@
 import { getTurnoAtual, obterTurnoId, turnoEstaAberto } from './estado.js';
-import { montarBanner } from './banner.js';
 import { abrirTurno, mensagemErroAbertura, obterFundoPadrao } from './abertura.js';
 import {
   calcularRevisao,
@@ -13,8 +12,10 @@ import {
 } from './fechamento.js';
 import { formatarMoeda } from '../../core/utils.js';
 
-let cancelarBanner;
+let overlayModal;
 let containerAtual;
+let modalAberto = false;
+let listenerEscape;
 let controleImpressao;
 let previaAtual;
 let resumoAtual;
@@ -22,54 +23,113 @@ let correcoesPendentes = [];
 let contagemAtual = null;
 let revisaoAtual = null;
 
-export default {
-  id: 'caixa-turno',
-  label: 'Caixa',
-  icone: 'ti-cash-banknote',
-  permissao: 'caixa',
-  async montar(container) {
-    if (!container) {
+export async function abrirModalCaixa() {
+  if (modalAberto) {
+    return;
+  }
+  garantirModalDom();
+  containerAtual = overlayModal.querySelector('#caixa-turno-conteudo-modal');
+  resumoAtual = undefined;
+  correcoesPendentes = [];
+  previaAtual = null;
+  contagemAtual = null;
+  revisaoAtual = null;
+  controleImpressao = undefined;
+  modalAberto = true;
+  overlayModal.hidden = false;
+  listenerEscape = (evento) => {
+    if (evento.key === 'Escape') {
+      tentarFecharModal();
+    }
+  };
+  globalThis.document?.addEventListener?.('keydown', listenerEscape);
+  await getTurnoAtual({ forcar: true });
+  await renderizarTela();
+}
+
+export function fecharModalCaixa() {
+  if (!modalAberto) {
+    return;
+  }
+  modalAberto = false;
+  if (overlayModal) {
+    overlayModal.hidden = true;
+  }
+  if (listenerEscape) {
+    globalThis.document?.removeEventListener?.('keydown', listenerEscape);
+    listenerEscape = undefined;
+  }
+  controleImpressao = undefined;
+  previaAtual = undefined;
+  resumoAtual = undefined;
+  correcoesPendentes = [];
+  contagemAtual = null;
+  revisaoAtual = null;
+  containerAtual = undefined;
+}
+
+export function modalCaixaEstaAberto() {
+  return modalAberto;
+}
+
+function garantirModalDom() {
+  const doc = globalThis.document;
+  if (!doc?.createElement) {
+    return null;
+  }
+  const noDocumento = typeof doc.getElementById === 'function'
+    ? doc.getElementById('modal-caixa-turno')
+    : null;
+  if (noDocumento) {
+    overlayModal = noDocumento;
+    return overlayModal;
+  }
+  overlayModal = null;
+  overlayModal = doc.createElement('div');
+  overlayModal.id = 'modal-caixa-turno';
+  overlayModal.className = 'caixa-turno-modal';
+  overlayModal.setAttribute('role', 'dialog');
+  overlayModal.setAttribute('aria-modal', 'true');
+  overlayModal.setAttribute('aria-labelledby', 'titulo-modal-caixa');
+  overlayModal.hidden = true;
+  overlayModal.innerHTML = `
+    <div class="caixa-turno-modal-caixa">
+      <div id="caixa-turno-conteudo-modal"></div>
+      <button type="button" class="caixa-turno-modal-fechar" id="btn-fechar-modal-caixa" aria-label="Fechar">×</button>
+    </div>
+  `;
+  overlayModal.addEventListener('click', (evento) => {
+    if (evento.target === overlayModal) {
+      tentarFecharModal();
       return;
     }
-    containerAtual = container;
-    resumoAtual = undefined;
-    correcoesPendentes = [];
-    previaAtual = null;
-    contagemAtual = null;
-    revisaoAtual = null;
-    controleImpressao = undefined;
-    await getTurnoAtual({ forcar: true });
-    await renderizarTela();
-  },
-  desmontar() {
-    cancelarBanner?.();
-    cancelarBanner = undefined;
-    controleImpressao = undefined;
-    previaAtual = undefined;
-    resumoAtual = undefined;
-    correcoesPendentes = [];
-    contagemAtual = null;
-    revisaoAtual = null;
-    containerAtual = undefined;
-  },
-};
+    if (evento.target?.closest?.('#btn-fechar-modal-caixa')) {
+      evento.preventDefault();
+      evento.stopPropagation();
+      tentarFecharModal();
+    }
+  });
+  doc.body.appendChild(overlayModal);
+  return overlayModal;
+}
+
+function tentarFecharModal() {
+  fecharModalCaixa();
+}
 
 async function renderizarTela() {
   const container = containerAtual;
   if (!container) {
     return;
   }
-  cancelarBanner?.();
   const aberto = turnoEstaAberto();
   container.innerHTML = `
     <section class="caixa-turno">
-      <h1>Caixa</h1>
-      <div id="caixa-turno-status-modulo" class="caixa-turno-banner" role="status"></div>
+      <h1 id="titulo-modal-caixa">Caixa</h1>
       <aside id="aviso-correcoes" class="caixa-turno-aviso" hidden></aside>
       <div id="caixa-turno-painel"></div>
     </section>
   `;
-  cancelarBanner = await montarBanner(container.querySelector('#caixa-turno-status-modulo'));
   mostrarCorrecoes(container.querySelector('#aviso-correcoes'), correcoesPendentes);
   const painel = container.querySelector('#caixa-turno-painel');
   if (resumoAtual) {
@@ -318,6 +378,8 @@ function renderizarBoxRevisao(area, revisao) {
       erroEl.textContent = mensagemErroFechamento(erro);
     }
   });
+
+  sincronizarBotoes();
 }
 
 function renderizarResumo(area, resumo) {

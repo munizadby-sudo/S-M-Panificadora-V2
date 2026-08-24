@@ -6,6 +6,7 @@ import { salvarSessao } from '../../src/core/session.js';
 import { obterResumoFluxo } from '../../src/modules/fluxo-caixa/api.js';
 import {
   extrairLiquidoPorForma,
+  htmlCardsKpiFluxo,
   htmlResumoKPIs,
 } from '../../src/modules/fluxo-caixa/resumo.js';
 
@@ -73,5 +74,15 @@ describe('Passo 2 — KPIs consolidados', () => {
     assert.equal(liquido.dinheiro, 29);
     assert.equal(liquido.pix, 2);
     assert.notEqual(liquido.dinheiro, 4, 'não limita às vendas quando há suprimento manual');
+  });
+
+  test('htmlCardsKpiFluxo soma as 3 formas de entradas e saídas', () => {
+    const html = htmlCardsKpiFluxo(resumo);
+    assert.match(html, /Entradas/);
+    assert.match(html, /Saídas/);
+    assert.match(html, /Saldo do turno/);
+    assert.match(html, /74,00/);
+    assert.match(html, /5,00/);
+    assert.match(html, /69,00/);
   });
 });
