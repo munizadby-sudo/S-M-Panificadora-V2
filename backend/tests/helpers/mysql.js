@@ -22,7 +22,7 @@ export async function garantirDatabaseTeste() {
   const nome = process.env.MYSQL_DATABASE_TEST || 'sm_panificadora_test';
   const admin = criarPool({ database: undefined });
   try {
-    await admin.query(`CREATE DATABASE IF NOT EXISTS \`${nome}\``);
+    await admin.query('CREATE DATABASE IF NOT EXISTS ??', [nome]);
   } finally {
     await admin.end();
   }

@@ -3,8 +3,15 @@ import { getTurnoAtual, onMudancaDeTurno, turnoEstaAberto } from '../caixa-turno
 import { listarCategorias, listarProdutos, mensagemErroProduto } from '../produtos/api.js';
 import { montarSeletorCategoria } from '../produtos/categorias.js';
 import { htmlAvisoCaixaFechado } from './aviso.js';
-import { htmlGradeProdutos } from './grade.js';
+import { htmlGradeProdutos, htmlLegendaAtalhos } from './grade.js';
 import { ligarNavegacaoGrade } from './navegacao-grade.js';
+import {
+  deveRoubarTeclaDeEdicao,
+  enterAdicionaDaBusca,
+  indiceCategoriaPorTecla,
+  setasNavegamPelaGrade,
+} from './atalhos.js';
+import { abrirCupomNaoFiscal } from './cupom.js';
 import {
   adicionarAoCarrinho,
   htmlCarrinho,
@@ -31,7 +38,8 @@ let containerAtual;
 let estado;
 let cancelarTurno;
 let buscarDebounced;
-let listenerF10;
+let listenerAtalhos;
+let navegacaoGrade;
 
 export default {
   id: 'pdv',
@@ -57,26 +65,21 @@ export default {
       }
       renderizar().catch(() => {});
     });
-    listenerF10 = (evento) => {
-      if (evento.key !== 'F10') {
-        return;
-      }
-      if (!estado?.aberto) {
-        return;
-      }
-      evento.preventDefault();
-      tentarAbrirPagamento();
+    listenerAtalhos = (evento) => {
+      tratarAtalhoPdv(evento);
     };
-    globalThis.document?.addEventListener?.('keydown', listenerF10);
+    globalThis.document?.addEventListener?.('keydown', listenerAtalhos);
     await renderizar();
   },
   desmontar() {
     cancelarTurno?.();
     cancelarTurno = undefined;
-    if (listenerF10) {
-      globalThis.document?.removeEventListener?.('keydown', listenerF10);
-      listenerF10 = undefined;
+    if (listenerAtalhos) {
+      globalThis.document?.removeEventListener?.('keydown', listenerAtalhos);
+      listenerAtalhos = undefined;
     }
+    navegacaoGrade?.desligar?.();
+    navegacaoGrade = undefined;
     fecharModalPagamento();
     buscarDebounced = undefined;
     containerAtual = undefined;
@@ -111,7 +114,7 @@ function resetarEstadoPagamento() {
   estado.erroVenda = '';
 }
 
-async function renderizar() {
+async function renderizar(opcoes = {}) {
   const container = containerAtual;
   if (!container || !estado) {
     return;
@@ -132,10 +135,14 @@ async function renderizar() {
   }
 
   const carrinhoVazio = estado.carrinho.length === 0 || totalLocal(estado.carrinho) <= 0;
+  const focoUi = opcoes.focarGrade ? { tipo: 'grade' } : capturarFocoUi(container);
 
   container.innerHTML = `
     <section class="pdv">
-      <h1>Vendas</h1>
+      <header class="pdv-topo">
+        ${htmlLegendaAtalhos()}
+        <h1>Vendas</h1>
+      </header>
       ${htmlConfirmacaoVenda(estado.ultimaVenda)}
       <div class="pdv-painel">
         ${htmlGradeProdutos({
@@ -159,13 +166,67 @@ async function renderizar() {
     rotuloTodos: 'Todas',
     valor: estado.categoriaId,
   });
-  ligarEventos(container);
+  ligarEventos(container, focoUi);
 
   if (modalPagamentoEstaAberto()) {
     abrirModalPagamento({
       renderizarConteudo: (conteudo) => preencherConteudoPagamento(conteudo),
       aoFechar: aoFecharModalPagamento,
     });
+    return;
+  }
+  restaurarFocoUi(container, focoUi);
+}
+
+function capturarFocoUi(container) {
+  const ativo = globalThis.document?.activeElement;
+  if (!ativo) {
+    return { tipo: 'nenhum' };
+  }
+  if (typeof container?.contains === 'function' && !container.contains(ativo)) {
+    return { tipo: 'nenhum' };
+  }
+  if (ativo.id === 'pdv-busca') {
+    return {
+      tipo: 'busca',
+      inicio: ativo.selectionStart ?? String(ativo.value || '').length,
+      fim: ativo.selectionEnd ?? String(ativo.value || '').length,
+    };
+  }
+  if (ativo.id === 'pdv-categoria') {
+    return { tipo: 'categoria' };
+  }
+  const produtoId = ativo.getAttribute?.('data-adicionar-produto');
+  if (produtoId) {
+    return { tipo: 'grade', produtoId: String(produtoId) };
+  }
+  return { tipo: 'nenhum' };
+}
+
+function restaurarFocoUi(container, foco) {
+  if (!container || !foco || foco.tipo === 'nenhum') {
+    return;
+  }
+  if (foco.tipo === 'busca') {
+    const campo = container.querySelector('#pdv-busca');
+    campo?.focus?.();
+    if (campo && typeof campo.setSelectionRange === 'function') {
+      const tam = String(campo.value || '').length;
+      const inicio = Math.min(Number(foco.inicio) || 0, tam);
+      const fim = Math.min(Number(foco.fim) || 0, tam);
+      campo.setSelectionRange(inicio, fim);
+    }
+    return;
+  }
+  if (foco.tipo === 'categoria') {
+    container.querySelector('#pdv-categoria')?.focus?.();
+    return;
+  }
+  if (foco.tipo === 'grade') {
+    const alvo = foco.produtoId
+      ? container.querySelector(`[data-adicionar-produto="${foco.produtoId}"]`)
+      : container.querySelector('#pdv-grade-itens .pdv-produto');
+    alvo?.focus?.();
   }
 }
 
@@ -182,7 +243,7 @@ async function carregarCatalogo() {
     estado.erroGrade = '';
     const [produtos, categorias] = await Promise.all([
       listarProdutos({
-        busca: estado.busca || undefined,
+        busca: estado.busca?.trim() || undefined,
         categoria_id: estado.categoriaId || undefined,
         ativo: 1,
         limit: 200,
@@ -197,7 +258,7 @@ async function carregarCatalogo() {
   }
 }
 
-function ligarEventos(container) {
+function ligarEventos(container, focoUi) {
   buscarDebounced =
     buscarDebounced ||
     debounce(async () => {
@@ -214,28 +275,19 @@ function ligarEventos(container) {
   });
 
   container.querySelector('#pdv-busca')?.addEventListener('input', (evento) => {
-    estado.busca = evento.target?.value?.trim() || '';
+    estado.busca = evento.target?.value ?? '';
     buscarDebounced();
   });
 
   container.querySelector('#pdv-categoria')?.addEventListener('change', async (evento) => {
     estado.categoriaId = evento.target?.value || '';
     await carregarCatalogo();
-    await renderizar();
+    await renderizar({ focarGrade: true });
   });
 
   for (const botao of container.querySelectorAll?.('[data-adicionar-produto]') || []) {
     botao.addEventListener('click', () => {
-      const id = Number(botao.getAttribute('data-adicionar-produto'));
-      const produto = estado.produtos.find((item) => Number(item.id) === id);
-      if (!produto) {
-        return;
-      }
-      estado.carrinho = adicionarAoCarrinho(estado.carrinho, produto);
-      estado.ultimaVenda = null;
-      estado.erroVenda = '';
-      estado.avisoFinalizar = '';
-      renderizar();
+      adicionarProdutoDoCard(botao);
     });
   }
 
@@ -260,11 +312,142 @@ function ligarEventos(container) {
     tentarAbrirPagamento();
   });
 
-  ligarNavegacaoGrade(container.querySelector('#pdv-grade-itens'), {
+  navegacaoGrade?.desligar?.();
+  const cards = [...(container.querySelectorAll?.('[data-adicionar-produto]') || [])];
+  let indiceInicial = 0;
+  if (focoUi?.tipo === 'grade' && focoUi.produtoId) {
+    const idx = cards.findIndex(
+      (card) => String(card.getAttribute?.('data-adicionar-produto')) === String(focoUi.produtoId),
+    );
+    if (idx >= 0) {
+      indiceInicial = idx;
+    }
+  }
+  navegacaoGrade = ligarNavegacaoGrade(container.querySelector('#pdv-grade-itens'), {
+    indiceInicial,
     aoAtivar(card) {
-      card.click();
+      adicionarProdutoDoCard(card);
     },
   });
+}
+
+function adicionarProdutoDoCard(card) {
+  if (!estado || !card) {
+    return;
+  }
+  const id = Number(card.getAttribute?.('data-adicionar-produto'));
+  const produto = estado.produtos.find((item) => Number(item.id) === id);
+  if (!produto) {
+    return;
+  }
+  estado.carrinho = adicionarAoCarrinho(estado.carrinho, produto);
+  estado.ultimaVenda = null;
+  estado.erroVenda = '';
+  estado.avisoFinalizar = '';
+  renderizar();
+}
+
+async function selecionarCategoriaPorIndice(indice) {
+  if (!estado) {
+    return;
+  }
+  if (indice === 0) {
+    estado.categoriaId = '';
+  } else {
+    const categoria = estado.categorias[indice - 1];
+    if (!categoria) {
+      return;
+    }
+    estado.categoriaId = String(categoria.id);
+  }
+  estado.busca = '';
+  await carregarCatalogo();
+  await renderizar({ focarGrade: true });
+}
+
+function tentarLimparCarrinhoPorEsc() {
+  if (!estado?.carrinho?.length) {
+    return;
+  }
+  const confirmar = globalThis.confirm;
+  if (typeof confirmar === 'function' && !confirmar('Limpar todos os itens do pedido?')) {
+    return;
+  }
+  estado.carrinho = limparCarrinho();
+  estado.avisoFinalizar = '';
+  renderizar();
+}
+
+function tratarAtalhoPdv(evento) {
+  if (!estado?.aberto) {
+    return;
+  }
+  if (modalPagamentoEstaAberto()) {
+    return;
+  }
+
+  if (evento.key === 'Escape') {
+    evento.preventDefault();
+    tentarLimparCarrinhoPorEsc();
+    return;
+  }
+
+  if (evento.key === 'F1') {
+    evento.preventDefault();
+    containerAtual?.querySelector?.('#pdv-busca')?.focus?.();
+    return;
+  }
+
+  const indiceCategoria = indiceCategoriaPorTecla(evento.key);
+  if (indiceCategoria !== undefined) {
+    evento.preventDefault();
+    selecionarCategoriaPorIndice(indiceCategoria);
+    return;
+  }
+
+  if (evento.key === 'F10') {
+    evento.preventDefault();
+    tentarAbrirPagamento();
+    return;
+  }
+
+  if (enterAdicionaDaBusca(evento)) {
+    evento.preventDefault();
+    estado.busca = String(evento.target?.value || '').trim();
+    carregarCatalogo()
+      .then(async () => {
+        const produto = estado.produtos[0];
+        if (!produto) {
+          await renderizar();
+          return;
+        }
+        estado.carrinho = adicionarAoCarrinho(estado.carrinho, produto);
+        estado.ultimaVenda = null;
+        estado.erroVenda = '';
+        estado.avisoFinalizar = '';
+        await renderizar();
+      })
+      .catch(() => {});
+    return;
+  }
+
+  if (setasNavegamPelaGrade(evento)) {
+    if (!evento.defaultPrevented) {
+      navegacaoGrade?.tratarTecla?.(evento);
+    }
+    return;
+  }
+
+  if (deveRoubarTeclaDeEdicao(evento)) {
+    return;
+  }
+
+  if (evento.key === 'Delete') {
+    evento.preventDefault();
+    estado.carrinho = removerUltimoDoCarrinho(estado.carrinho);
+    renderizar();
+    return;
+  }
 }
 
 function tentarAbrirPagamento() {
@@ -338,6 +521,10 @@ function ligarEventosPagamento(container) {
     }
   });
 
+  container.querySelector('#btn-cancelar-pagamento')?.addEventListener('click', () => {
+    fecharModalPagamento();
+  });
+
   container.querySelector('#btn-confirmar-venda')?.addEventListener('click', async () => {
     await confirmarVenda();
   });
@@ -380,7 +567,7 @@ function tratarAtalhoPagamento(evento, container) {
     return;
   }
 
-  const indice = ['1', '2', '3'].indexOf(evento.key);
+  const indice = ATALHOS_FORMA_PAGAMENTO.findIndex((_, i) => evento.key === String(i + 1));
   if (indice < 0) {
     return;
   }
@@ -405,6 +592,8 @@ async function confirmarVenda() {
   estado.confirmando = true;
   estado.erroVenda = '';
   try {
+    const itensCupom = estado.carrinho.map((item) => ({ ...item }));
+    const recebidoCupom = estado.recebido;
     const venda = await criarVenda({
       forma_pagamento: estado.formaPagamento,
       itens: estado.carrinho.map((item) => ({
@@ -418,6 +607,7 @@ async function confirmarVenda() {
     estado.avisoFinalizar = '';
     fecharModalPagamento();
     await renderizar();
+    abrirCupomNaoFiscal({ venda, itens: itensCupom, recebido: recebidoCupom }).catch(() => {});
   } catch (erro) {
     estado.erroVenda = mensagemErroVenda(erro, estado.carrinho);
     if (erro?.codigo === 'CAIXA_FECHADO' || erro?.status === 403) {

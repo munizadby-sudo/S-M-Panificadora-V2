@@ -87,43 +87,40 @@ export class MySQLFluxoCaixaRepository {
     this.pool = pool;
   }
 
-  async somarPorFormaETurno(turnoId, categorias = ['vendas', 'estorno']) {
+  async somarPorFormaETurno(turnoId, categorias = ['vendas', 'estorno', 'encomenda']) {
     if (!categorias.length) {
       return [];
     }
-    const placeholders = categorias.map(() => '?').join(', ');
     const [linhas] = await this.pool.query(
-      `SELECT forma,
-              SUM(CASE WHEN tipo = 'entrada' THEN valor ELSE -valor END) AS total
-         FROM fluxo_caixa
-        WHERE turno_id = ? AND ativo = 1 AND categoria IN (${placeholders})
-        GROUP BY forma`,
+      'SELECT forma, SUM(CASE WHEN tipo = \'entrada\' THEN valor ELSE -valor END) AS total'
+        + ' FROM fluxo_caixa WHERE turno_id = ? AND ativo = 1 AND categoria IN ('
+        + listaPlaceholders(parseInt(categorias.length, 10))
+        + ') GROUP BY forma',
       [turnoId, ...categorias],
     );
     return linhas.map((linha) => ({ forma: linha.forma, total: dinheiro(linha.total) }));
   }
 
-  async agregarEntradasSaidasPorTurno(turnoId, categorias = ['vendas', 'estorno']) {
+  async agregarEntradasSaidasPorTurno(turnoId, categorias = ['vendas', 'estorno', 'encomenda']) {
     if (Array.isArray(categorias) && categorias.length === 0) {
       return [];
     }
 
-    let sql = `SELECT forma,
-              SUM(CASE WHEN tipo = 'entrada' THEN valor ELSE 0 END) AS entradas,
-              SUM(CASE WHEN tipo = 'saida' THEN valor ELSE 0 END) AS saidas
-         FROM fluxo_caixa
-        WHERE turno_id = ? AND ativo = 1`;
-    const params = [turnoId];
+    const sqlSelect =
+      'SELECT forma,'
+      + ' SUM(CASE WHEN tipo = \'entrada\' THEN valor ELSE 0 END) AS entradas,'
+      + ' SUM(CASE WHEN tipo = \'saida\' THEN valor ELSE 0 END) AS saidas'
+      + ' FROM fluxo_caixa WHERE turno_id = ? AND ativo = 1';
 
-    if (categorias !== null) {
-      const placeholders = categorias.map(() => '?').join(', ');
-      sql += ` AND categoria IN (${placeholders})`;
-      params.push(...categorias);
-    }
-
-    sql += ' GROUP BY forma';
-
-    const [linhas] = await this.pool.query(sql, params);
+    const [linhas] = categorias === null
+      ? await this.pool.query(sqlSelect + ' GROUP BY forma', [turnoId])
+      : await this.pool.query(
+        sqlSelect
+          + ' AND categoria IN ('
+          + listaPlaceholders(parseInt(categorias.length, 10))
+          + ') GROUP BY forma',
+        [turnoId, ...categorias],
+      );
     return linhas.map((linha) => ({
       forma: linha.forma,
       entradas: dinheiro(linha.entradas),
@@ -135,8 +132,8 @@ export class MySQLFluxoCaixaRepository {
     const cliente = conexao || this.pool;
     await cliente.query(
       `INSERT INTO fluxo_caixa
-        (usuario_id, turno_id, tipo, descricao, categoria, forma, valor, data, gerado_auto, venda_id, ativo)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+        (usuario_id, turno_id, tipo, descricao, categoria, forma, valor, data, gerado_auto, venda_id, encomenda_id, ativo)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
       [
         lancamento.usuarioId,
         lancamento.turnoId,
@@ -148,9 +145,48 @@ export class MySQLFluxoCaixaRepository {
         lancamento.data,
         lancamento.geradoAuto ? 1 : 0,
         lancamento.vendaId ?? null,
+        lancamento.encomendaId ?? null,
       ],
     );
   }
+
+  async buscarAtivoPorEncomendaId(encomendaId) {
+    const id = Number(encomendaId);
+    if (!Number.isInteger(id) || id <= 0) {
+      return null;
+    }
+    const [linhas] = await this.pool.query(
+      `SELECT id, encomenda_id FROM fluxo_caixa
+        WHERE encomenda_id = ? AND ativo = 1
+        ORDER BY id DESC LIMIT 1`,
+      [id],
+    );
+    return linhas[0] ? { id: linhas[0].id, encomendaId: linhas[0].encomenda_id } : null;
+  }
+
+  async marcarExcluido(lancamento) {
+    await this.pool.query(
+      `UPDATE fluxo_caixa
+          SET ativo = 0,
+              excluido_por = ?,
+              excluido_em = ?,
+              motivo_exclusao = ?
+        WHERE id = ? AND ativo = 1`,
+      [
+        lancamento.excluidoPor,
+        lancamento.excluidoEm || new Date(),
+        lancamento.motivoExclusao || 'Reabertura de encomenda',
+        lancamento.id,
+      ],
+    );
+  }
+}
+
+function listaPlaceholders(quantidade) {
+  if (!Number.isInteger(quantidade) || quantidade < 1) {
+    throw new Error('quantidade inválida para placeholders SQL');
+  }
+  return Array.from({ length: quantidade }, () => '?').join(', ');
 }
 
 function deLinha(linha) {

@@ -1,6 +1,18 @@
 import { formatarMoeda } from '../../core/utils.js';
 import { escapar } from '../produtos/html.js';
 
+export function htmlLegendaAtalhos() {
+  return `<ul class="pdv-atalhos">
+    <li><kbd>F1</kbd> Buscar</li>
+    <li><kbd>F2-F8</kbd> Categorias</li>
+    <li><kbd>←→↑↓</kbd> Navegar produtos</li>
+    <li><kbd>Enter</kbd> Adicionar item</li>
+    <li><kbd>Del</kbd> Remover último item</li>
+    <li><kbd>Esc</kbd> Fechar modal / Limpar</li>
+    <li><kbd>F10</kbd> Finalizar Venda</li>
+  </ul>`;
+}
+
 export function htmlGradeProdutos({ produtos = [], busca = '', erro = '' } = {}) {
   const lista = Array.isArray(produtos) ? produtos : [];
   const cards =
@@ -22,15 +34,5 @@ export function htmlGradeProdutos({ produtos = [], busca = '', erro = '' } = {})
     </form>
     <p id="pdv-erro-grade" class="pdv-erro" role="alert">${escapar(erro)}</p>
     <div id="pdv-grade-itens" class="pdv-grade-itens">${cards}</div>
-    <details class="pdv-atalhos">
-      <summary>Ver atalhos</summary>
-      <ul>
-        <li><kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd> navegam na grade</li>
-        <li><kbd>Enter</kbd> adiciona o produto focado ao carrinho</li>
-        <li><kbd>Tab</kbd> sai da grade</li>
-        <li><kbd>F10</kbd> abre o pagamento (com item no carrinho)</li>
-        <li><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> escolhem a forma dentro do pagamento</li>
-      </ul>
-    </details>
   </section>`;
 }

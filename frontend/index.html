@@ -189,6 +189,9 @@
     }
 
     .caixa-turno-banner {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
       border: 1px solid var(--linha);
       border-radius: 999px;
       padding: 0.35rem 0.85rem;
@@ -200,16 +203,49 @@
       white-space: nowrap;
     }
 
+    .caixa-turno-banner-bola {
+      width: 0.38rem;
+      height: 0.38rem;
+      border-radius: 999px;
+      flex-shrink: 0;
+      background: var(--perigo);
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--perigo) 28%, transparent);
+    }
+
     .caixa-turno-banner[data-aberto="true"] {
       background: color-mix(in srgb, var(--sucesso) 14%, var(--superficie-elevada));
       border-color: color-mix(in srgb, var(--sucesso) 40%, var(--linha));
       color: var(--sucesso);
     }
 
+    .caixa-turno-banner[data-aberto="true"] .caixa-turno-banner-bola {
+      background: var(--sucesso);
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--sucesso) 30%, transparent);
+      animation: caixa-turno-bola-pulso 2.8s ease-in-out infinite;
+    }
+
     .caixa-turno-banner[data-aberto="false"] {
       background: color-mix(in srgb, var(--perigo) 12%, var(--superficie-elevada));
       border-color: color-mix(in srgb, var(--perigo) 35%, var(--linha));
       color: var(--perigo);
+    }
+
+    @keyframes caixa-turno-bola-pulso {
+      0%,
+      100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--sucesso) 22%, transparent);
+      }
+      50% {
+        transform: scale(1.12);
+        box-shadow: 0 0 0 4px color-mix(in srgb, var(--sucesso) 42%, transparent);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .caixa-turno-banner[data-aberto="true"] .caixa-turno-banner-bola {
+        animation: none;
+      }
     }
 
     .caixa-turno h1 {
@@ -437,6 +473,7 @@
     .clientes-form-cliente input,
     .clientes-form-cliente button,
     .clientes-acoes button,
+    .clientes-seletor input,
     .clientes-seletor button,
     .clientes-cadastro-rapido button {
       font: inherit;
@@ -453,7 +490,8 @@
     .clientes-filtros input:focus,
     .produtos-form-produto input:focus,
     .produtos-form-produto select:focus,
-    .clientes-form-cliente input:focus {
+    .clientes-form-cliente input:focus,
+    .clientes-seletor input:focus {
       outline: none;
       border-color: var(--destaque);
       box-shadow: 0 0 0 3px color-mix(in srgb, var(--destaque) 22%, transparent);
@@ -802,9 +840,9 @@
     .encomendas-filtros select,
     .encomendas-filtros button,
     .encomendas-form input,
+    .encomendas-form select,
     .encomendas-form textarea,
     .encomendas-form button,
-    .encomendas-select-status,
     .encomendas-acoes button,
     .encomendas-form-acoes button,
     .producao-filtros input,
@@ -956,9 +994,7 @@
       font-variant-numeric: tabular-nums;
     }
 
-    .estoque-modal,
-    .perdas-modal,
-    .encomendas-modal {
+    .estoque-modal {
       position: fixed;
       inset: 0;
       background: rgba(0, 0, 0, 0.55);
@@ -969,43 +1005,114 @@
       z-index: 20;
     }
 
-    .estoque-modal-caixa,
-    .perdas-modal-caixa,
-    .encomendas-modal-caixa {
+    .perdas-modal,
+    .encomendas-modal,
+    .producao-modal,
+    .funcionarios-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.55);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow-y: auto;
+      padding: 1rem;
+      z-index: 100;
+    }
+
+    .estoque-modal-caixa {
       background: var(--superficie-elevada);
       border: 1px solid var(--linha);
       border-radius: calc(var(--raio) + 4px);
       padding: 1.25rem 1.4rem;
       min-width: min(28rem, 100%);
       width: calc(100% - 2rem);
-      max-width: 32rem;
+      max-width: 36rem;
+      max-height: calc(100vh - 2rem);
+      overflow: auto;
       display: grid;
       gap: 0.75rem;
       box-shadow: var(--sombra);
     }
 
+    .perdas-modal-caixa,
+    .encomendas-modal-caixa,
+    .producao-modal-caixa,
+    .funcionarios-modal-caixa {
+      background: var(--superficie-elevada);
+      border: 1px solid var(--linha);
+      border-radius: calc(var(--raio) + 4px);
+      box-shadow: var(--sombra);
+      width: min(40rem, calc(100% - 2rem));
+      max-width: none;
+      max-height: calc(100vh - 2rem);
+      padding: 1.25rem 1.4rem;
+      display: grid;
+      gap: 0.75rem;
+      margin: auto;
+      flex-shrink: 0;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      overflow: hidden;
+    }
+
     .estoque-modal-caixa h2,
     .perdas-modal-caixa h2,
-    .encomendas-modal-caixa h2 {
+    .encomendas-modal-caixa h2,
+    .producao-modal-caixa h2,
+    .funcionarios-modal-caixa h2,
+    .form-modal-cabecalho h2,
+    .usuarios-modal-cabecalho h2 {
       margin: 0;
       font-size: 1.05rem;
       letter-spacing: -0.01em;
     }
 
+    #form-finalizar-encomenda:focus {
+      outline: none;
+    }
+
+    .form-modal-corpo,
+    .usuarios-modal-corpo {
+      overflow-y: auto;
+      min-height: 0;
+      display: grid;
+      gap: 0.75rem;
+      align-content: start;
+      padding-right: 0.15rem;
+    }
+
     .estoque-acoes,
     .perdas-form-acoes,
     .encomendas-form-acoes,
-    .producao-form-acoes {
+    .producao-form-acoes,
+    .funcionarios-form-acoes {
       display: flex;
       flex-wrap: wrap;
       gap: 0.55rem;
       margin-top: 0.25rem;
     }
 
+    .perdas-modal-caixa .perdas-form-acoes,
+    .encomendas-modal-caixa .encomendas-form-acoes,
+    .producao-modal-caixa .producao-form-acoes,
+    .funcionarios-modal-caixa .funcionarios-form-acoes {
+      flex-shrink: 0;
+      margin-top: 0;
+      padding-top: 0.75rem;
+      border-top: 1px solid var(--linha);
+      justify-content: flex-end;
+    }
+
     .perdas-linha-estornada td,
     .encomendas-linha-cancelada td {
       background: color-mix(in srgb, var(--perigo) 12%, var(--superficie));
       color: color-mix(in srgb, var(--texto) 75%, var(--perigo));
+    }
+
+    .encomendas-linha-entregue td {
+      background: color-mix(in srgb, var(--muted) 10%, var(--superficie));
+      color: color-mix(in srgb, var(--texto) 78%, var(--muted));
     }
 
     .perdas-marca-estornada,
@@ -1030,6 +1137,14 @@
       border: 1px solid var(--linha);
       border-radius: calc(var(--raio) + 2px);
       box-shadow: 0 10px 28px rgba(0, 0, 0, 0.2);
+    }
+
+    .perdas-modal .perdas-form,
+    .encomendas-modal .encomendas-form,
+    .producao-modal .producao-form,
+    .funcionarios-modal .funcionarios-form {
+      max-width: none;
+      margin: 0;
     }
 
     .perdas-form,
@@ -1115,7 +1230,13 @@
       gap: 0.35rem;
     }
 
-    .perdas-disponivel-confirmacao,
+    .perdas-modal-caixa.perdas-confirmacao,
+    .producao-modal-caixa.producao-confirmacao {
+      margin: 0;
+      max-width: none;
+      background: var(--superficie-elevada);
+      border: 1px solid var(--linha);
+    }
     .producao-disponivel-confirmacao {
       font-size: 1.1em;
       font-family: var(--fonte-mono);
@@ -1159,8 +1280,141 @@
       background: var(--superficie);
     }
 
-    .encomendas-select-status {
-      min-width: 8.5rem;
+    .encomendas-status-celula {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.2rem;
+    }
+
+    .encomendas-semaforo {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.2rem 0;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      font-weight: 650;
+      cursor: default;
+    }
+
+    button.encomendas-semaforo {
+      cursor: pointer;
+    }
+
+    .encomendas-semaforo-bola {
+      --bola-cor: var(--muted);
+      width: 0.38rem;
+      height: 0.38rem;
+      border-radius: 999px;
+      flex-shrink: 0;
+      background: var(--bola-cor);
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--bola-cor) 28%, transparent);
+      animation: encomendas-semaforo-pulso 2.8s ease-in-out infinite;
+    }
+
+    .encomendas-semaforo-pendente .encomendas-semaforo-bola {
+      --bola-cor: var(--aviso);
+    }
+
+    .encomendas-semaforo-pronto .encomendas-semaforo-bola {
+      --bola-cor: var(--sucesso);
+    }
+
+    .encomendas-semaforo-entregue {
+      color: var(--muted);
+    }
+
+    .encomendas-semaforo-entregue .encomendas-semaforo-bola {
+      --bola-cor: var(--muted);
+    }
+
+    @keyframes encomendas-semaforo-pulso {
+      0%,
+      100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--bola-cor) 22%, transparent);
+      }
+      50% {
+        transform: scale(1.12);
+        box-shadow: 0 0 0 4px color-mix(in srgb, var(--bola-cor) 42%, transparent);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .encomendas-semaforo-bola {
+        animation: none;
+      }
+    }
+
+    .encomendas-semaforo-dica {
+      font-size: 0.72rem;
+      color: var(--muted);
+    }
+
+    .encomendas-semaforo-reabrir {
+      margin-top: 0.15rem;
+      padding: 0.2rem 0.55rem;
+      font-size: 0.75rem;
+      font-weight: 650;
+      cursor: pointer;
+      color: var(--aviso);
+      background: transparent;
+      border: 1px solid color-mix(in srgb, var(--aviso) 40%, var(--linha));
+      border-radius: 8px;
+    }
+
+    .encomendas-formas {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+      margin: 0.75rem 0 0.35rem;
+    }
+
+    .encomendas-form .encomendas-forma {
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+      width: 100%;
+      padding: 0.7rem 0.8rem;
+      text-align: left;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .encomendas-forma.ativo {
+      font-weight: 750;
+      background: linear-gradient(135deg, var(--sucesso), color-mix(in srgb, var(--sucesso) 65%, #fff));
+      color: #062018;
+      border-color: transparent;
+      box-shadow: var(--brilho-sucesso);
+    }
+
+    .encomendas-forma-tecla {
+      display: inline-grid;
+      place-items: center;
+      min-width: 1.5rem;
+      height: 1.5rem;
+      padding: 0 0.3rem;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      font-weight: 750;
+      background: color-mix(in srgb, var(--texto) 10%, transparent);
+    }
+
+    .encomendas-forma.ativo .encomendas-forma-tecla {
+      background: color-mix(in srgb, #062018 22%, transparent);
+    }
+
+    .encomendas-finalizar-saldo {
+      font-size: 1.05rem;
+    }
+
+    .encomendas-finalizar-saldo strong,
+    .encomendas-finalizar-ajuda {
+      color: var(--sucesso);
     }
 
     .encomendas-acoes button[data-cancelar-encomenda],
@@ -1179,6 +1433,18 @@
     .pdv h1,
     .pdv h2 {
       margin: 0 0 0.5rem;
+    }
+
+    .pdv-topo {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.65rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .pdv-topo h1 {
+      margin: 0;
     }
 
     .pdv-aviso-fechado {
@@ -1211,15 +1477,29 @@
     }
 
     .pdv-atalhos {
-      margin-top: 0.75rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      align-items: center;
+      width: 100%;
+      margin: 0;
+      padding: 6px 14px;
+      list-style: none;
+      font-size: 10.5px;
+      line-height: 1.3;
       color: var(--muted);
-      font-size: 0.78rem;
+      border-top: 1px solid var(--linha);
+      border-bottom: 1px solid var(--linha);
+      background: rgba(255, 255, 255, 0.02);
     }
 
-    .pdv-atalhos summary {
-      cursor: pointer;
-      color: var(--destaque-escuro);
-      font-weight: 600;
+    .pdv-atalhos kbd {
+      color: var(--aviso);
+      font: 700 inherit;
+      background: none;
+      border: none;
+      padding: 0;
+      box-shadow: none;
     }
 
     .pdv-filtros {
@@ -1261,7 +1541,9 @@
       border-color: color-mix(in srgb, var(--destaque) 45%, var(--linha));
     }
 
-    .pdv-produto:focus-visible {
+    .pdv-produto:focus,
+    .pdv-produto:focus-visible,
+    .pdv-produto-foco {
       outline: 2px solid var(--selecao);
       outline-offset: 2px;
     }
@@ -1290,25 +1572,11 @@
       border-bottom: 1px solid var(--linha);
     }
 
-    .pdv-carrinho-acoes,
-    .pdv-formas {
+    .pdv-carrinho-acoes {
       display: flex;
       flex-wrap: wrap;
       gap: 0.4rem;
       margin: 0.5rem 0;
-    }
-
-    .pdv-pagamento label {
-      display: grid;
-      gap: 0.25rem;
-      margin: 0.5rem 0;
-    }
-
-    .pdv-forma.ativo {
-      background: color-mix(in srgb, var(--selecao) 18%, var(--superficie-elevada));
-      color: var(--selecao);
-      border-color: var(--selecao);
-      box-shadow: 0 0 0 1px var(--selecao) inset;
     }
 
     .pdv-confirmacao {
@@ -1850,34 +2118,168 @@
 
     .pdv-modal-pagamento .caixa-turno-modal-caixa,
     .pdv-modal-pagamento-caixa {
-      width: min(32rem, calc(100% - 2rem));
+      width: min(28rem, calc(100% - 2rem));
     }
 
     .pdv-modal-titulo {
-      margin: 0 0 0.75rem;
+      margin: 0 0 0.85rem;
       font-size: 1.15rem;
       font-weight: 650;
       letter-spacing: -0.01em;
       padding-right: 2rem;
+      color: var(--destaque-escuro);
     }
 
     .pdv-modal-pagamento .pdv-pagamento {
       display: grid;
-      gap: 0.65rem;
+      gap: 0.85rem;
     }
 
-    .pdv-modal-pagamento .pdv-pagamento-total {
+    .pdv-pagamento-total {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 0.75rem;
       margin: 0;
-      font-size: 0.95rem;
+      padding: 0.75rem 0.9rem;
+      background: var(--superficie);
+      border: 1px solid var(--linha);
+      border-radius: 10px;
+    }
+
+    .pdv-pagamento-total span {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
     }
 
     .pdv-modal-pagamento .pdv-pagamento-total strong {
       font-family: var(--fonte-mono);
       font-variant-numeric: tabular-nums;
-      color: var(--destaque);
+      font-size: 1.45rem;
+      color: var(--sucesso);
+    }
+
+    .pdv-formas {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 0.5rem;
+      margin: 0;
+    }
+
+    .pdv-forma {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      width: 100%;
+      padding: 0.75rem 0.9rem;
+      text-align: left;
+      font-size: 0.95rem;
+      font-weight: 600;
+      background: var(--superficie);
+      color: var(--texto);
+      border: 1px solid var(--linha);
+      border-radius: 10px;
+    }
+
+    .pdv-forma:hover {
+      border-color: var(--sucesso);
+      color: var(--sucesso);
+    }
+
+    .pdv-forma.ativo {
+      font-weight: 750;
+      background: linear-gradient(135deg, var(--sucesso), color-mix(in srgb, var(--sucesso) 65%, #fff));
+      color: #062018;
+      border-color: transparent;
+      box-shadow: var(--brilho-sucesso);
+    }
+
+    .pdv-forma:hover.ativo {
+      border-color: transparent;
+      color: #062018;
+    }
+
+    .pdv-forma-tecla {
+      display: inline-grid;
+      place-items: center;
+      min-width: 1.5rem;
+      height: 1.5rem;
+      padding: 0 0.3rem;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      font-weight: 750;
+      background: color-mix(in srgb, var(--texto) 10%, transparent);
+    }
+
+    .pdv-forma.ativo .pdv-forma-tecla {
+      background: color-mix(in srgb, #062018 22%, transparent);
+    }
+
+    .pdv-forma-icone {
+      font-size: 1.1rem;
+      line-height: 1;
+    }
+
+    .pdv-recebido-painel {
+      display: grid;
+      gap: 0.45rem;
+      padding: 0.75rem 0.9rem;
+      background: var(--superficie);
+      border: 1px solid var(--linha);
+      border-radius: 10px;
+    }
+
+    .pdv-recebido-painel[hidden],
+    #pdv-troco[hidden],
+    #pdv-recebido-dica[hidden] {
+      display: none !important;
+    }
+
+    .pdv-recebido-painel label {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+    }
+
+    .pdv-recebido-painel input {
+      width: 100%;
+    }
+
+    #pdv-troco {
+      margin: 0;
+      font-weight: 700;
+      color: var(--sucesso);
+    }
+
+    .pdv-recebido-dica {
+      margin: 0;
+      color: var(--perigo);
+      font-size: 0.85rem;
+    }
+
+    .pdv-pagamento-acoes {
+      display: flex;
+      gap: 0.65rem;
+      justify-content: space-between;
+      align-items: stretch;
+    }
+
+    #btn-cancelar-pagamento {
+      flex: 0 0 auto;
+      background: var(--superficie-elevada);
+      color: var(--texto);
+      border-color: var(--linha);
+    }
+
+    #btn-cancelar-pagamento:hover {
+      border-color: var(--destaque);
     }
 
     #btn-confirmar-venda {
+      flex: 1 1 auto;
       background: linear-gradient(135deg, var(--sucesso), color-mix(in srgb, var(--sucesso) 70%, #fff));
       color: #06210f;
       border-color: transparent;
@@ -1885,16 +2287,89 @@
       box-shadow: var(--brilho-sucesso);
     }
 
+    #btn-confirmar-venda:not(:disabled) {
+      animation: pdv-finalizar-pulso 1.8s ease-in-out infinite;
+    }
+
+    #btn-confirmar-venda:hover:not(:disabled) {
+      border-color: transparent;
+      filter: brightness(1.05);
+    }
+
     #btn-confirmar-venda:disabled {
       opacity: 0.45;
       cursor: not-allowed;
       box-shadow: none;
+      animation: none;
+      filter: grayscale(0.35);
     }
 
-    .pdv-modal-pagamento .pdv-pagamento-atalhos {
-      margin: 0;
-      font-size: 0.78rem;
+    @media (prefers-reduced-motion: reduce) {
+      #btn-confirmar-venda:not(:disabled) {
+        animation: none;
+      }
+    }
+
+    #btn-finalizar-venda {
+      width: 100%;
+      margin-top: 0.35rem;
+      padding: 0.9rem 1rem;
+      font-size: 1rem;
+      font-weight: 750;
+      letter-spacing: 0.01em;
+      background: linear-gradient(135deg, var(--sucesso), color-mix(in srgb, var(--sucesso) 62%, #fff));
+      color: #06210f;
+      border-color: transparent;
+      box-shadow: var(--brilho-sucesso);
+      animation: pdv-finalizar-pulso 1.8s ease-in-out infinite;
+      transition: transform 0.15s ease, filter 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    #btn-finalizar-venda .atalho {
+      display: inline-block;
+      margin-left: 0.4rem;
+      padding: 0.12rem 0.45rem;
+      border-radius: 6px;
+      font-size: 0.72em;
+      font-weight: 700;
+      background: color-mix(in srgb, #06210f 16%, transparent);
+    }
+
+    #btn-finalizar-venda:hover:not(:disabled) {
+      border-color: transparent;
+      filter: brightness(1.07);
+      box-shadow: 0 0 0 1px color-mix(in srgb, var(--sucesso) 45%, transparent),
+        0 12px 32px rgba(62, 207, 142, 0.38);
+    }
+
+    #btn-finalizar-venda:active:not(:disabled) {
+      transform: scale(0.97);
+      animation: none;
+    }
+
+    #btn-finalizar-venda:disabled {
+      animation: none;
+      background: var(--superficie-elevada);
       color: var(--muted);
+      border-color: var(--linha);
+      box-shadow: none;
+      filter: none;
+    }
+
+    @keyframes pdv-finalizar-pulso {
+      0%,
+      100% {
+        box-shadow: var(--brilho-sucesso);
+      }
+      50% {
+        box-shadow: 0 0 0 1px rgba(62, 207, 142, 0.4), 0 10px 34px rgba(62, 207, 142, 0.45);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      #btn-finalizar-venda {
+        animation: none;
+      }
     }
 
     .caixa-turno-fechamento {
@@ -2072,7 +2547,11 @@
     .estoque-modal-caixa button[type="submit"],
     .perdas-modal-caixa button[type="submit"],
     .encomendas-modal-caixa button[type="submit"],
-    .fluxo-modal-caixa button[type="submit"] {
+    .producao-modal-caixa button[type="submit"],
+    .funcionarios-modal-caixa button[type="submit"],
+    .fluxo-modal-caixa button[type="submit"],
+    #btn-fechar-confirmacao,
+    #btn-fechar-confirmacao-producao {
       background: linear-gradient(135deg, var(--sucesso), color-mix(in srgb, var(--sucesso) 70%, #fff));
       color: #06210f;
       border-color: transparent;
@@ -2643,6 +3122,7 @@
     #btn-novo-funcionario,
     #btn-novo-usuario,
     #btn-novo-adiantamento,
+    #btn-nova-ocorrencia,
     #btn-fechar-folha {
       background: var(--destaque);
       color: var(--fundo);
@@ -2843,13 +3323,16 @@
       box-shadow: var(--sombra);
     }
 
-    .usuarios-modal-corpo {
-      overflow-y: auto;
-      min-height: 0;
-      display: grid;
-      gap: 0.75rem;
-      align-content: start;
-      padding-right: 0.15rem;
+    .perdas-modal-caixa.perdas-form,
+    .encomendas-modal-caixa.encomendas-form,
+    .producao-modal-caixa.producao-form,
+    .funcionarios-modal-caixa.funcionarios-form {
+      max-width: none;
+      margin: 0;
+      padding: 1.25rem 1.4rem;
+      background: var(--superficie-elevada);
+      border: 1px solid var(--linha);
+      box-shadow: var(--sombra);
     }
 
     .usuarios-modal-caixa .usuarios-form-acoes {
@@ -2858,12 +3341,6 @@
       padding-top: 0.75rem;
       border-top: 1px solid var(--linha);
       justify-content: flex-end;
-    }
-
-    .usuarios-modal-cabecalho h2 {
-      margin: 0;
-      font-size: 1.05rem;
-      letter-spacing: -0.01em;
     }
 
     .usuarios-ajuda-senha {
@@ -2985,7 +3462,7 @@
     <header class="topo">
       <span class="marca">S&amp;M Panificadora</span>
       <div class="topo-direita">
-        <button type="button" id="caixa-turno-banner" class="caixa-turno-banner" data-aberto="false">Carregando caixa…</button>
+        <button type="button" id="caixa-turno-banner" class="caixa-turno-banner" data-aberto="false"><span class="caixa-turno-banner-bola" aria-hidden="true"></span><span>Carregando caixa…</span></button>
         <span id="usuario-logado"></span>
         <button id="btn-logout" type="button">Sair</button>
       </div>

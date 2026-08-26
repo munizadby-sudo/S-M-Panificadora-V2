@@ -52,3 +52,7 @@ export function temPermissao(modulo) {
   }
   return Array.isArray(usuario.permissoes) && usuario.permissoes.includes(modulo);
 }
+
+export function ehAdmin() {
+  return getUsuario()?.role === 'admin';
+}

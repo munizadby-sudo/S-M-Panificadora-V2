@@ -35,12 +35,16 @@ export function indiceAposSeta(indiceAtual, tecla, total, colunas) {
     case 'ArrowLeft':
       proximo = Math.max(0, indiceAtual - 1);
       break;
-    case 'ArrowDown':
-      proximo = Math.min(total - 1, indiceAtual + cols);
+    case 'ArrowDown': {
+      const candidato = indiceAtual + cols;
+      proximo = candidato < total ? candidato : indiceAtual;
       break;
-    case 'ArrowUp':
-      proximo = Math.max(0, indiceAtual - cols);
+    }
+    case 'ArrowUp': {
+      const candidato = indiceAtual - cols;
+      proximo = candidato >= 0 ? candidato : indiceAtual;
       break;
+    }
     default:
       return indiceAtual;
   }
@@ -61,12 +65,12 @@ export function aplicarRovingTabindex(cards, indiceFoco) {
   return seguro;
 }
 
-export function ligarNavegacaoGrade(containerGrade, { aoAtivar } = {}) {
+export function ligarNavegacaoGrade(containerGrade, { aoAtivar, indiceInicial = 0 } = {}) {
   if (!containerGrade) {
-    return () => {};
+    return { tratarTecla() {}, desligar() {} };
   }
 
-  let indiceFoco = 0;
+  let indiceFoco = indiceInicial;
 
   const cards = () => [...(containerGrade.querySelectorAll?.('.pdv-produto') || [])];
 
@@ -81,6 +85,10 @@ export function ligarNavegacaoGrade(containerGrade, { aoAtivar } = {}) {
   sincronizar(false);
 
   const onKeyDown = (evento) => {
+    if (evento.defaultPrevented) {
+      return;
+    }
+
     const lista = cards();
     if (lista.length === 0) {
       return;
@@ -88,7 +96,7 @@ export function ligarNavegacaoGrade(containerGrade, { aoAtivar } = {}) {
 
     const tecla = evento.key;
     if (tecla === 'Enter') {
-      const alvo = lista[indiceFoco] || lista.find((c) => c === document.activeElement);
+      const alvo = lista[indiceFoco] || lista.find((c) => c === globalThis.document?.activeElement);
       if (alvo) {
         evento.preventDefault();
         aoAtivar?.(alvo);
@@ -102,26 +110,33 @@ export function ligarNavegacaoGrade(containerGrade, { aoAtivar } = {}) {
 
     evento.preventDefault();
     const colunas = contarColunasVisiveis(containerGrade);
-    const atual = lista.findIndex((c) => c === document.activeElement);
+    const atual = lista.findIndex((c) => c === globalThis.document?.activeElement);
     if (atual >= 0) {
       indiceFoco = atual;
+      indiceFoco = indiceAposSeta(indiceFoco, tecla, lista.length, colunas);
+    } else {
+      indiceFoco = Math.max(0, Math.min(indiceFoco, lista.length - 1));
     }
-    indiceFoco = indiceAposSeta(indiceFoco, tecla, lista.length, colunas);
     sincronizar(true);
   };
 
-  containerGrade.addEventListener('keydown', onKeyDown);
-
-  containerGrade.addEventListener('focusin', (evento) => {
+  const onFocusIn = (evento) => {
     const lista = cards();
     const idx = lista.indexOf(evento.target);
     if (idx >= 0) {
       indiceFoco = idx;
       sincronizar(false);
     }
-  });
+  };
 
-  return () => {
-    containerGrade.removeEventListener('keydown', onKeyDown);
+  containerGrade.addEventListener('keydown', onKeyDown);
+  containerGrade.addEventListener('focusin', onFocusIn);
+
+  return {
+    tratarTecla: onKeyDown,
+    desligar() {
+      containerGrade.removeEventListener?.('keydown', onKeyDown);
+      containerGrade.removeEventListener?.('focusin', onFocusIn);
+    },
   };
 }

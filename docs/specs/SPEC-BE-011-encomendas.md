@@ -55,18 +55,22 @@ Especificar o registro de pedidos de clientes: numeração própria (independent
 **Invariantes:**
 - Pelo menos um item.
 - `total` é sempre a soma dos `subtotal` dos itens — a entidade recalcula, nunca aceita um `total` externo como verdade (mesmo padrão da entidade `Venda`, SPEC-BE-007).
-- `status` só pode ser `pendente`, `pronto` ou `entregue` — whitelist fechada, sem ordem obrigatória entre eles (o PRD não pede transição sequencial forçada, só validação de whitelist).
+- `status` só pode ser `pendente`, `pronto` ou `entregue`. Transições: operador só `pendente → pronto`; `entregue` só via `finalizarEntrega()` (a partir de `pronto`); admin pode `pronto → pendente` e `entregue → pronto` (reabrir). `PATCH` nunca aceita `entregue`.
 - `sinal` nunca pode ser negativo.
 - `cliente_nome` e `cliente_telefone` são sempre obrigatórios, independente de `cliente_id` estar preenchido.
+- `saldoAReceber()` = `max(0, total − sinal)`.
 
-**Método `cancelar()`** — marca `ativo = false`. Assim como o estorno de Perdas (SPEC-BE-006), **não existe reativação simétrica**: cancelar uma encomenda é uma decisão final, não um toggle como desativar/reativar produto ou cliente. Se isso se mostrar necessário na prática, é uma decisão de produto nova, não implementada por suposição aqui.
+**Método `cancelar()`** — marca `ativo = false`. **Não cancela se `status === 'entregue'`** (`EncomendaEntregueBloqueadaError`). Assim como o estorno de Perdas (SPEC-BE-006), **não existe reativação simétrica** de cancelamento. Reabrir entrega (admin) é outro fluxo, só de `entregue → pronto`.
 
 ### 3.2 Exceções de domínio
 - `StatusEncomendaInvalidoError` (400)
 - `ItensObrigatoriosError` (400) — encomenda sem nenhum item
 - `EncomendaNaoEncontradaError` (404)
 - `SinalInvalidoError` (400)
-- Reaproveitadas de outros módulos: `ProdutoNaoEncontradoError`/`ProdutoInativoError` (produto do item), `ClienteNaoEncontradoError` (quando `cliente_id` é informado mas não existe)
+- `TransicaoStatusInvalidaError` (400)
+- `EncomendaEntregueBloqueadaError` (403)
+- `EncomendaNaoEstaProntaError` (400)
+- Reaproveitadas de outros módulos: `ProdutoNaoEncontradoError`/`ProdutoInativoError` (produto do item), `ClienteNaoEncontradoError` (quando `cliente_id` é informado mas não existe), `CaixaFechadoError` (403) e `FormaPagamentoInvalidaError` (400) no finalizar
 
 ---
 
@@ -87,7 +91,7 @@ Especificar o registro de pedidos de clientes: numeração própria (independent
 **Substitui todos os itens — nunca faz merge incremental** (regra herdada do V1, mantida explicitamente no PRD).
 
 **Fluxo (transação única):**
-1. Busca a encomenda — se não existir ou `ativo = 0`, `EncomendaNaoEncontradaError`.
+1. Busca a encomenda — se não existir ou `ativo = 0`, `EncomendaNaoEncontradaError`. Se `status === 'entregue'`, `EncomendaEntregueBloqueadaError`.
 2. Mesma validação de cliente/itens do `CreateEncomenda`.
 3. Remove todos os `encomenda_itens` existentes e insere os novos (delete + insert, não upsert por item).
 4. Recalcula `total`.
@@ -95,12 +99,23 @@ Especificar o registro de pedidos de clientes: numeração própria (independent
 6. Audita `atualizar_encomenda`, com `estadoAntes`/`estadoDepois`.
 
 ### 4.3 `UpdateStatusEncomenda(id, status, executor)`
-Valida `status` contra a whitelist (`StatusEncomendaInvalidoError` se fora dela). Não exige uma ordem de transição — qualquer status válido pode suceder qualquer outro, conforme literalmente pedido no PRD (Seção 3: "restrita à whitelist de status válidos", sem menção a sequência obrigatória).
+Valida whitelist e **transição** (`mudarStatus` com `executor.role`). Operador: só `pendente → pronto`. `PATCH` para `entregue` sempre `TransicaoStatusInvalidaError` — entrega é o caso `FinalizarEncomenda`. Admin: `pronto → pendente` e `entregue → pronto` (reabrir); ao reabrir, se existir lançamento ativo com `encomenda_id`, marca excluído (`ativo=0`).
 
-### 4.4 `CancelEncomenda(id, executor)`
-Soft delete (`ativo = 0`). Sem restrição de `admin` — mesma lógica de baixo risco já aplicada a desativação de Cliente/Produto (não é uma reversão financeira como cancelar venda). Audita `cancelar_encomenda`. Nunca remove fisicamente (regra explícita do PRD — corrige a exclusão física do V1).
+### 4.4 `FinalizarEncomenda(id, { forma }, executor)`
+Marca `pronto → entregue` e, se `saldoAReceber() > 0`, lança `fluxo_caixa` automático. **Não cria venda** e **não debita estoque**.
 
-### 4.5 `ListEncomendas(filtros)`
+**Fluxo (transação única):**
+1. Busca a encomenda ativa — 404 se não existir.
+2. Exige turno aberto (`CaixaFechadoError` 403).
+3. Se saldo > 0, `forma` obrigatória (`dinheiro|pix|cartao|credito`).
+4. `finalizarEntrega()` (só de `pronto`).
+5. Se saldo > 0: `fluxoCaixaRepository.registrar` com `categoria: 'encomenda'`, `gerado_auto: true`, `encomenda_id`, `valor = saldo`, `forma`. Se saldo = 0, não lança (valor do fluxo exige > 0).
+6. Audita `finalizar_encomenda`.
+
+### 4.5 `CancelEncomenda(id, executor)`
+Soft delete (`ativo = 0`). Recusa encomenda `entregue` (`EncomendaEntregueBloqueadaError`). Sem restrição de `admin` nos demais status. Audita `cancelar_encomenda`. Nunca remove fisicamente.
+
+### 4.6 `ListEncomendas(filtros)`
 Paginado. Filtros: `status`, `ativo` (padrão: só ativas), `cliente_id`, `data_entrega_inicio`, `data_entrega_fim`.
 
 ---
@@ -138,10 +153,10 @@ Requer token + permissão `encomendas`.
 | 400 | algum produto do item está inativo |
 
 ### 5.2 `PUT /api/encomendas/:id`
-Mesma validação do `POST`. Substitui todos os itens.
+Mesma validação do `POST`. Substitui todos os itens. Recusa `status === 'entregue'` (403).
 
 ### 5.3 `PATCH /api/encomendas/:id/status`
-Requer token + permissão `encomendas`.
+Requer token + permissão `encomendas`. Não marca como entregue — isso é o `POST .../finalizar`.
 
 **Request**
 ```json
@@ -151,10 +166,27 @@ Requer token + permissão `encomendas`.
 **Erro**
 | Status | Quando |
 |---|---|
-| 400 | `status` fora da whitelist |
+| 400 | `status` fora da whitelist ou transição inválida (ex.: PATCH para `entregue`) |
+| 403 | operador tenta reabrir `entregue` |
 | 404 | encomenda não existe ou está cancelada |
 
-### 5.4 `DELETE /api/encomendas/:id` (cancelamento — soft delete)
+### 5.4 `POST /api/encomendas/:id/finalizar`
+Requer token + permissão `encomendas`. Caixa aberto obrigatório.
+
+**Request**
+```json
+{ "forma": "dinheiro" }
+```
+`forma` obrigatória só se `saldo_a_receber > 0`. Formas: `dinheiro`, `pix`, `cartao`, `credito`.
+
+**Erro**
+| Status | Quando |
+|---|---|
+| 403 | caixa fechado |
+| 400 | encomenda não está `pronto`, ou forma inválida/ausente com saldo > 0 |
+| 404 | encomenda não existe ou está cancelada |
+
+### 5.5 `DELETE /api/encomendas/:id` (cancelamento — soft delete)
 Requer token + permissão `encomendas`.
 
 **Response 200**
@@ -162,15 +194,15 @@ Requer token + permissão `encomendas`.
 { "mensagem": "Encomenda cancelada." }
 ```
 
-### 5.5 `GET /api/encomendas/:id`
-Requer token + permissão `encomendas`. Retorna o detalhe completo, **incluindo os itens** (a listagem paginada, Seção 5.6, não inclui) — consumido pela tela de edição do frontend.
+### 5.6 `GET /api/encomendas/:id`
+Requer token + permissão `encomendas`. Retorna o detalhe completo, **incluindo os itens** (a listagem paginada, Seção 5.7, não inclui) — consumido pela tela de edição do frontend.
 
 **Erro**
 | Status | Quando |
 |---|---|
 | 404 | encomenda não existe ou está cancelada |
 
-### 5.6 `GET /api/encomendas`
+### 5.7 `GET /api/encomendas`
 Requer token + permissão `encomendas`. Paginado.
 
 **Query:** `?status=pendente&cliente_id=7&data_entrega_inicio=2026-08-01&data_entrega_fim=2026-08-31&ativo=1&page=1&limit=20`
@@ -184,7 +216,7 @@ Requer token + permissão `encomendas`. Paginado.
 | Exclusão de encomenda | Física, definitiva | Soft delete (`ativo=0`), rotulada como "cancelar" — histórico preservado |
 | Vínculo com cliente | Dados soltos digitados em cada pedido | `cliente_nome`/`cliente_telefone` continuam obrigatórios, mas agora com vínculo opcional a um cadastro central (SPEC-BE-009) |
 | Efeito no estoque | Não debitava | Continua não debitando — decisão explícita registrada em ADR (ADR-002, Decisão 3), não mais implícita |
-| Numeração | Não documentada como sequência própria | Sequência atômica independente da numeração de vendas |
+| Entrega / dinheiro | Status livre na whitelist; sem lançamento no caixa | Ciclo Pendente → Pronto → Finalizar (fluxo `categoria: 'encomenda'`); Entregue travado; admin reabre |
 
 ---
 
@@ -197,4 +229,5 @@ Requer token + permissão `encomendas`. Paginado.
 5. Criar ou editar encomenda nunca chama `DebitarEstoque` nem `IncrementarProduzido` — o saldo de estoque do produto não muda em nenhum momento do fluxo.
 6. Cancelar encomenda nunca remove a linha do banco — continua consultável com `ativo=0`.
 7. Numeração de encomenda nunca colide com numeração de venda, mesmo estando na mesma tabela `sequencias` (chaves distintas).
-8. `PATCH .../status` aceita qualquer transição entre `pendente`/`pronto`/`entregue`, rejeitando apenas valores fora da whitelist.
+8. `PATCH .../status` só aceita `pendente → pronto` (e, para admin, `pronto → pendente` e `entregue → pronto`). PATCH para `entregue` retorna 400.
+9. `POST .../finalizar` com caixa aberto marca `entregue` e lança `fluxo_caixa` `categoria: 'encomenda'` quando há saldo; caixa fechado retorna 403. Não cria venda nem mexe em estoque.

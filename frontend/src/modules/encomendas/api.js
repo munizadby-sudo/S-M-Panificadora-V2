@@ -44,6 +44,10 @@ export async function mudarStatusEncomenda(id, status) {
   return apiPatch(`/encomendas/${id}/status`, { status });
 }
 
+export async function finalizarEncomenda(id, { forma } = {}) {
+  return apiPost(`/encomendas/${id}/finalizar`, { forma });
+}
+
 export async function cancelarEncomenda(id) {
   return apiDelete(`/encomendas/${id}`);
 }

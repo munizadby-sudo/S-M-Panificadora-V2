@@ -8,6 +8,7 @@ import {
   listarAdiantamentos,
   listarFolhas,
   listarFuncionarios,
+  listarOcorrencias,
   marcarFolhaPaga,
   mensagemErroFuncionarios,
   reativarFuncionario,
@@ -22,6 +23,7 @@ import {
   htmlTabelaAdiantamentos,
   htmlTabelaFolhas,
   htmlTabelaFuncionarios,
+  htmlTabelaOcorrencias,
   valorOcorrenciaParaTipo,
 } from './ui.js';
 
@@ -60,9 +62,13 @@ function estadoInicial() {
     aba: 'cadastro',
     funcionarios: [],
     adiantamentos: [],
+    ocorrencias: [],
     folhas: [],
     erro: '',
     mostrarFormFuncionario: false,
+    mostrarFormAdiantamento: false,
+    mostrarFormOcorrencia: false,
+    mostrarFormFolha: false,
     formularioFuncionario: {},
     formularioAdiantamento: { data: dataHoje() },
     erroAdiantamento: '',
@@ -79,13 +85,15 @@ async function recarregar() {
   try {
     estado.erro = '';
     const ativo = estado.mostrarInativos ? undefined : 1;
-    const [funcs, adiant, folhas] = await Promise.all([
+    const [funcs, adiant, ocorrencias, folhas] = await Promise.all([
       listarFuncionarios({ ativo, limit: 100 }),
       listarAdiantamentos({ limit: 50 }),
+      listarOcorrencias({ limit: 50 }),
       listarFolhas({ limit: 50 }),
     ]);
     estado.funcionarios = funcs.data || [];
     estado.adiantamentos = adiant.data || [];
+    estado.ocorrencias = ocorrencias.data || [];
     estado.folhas = folhas.data || [];
   } catch (erro) {
     estado.erro = mensagemErroFuncionarios(erro);
@@ -106,16 +114,25 @@ function renderizar() {
       ${estado.mostrarFormFuncionario ? htmlFormularioFuncionario(estado.formularioFuncionario) : ''}
       <div id="lista-funcionarios">${htmlTabelaFuncionarios(estado.funcionarios)}</div>`;
   } else if (estado.aba === 'adiantamentos') {
-    painel = `<h2>Adiantamentos</h2>
-      ${htmlFormularioAdiantamento({ funcionarios: ativos, formulario: estado.formularioAdiantamento, erro: estado.erroAdiantamento })}
+    painel = `
+      <div class="funcionarios-acoes-topo">
+        <button type="button" id="btn-novo-adiantamento">Lançar adiantamento</button>
+      </div>
+      ${estado.mostrarFormAdiantamento ? htmlFormularioAdiantamento({ funcionarios: ativos, formulario: estado.formularioAdiantamento, erro: estado.erroAdiantamento }) : ''}
       <div id="lista-adiantamentos">${htmlTabelaAdiantamentos(estado.adiantamentos)}</div>`;
   } else if (estado.aba === 'ocorrencias') {
-    painel = `<h2>Ocorrências</h2>
-      ${htmlFormularioOcorrencia({ funcionarios: ativos, formulario: estado.formularioOcorrencia, erro: estado.erroOcorrencia })}`;
+    painel = `
+      <div class="funcionarios-acoes-topo">
+        <button type="button" id="btn-nova-ocorrencia">Nova ocorrência</button>
+      </div>
+      ${estado.mostrarFormOcorrencia ? htmlFormularioOcorrencia({ funcionarios: ativos, formulario: estado.formularioOcorrencia, erro: estado.erroOcorrencia }) : ''}
+      <div id="lista-ocorrencias">${htmlTabelaOcorrencias(estado.ocorrencias)}</div>`;
   } else {
-    painel = `<h2>Fechamento de folha</h2>
-      ${htmlFormularioFechamento({ funcionarios: ativos, formulario: estado.formularioFolha, resultado: estado.resultadoFolha, erro: estado.erroFolha })}
-      <h2>Folhas</h2>
+    painel = `
+      <div class="funcionarios-acoes-topo">
+        <button type="button" id="btn-fechar-folha">Fechar folha</button>
+      </div>
+      ${estado.mostrarFormFolha ? htmlFormularioFechamento({ funcionarios: ativos, formulario: estado.formularioFolha, resultado: estado.resultadoFolha, erro: estado.erroFolha }) : ''}
       <div id="lista-folhas">${htmlTabelaFolhas(estado.folhas)}</div>`;
   }
 
@@ -152,6 +169,83 @@ function ligarEventos() {
 
   c.querySelector('#btn-cancelar-funcionario')?.addEventListener('click', () => {
     estado.mostrarFormFuncionario = false;
+    renderizar();
+  });
+
+  c.querySelector('#modal-form-funcionario')?.addEventListener('click', (evento) => {
+    if (evento.target?.id !== 'modal-form-funcionario') {
+      return;
+    }
+    estado.mostrarFormFuncionario = false;
+    renderizar();
+  });
+
+  c.querySelector('#btn-novo-adiantamento')?.addEventListener('click', () => {
+    estado.mostrarFormAdiantamento = true;
+    estado.formularioAdiantamento = { data: dataHoje() };
+    estado.erroAdiantamento = '';
+    renderizar();
+  });
+
+  c.querySelector('#btn-cancelar-adiantamento')?.addEventListener('click', () => {
+    estado.mostrarFormAdiantamento = false;
+    estado.erroAdiantamento = '';
+    renderizar();
+  });
+
+  c.querySelector('#modal-form-adiantamento')?.addEventListener('click', (evento) => {
+    if (evento.target?.id !== 'modal-form-adiantamento') {
+      return;
+    }
+    estado.mostrarFormAdiantamento = false;
+    estado.erroAdiantamento = '';
+    renderizar();
+  });
+
+  c.querySelector('#btn-nova-ocorrencia')?.addEventListener('click', () => {
+    estado.mostrarFormOcorrencia = true;
+    estado.formularioOcorrencia = { tipo: 'falta', data: dataHoje(), valor: '' };
+    estado.erroOcorrencia = '';
+    renderizar();
+  });
+
+  c.querySelector('#btn-cancelar-ocorrencia')?.addEventListener('click', () => {
+    estado.mostrarFormOcorrencia = false;
+    estado.erroOcorrencia = '';
+    renderizar();
+  });
+
+  c.querySelector('#modal-form-ocorrencia')?.addEventListener('click', (evento) => {
+    if (evento.target?.id !== 'modal-form-ocorrencia') {
+      return;
+    }
+    estado.mostrarFormOcorrencia = false;
+    estado.erroOcorrencia = '';
+    renderizar();
+  });
+
+  c.querySelector('#btn-fechar-folha')?.addEventListener('click', () => {
+    estado.mostrarFormFolha = true;
+    estado.formularioFolha = {};
+    estado.resultadoFolha = null;
+    estado.erroFolha = '';
+    renderizar();
+  });
+
+  c.querySelector('#btn-cancelar-folha')?.addEventListener('click', () => {
+    estado.mostrarFormFolha = false;
+    estado.resultadoFolha = null;
+    estado.erroFolha = '';
+    renderizar();
+  });
+
+  c.querySelector('#modal-form-folha')?.addEventListener('click', (evento) => {
+    if (evento.target?.id !== 'modal-form-folha') {
+      return;
+    }
+    estado.mostrarFormFolha = false;
+    estado.resultadoFolha = null;
+    estado.erroFolha = '';
     renderizar();
   });
 
@@ -227,6 +321,7 @@ function ligarEventos() {
       });
       estado.formularioAdiantamento = { data: dataHoje() };
       estado.erroAdiantamento = '';
+      estado.mostrarFormAdiantamento = false;
       await recarregar();
     } catch (erro) {
       estado.erroAdiantamento = mensagemErroFuncionarios(erro);
@@ -259,6 +354,7 @@ function ligarEventos() {
       });
       estado.formularioOcorrencia = { tipo: 'falta', data: dataHoje(), valor: '' };
       estado.erroOcorrencia = '';
+      estado.mostrarFormOcorrencia = false;
       await recarregar();
     } catch (erro) {
       estado.erroOcorrencia = mensagemErroFuncionarios(erro);

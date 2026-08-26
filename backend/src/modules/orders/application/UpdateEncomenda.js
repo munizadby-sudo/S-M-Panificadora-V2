@@ -27,6 +27,7 @@ export class UpdateEncomenda {
       if (!existente || !existente.ativo) {
         throw new EncomendaNaoEncontradaError();
       }
+      existente.garantirEditavel();
 
       const estadoAntes = existente.paraPublico();
 

@@ -13,7 +13,8 @@ export function renderizarBanner(elemento, status) {
     return;
   }
   const aberto = Boolean(status?.aberto);
-  elemento.textContent = textoDoBanner(status);
+  const texto = textoDoBanner(status);
+  elemento.innerHTML = `<span class="caixa-turno-banner-bola" aria-hidden="true"></span><span>${texto}</span>`;
   elemento.dataset.aberto = aberto ? 'true' : 'false';
 }
 

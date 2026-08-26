@@ -3,6 +3,7 @@ export class EncomendasController {
     createEncomenda,
     updateEncomenda,
     updateStatusEncomenda,
+    finalizarEncomenda,
     cancelEncomenda,
     listEncomendas,
     getEncomenda,
@@ -10,6 +11,7 @@ export class EncomendasController {
     this.createEncomenda = createEncomenda;
     this.updateEncomenda = updateEncomenda;
     this.updateStatusEncomenda = updateStatusEncomenda;
+    this.finalizarEncomenda = finalizarEncomenda;
     this.cancelEncomenda = cancelEncomenda;
     this.listEncomendas = listEncomendas;
     this.getEncomenda = getEncomenda;
@@ -52,6 +54,20 @@ export class EncomendasController {
       const salva = await this.updateStatusEncomenda.executar(
         req.params.id,
         req.body?.status,
+        req.usuario,
+        ipDaRequisicao(req),
+      );
+      res.json(salva.paraPublico());
+    } catch (erro) {
+      next(erro);
+    }
+  }
+
+  async finalizar(req, res, next) {
+    try {
+      const salva = await this.finalizarEncomenda.executar(
+        req.params.id,
+        req.body || {},
         req.usuario,
         ipDaRequisicao(req),
       );

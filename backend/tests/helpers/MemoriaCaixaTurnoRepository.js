@@ -79,7 +79,7 @@ export class MemoriaFluxoCaixaRepository extends FluxoCaixaRepository {
     return id;
   }
 
-  async somarPorFormaETurno(turnoId, categorias = ['vendas', 'estorno']) {
+  async somarPorFormaETurno(turnoId, categorias = ['vendas', 'estorno', 'encomenda']) {
     const net = {};
     for (const item of this.lancamentos) {
       if (
@@ -127,6 +127,27 @@ export class MemoriaFluxoCaixaRepository extends FluxoCaixaRepository {
       ativo: true,
       geradoAuto: Boolean(lancamento.geradoAuto),
     });
+  }
+
+  async buscarAtivoPorEncomendaId(encomendaId) {
+    const id = Number(encomendaId);
+    return (
+      this.lancamentos.find(
+        (item) =>
+          this.lancamentoAtivo(item)
+          && Number(item.encomendaId ?? item.encomenda_id) === id,
+      ) || null
+    );
+  }
+
+  async marcarExcluido(lancamento) {
+    const item = this.lancamentos.find((entry) => Number(entry.id) === Number(lancamento.id));
+    if (!item) {
+      return;
+    }
+    item.ativo = false;
+    item.excluidoPor = lancamento.excluidoPor;
+    item.motivoExclusao = lancamento.motivoExclusao;
   }
 }
 

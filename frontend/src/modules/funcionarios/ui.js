@@ -36,19 +36,27 @@ export function htmlTabelaFuncionarios(funcionarios) {
 }
 
 export function htmlFormularioFuncionario(formulario = {}, erros = {}) {
-  return `<form id="form-funcionario" class="funcionarios-form">
-    <label>Nome <input id="func-nome" value="${escapar(formulario.nome || '')}" required></label>
-    <p class="campo-erro">${escapar(erros.nome || '')}</p>
-    <label>Cargo <input id="func-cargo" value="${escapar(formulario.cargo || '')}" required></label>
-    <p class="campo-erro">${escapar(erros.cargo || '')}</p>
-    <label>Salário base <input id="func-salario" type="number" min="0.01" step="0.01" value="${escapar(formulario.salario_base ?? '')}" required></label>
-    <p class="campo-erro">${escapar(erros.salario_base || '')}</p>
-    <label>Data de admissão <input id="func-admissao" type="date" value="${escapar(formulario.data_admissao || dataHoje())}" required></label>
-    <div class="funcionarios-form-acoes">
-      <button type="submit">${formulario.id ? 'Salvar' : 'Cadastrar'}</button>
-      <button type="button" id="btn-cancelar-funcionario">Cancelar</button>
+  const titulo = formulario.id ? 'Editar funcionário' : 'Novo funcionário';
+  return `<div class="funcionarios-modal" id="modal-form-funcionario" role="dialog" aria-modal="true" aria-labelledby="titulo-form-funcionario">
+  <form id="form-funcionario" class="funcionarios-modal-caixa funcionarios-form">
+    <header class="form-modal-cabecalho">
+      <h2 id="titulo-form-funcionario">${titulo}</h2>
+    </header>
+    <div class="form-modal-corpo">
+      <label>Nome <input id="func-nome" value="${escapar(formulario.nome || '')}" required></label>
+      <p class="campo-erro">${escapar(erros.nome || '')}</p>
+      <label>Cargo <input id="func-cargo" value="${escapar(formulario.cargo || '')}" required></label>
+      <p class="campo-erro">${escapar(erros.cargo || '')}</p>
+      <label>Salário base <input id="func-salario" type="number" min="0.01" step="0.01" value="${escapar(formulario.salario_base ?? '')}" required></label>
+      <p class="campo-erro">${escapar(erros.salario_base || '')}</p>
+      <label>Data de admissão <input id="func-admissao" type="date" value="${escapar(formulario.data_admissao || dataHoje())}" required></label>
     </div>
-  </form>`;
+    <div class="funcionarios-form-acoes">
+      <button type="button" id="btn-cancelar-funcionario">Cancelar</button>
+      <button type="submit">${formulario.id ? 'Salvar' : 'Cadastrar'}</button>
+    </div>
+  </form>
+</div>`;
 }
 
 function opcoesFuncionarios(funcionarios, selecionado = '') {
@@ -61,15 +69,38 @@ function opcoesFuncionarios(funcionarios, selecionado = '') {
     .join('')}`;
 }
 
+function htmlModalFuncionarios({ modalId, formId, tituloId, titulo, corpo, erro = '', cancelarId, submit }) {
+  return `<div class="funcionarios-modal" id="${modalId}" role="dialog" aria-modal="true" aria-labelledby="${tituloId}">
+  <form id="${formId}" class="funcionarios-modal-caixa funcionarios-form">
+    <header class="form-modal-cabecalho">
+      <h2 id="${tituloId}">${escapar(titulo)}</h2>
+    </header>
+    <div class="form-modal-corpo">
+      ${corpo}
+      <p class="funcionarios-erro" role="alert">${escapar(erro)}</p>
+    </div>
+    <div class="funcionarios-form-acoes">
+      <button type="button" id="${cancelarId}">Cancelar</button>
+      <button type="submit">${escapar(submit)}</button>
+    </div>
+  </form>
+</div>`;
+}
+
 export function htmlFormularioAdiantamento({ funcionarios, formulario = {}, erro = '' }) {
-  return `<form id="form-adiantamento" class="funcionarios-form">
-    <label>Funcionário <select id="adiant-funcionario" required>${opcoesFuncionarios(funcionarios, formulario.funcionario_id)}</select></label>
-    <label>Valor <input id="adiant-valor" type="number" min="0.01" step="0.01" value="${escapar(formulario.valor ?? '')}" required></label>
-    <label>Data <input id="adiant-data" type="date" value="${escapar(formulario.data || dataHoje())}" required></label>
-    <label>Observação <input id="adiant-obs" value="${escapar(formulario.observacao || '')}"></label>
-    <p class="funcionarios-erro" role="alert">${escapar(erro)}</p>
-    <button type="submit">Lançar adiantamento</button>
-  </form>`;
+  return htmlModalFuncionarios({
+    modalId: 'modal-form-adiantamento',
+    formId: 'form-adiantamento',
+    tituloId: 'titulo-form-adiantamento',
+    titulo: 'Lançar adiantamento',
+    cancelarId: 'btn-cancelar-adiantamento',
+    submit: 'Lançar adiantamento',
+    erro,
+    corpo: `<label>Funcionário <select id="adiant-funcionario" required>${opcoesFuncionarios(funcionarios, formulario.funcionario_id)}</select></label>
+      <label>Valor <input id="adiant-valor" type="number" min="0.01" step="0.01" value="${escapar(formulario.valor ?? '')}" required></label>
+      <label>Data <input id="adiant-data" type="date" value="${escapar(formulario.data || dataHoje())}" required></label>
+      <label>Observação <input id="adiant-obs" value="${escapar(formulario.observacao || '')}"></label>`,
+  });
 }
 
 export function htmlTabelaAdiantamentos(itens) {
@@ -89,28 +120,59 @@ export function htmlTabelaAdiantamentos(itens) {
   return `<table class="funcionarios-tabela"><thead><tr><th>Funcionário</th><th>Valor</th><th>Data</th><th>Obs.</th></tr></thead><tbody>${linhas}</tbody></table>`;
 }
 
+const ROTULOS_TIPO_OCORRENCIA = Object.freeze({
+  falta: 'Falta',
+  atestado: 'Atestado',
+  hora_extra: 'Hora extra',
+});
+
+export function htmlTabelaOcorrencias(itens) {
+  if (!Array.isArray(itens) || itens.length === 0) {
+    return '<p class="estado-vazio">Nenhuma ocorrência.<span class="estado-vazio-dica">Aqui aparecem faltas, atestados e horas extras. Lance a primeira pela ação Nova ocorrência.</span></p>';
+  }
+  const linhas = itens
+    .map(
+      (item) => `<tr>
+      <td>${escapar(item.funcionario_nome || item.funcionario_id)}</td>
+      <td>${escapar(ROTULOS_TIPO_OCORRENCIA[item.tipo] || item.tipo)}</td>
+      <td>${escapar(item.data)}</td>
+      <td>${formatarMoeda(item.valor)}</td>
+      <td>${escapar(item.observacao || '')}</td>
+    </tr>`,
+    )
+    .join('');
+  return `<table class="funcionarios-tabela"><thead><tr>
+    <th>Funcionário</th><th>Tipo</th><th>Data</th><th>Valor</th><th>Obs.</th>
+  </tr></thead><tbody>${linhas}</tbody></table>`;
+}
+
 export function htmlFormularioOcorrencia({ funcionarios, formulario = {}, erro = '' }) {
   const tipo = formulario.tipo || 'falta';
   const atestado = campoValorOcorrenciaDesabilitado(tipo);
-  return `<form id="form-ocorrencia" class="funcionarios-form">
-    <label>Funcionário <select id="ocor-funcionario" required>${opcoesFuncionarios(funcionarios, formulario.funcionario_id)}</select></label>
-    <label>Tipo
-      <select id="ocor-tipo" required>
-        <option value="falta"${tipo === 'falta' ? ' selected' : ''}>Falta</option>
-        <option value="atestado"${tipo === 'atestado' ? ' selected' : ''}>Atestado</option>
-        <option value="hora_extra"${tipo === 'hora_extra' ? ' selected' : ''}>Hora extra</option>
-      </select>
-    </label>
-    <label>Data <input id="ocor-data" type="date" value="${escapar(formulario.data || dataHoje())}" required></label>
-    <label>Valor
-      <input id="ocor-valor" type="number" min="0" step="0.01"
-        value="${escapar(atestado ? '0' : formulario.valor ?? '')}"
-        ${atestado ? 'disabled' : ''}>
-    </label>
-    <label>Observação <input id="ocor-obs" value="${escapar(formulario.observacao || '')}"></label>
-    <p class="funcionarios-erro" role="alert">${escapar(erro)}</p>
-    <button type="submit">Lançar ocorrência</button>
-  </form>`;
+  return htmlModalFuncionarios({
+    modalId: 'modal-form-ocorrencia',
+    formId: 'form-ocorrencia',
+    tituloId: 'titulo-form-ocorrencia',
+    titulo: 'Nova ocorrência',
+    cancelarId: 'btn-cancelar-ocorrencia',
+    submit: 'Lançar ocorrência',
+    erro,
+    corpo: `<label>Funcionário <select id="ocor-funcionario" required>${opcoesFuncionarios(funcionarios, formulario.funcionario_id)}</select></label>
+      <label>Tipo
+        <select id="ocor-tipo" required>
+          <option value="falta"${tipo === 'falta' ? ' selected' : ''}>Falta</option>
+          <option value="atestado"${tipo === 'atestado' ? ' selected' : ''}>Atestado</option>
+          <option value="hora_extra"${tipo === 'hora_extra' ? ' selected' : ''}>Hora extra</option>
+        </select>
+      </label>
+      <label>Data <input id="ocor-data" type="date" value="${escapar(formulario.data || dataHoje())}" required></label>
+      <label>Valor
+        <input id="ocor-valor" type="number" min="0" step="0.01"
+          value="${escapar(atestado ? '0' : formulario.valor ?? '')}"
+          ${atestado ? 'disabled' : ''}>
+      </label>
+      <label>Observação <input id="ocor-obs" value="${escapar(formulario.observacao || '')}"></label>`,
+  });
 }
 
 export function htmlFormularioFechamento({ funcionarios, formulario = {}, resultado = null, erro = '' }) {
@@ -123,13 +185,19 @@ export function htmlFormularioFechamento({ funcionarios, formulario = {}, result
         <p>Líquido: <strong data-valor-liquido="${escapar(resultado.valor_liquido)}">${formatarMoeda(resultado.valor_liquido)}</strong></p>
       </aside>`
     : '';
-  return `<form id="form-fechar-folha" class="funcionarios-form">
-    <label>Funcionário <select id="folha-funcionario" required>${opcoesFuncionarios(funcionarios, formulario.funcionario_id)}</select></label>
-    <label>Início <input id="folha-inicio" type="date" value="${escapar(formulario.periodo_inicio || '')}" required></label>
-    <label>Fim <input id="folha-fim" type="date" value="${escapar(formulario.periodo_fim || '')}" required></label>
-    <p class="funcionarios-erro" role="alert">${escapar(erro)}</p>
-    <button type="submit">Fechar folha</button>
-  </form>${resumo}`;
+  return htmlModalFuncionarios({
+    modalId: 'modal-form-folha',
+    formId: 'form-fechar-folha',
+    tituloId: 'titulo-form-folha',
+    titulo: 'Fechar folha',
+    cancelarId: 'btn-cancelar-folha',
+    submit: resultado ? 'Fechar outra folha' : 'Fechar folha',
+    erro,
+    corpo: `<label>Funcionário <select id="folha-funcionario" required>${opcoesFuncionarios(funcionarios, formulario.funcionario_id)}</select></label>
+      <label>Início <input id="folha-inicio" type="date" value="${escapar(formulario.periodo_inicio || '')}" required></label>
+      <label>Fim <input id="folha-fim" type="date" value="${escapar(formulario.periodo_fim || '')}" required></label>
+      ${resumo}`,
+  });
 }
 
 export function htmlTabelaFolhas(itens) {

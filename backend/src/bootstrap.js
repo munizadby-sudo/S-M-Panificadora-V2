@@ -61,6 +61,7 @@ import { ProducaoController } from './modules/production/infrastructure/http/Pro
 import { CreateEncomenda } from './modules/orders/application/CreateEncomenda.js';
 import { UpdateEncomenda } from './modules/orders/application/UpdateEncomenda.js';
 import { UpdateStatusEncomenda } from './modules/orders/application/UpdateStatusEncomenda.js';
+import { FinalizarEncomenda } from './modules/orders/application/FinalizarEncomenda.js';
 import { CancelEncomenda } from './modules/orders/application/CancelEncomenda.js';
 import { ListEncomendas } from './modules/orders/application/ListEncomendas.js';
 import { GetEncomenda } from './modules/orders/application/GetEncomenda.js';
@@ -296,11 +297,20 @@ export function montarDependencias({ pool, config = {}, pastaUploads = pastaUplo
   });
 
   const encomendaRepository = new MySQLEncomendaRepository(pool);
-  const depsEncomendas = { encomendaRepository, produtoRepository, clienteRepository, sequenciaRepository, auditor };
+  const depsEncomendas = {
+    encomendaRepository,
+    produtoRepository,
+    clienteRepository,
+    sequenciaRepository,
+    caixaTurnoRepository,
+    fluxoCaixaRepository,
+    auditor,
+  };
   const encomendasController = new EncomendasController({
     createEncomenda: new CreateEncomenda(depsEncomendas),
     updateEncomenda: new UpdateEncomenda(depsEncomendas),
     updateStatusEncomenda: new UpdateStatusEncomenda(depsEncomendas),
+    finalizarEncomenda: new FinalizarEncomenda(depsEncomendas),
     cancelEncomenda: new CancelEncomenda(depsEncomendas),
     listEncomendas: new ListEncomendas({ encomendaRepository }),
     getEncomenda: new GetEncomenda({ encomendaRepository }),

@@ -80,6 +80,22 @@ describe('Passo 3 — forma de pagamento e confirmação', () => {
     });
     assert.match(html, /pdv-recebido/);
     assert.match(html, /Troco: R\$ 7,25/);
+    assert.doesNotMatch(html, /pdv-recebido-wrap"[^>]*hidden/);
+  });
+
+  test('valor recebido só aparece quando a forma é dinheiro', () => {
+    const itens = [{ subtotal: 10 }];
+    const semForma = htmlSeletorFormaPagamento({ itens, formaPagamento: '' });
+    const pix = htmlSeletorFormaPagamento({ itens, formaPagamento: 'pix' });
+    const debito = htmlSeletorFormaPagamento({ itens, formaPagamento: 'cartao' });
+    const credito = htmlSeletorFormaPagamento({ itens, formaPagamento: 'credito' });
+    const dinheiro = htmlSeletorFormaPagamento({ itens, formaPagamento: 'dinheiro' });
+    assert.match(semForma, /pdv-recebido-wrap"[^>]*hidden/);
+    assert.match(pix, /pdv-recebido-wrap"[^>]*hidden/);
+    assert.match(debito, /pdv-recebido-wrap"[^>]*hidden/);
+    assert.match(credito, /pdv-recebido-wrap"[^>]*hidden/);
+    assert.doesNotMatch(dinheiro, /pdv-recebido-wrap"[^>]*hidden/);
+    assert.match(dinheiro, /Informe o valor recebido/);
   });
 
   test('criarVenda envia POST /vendas sem total do cliente', async () => {

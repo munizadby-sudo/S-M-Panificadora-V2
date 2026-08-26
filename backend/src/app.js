@@ -208,6 +208,9 @@ export function criarApp({
     app.patch('/api/encomendas/:id/status', ...permissaoEncomendas, (req, res, next) => {
       encomendasController.mudarStatus(req, res, next);
     });
+    app.post('/api/encomendas/:id/finalizar', ...permissaoEncomendas, (req, res, next) => {
+      encomendasController.finalizar(req, res, next);
+    });
     app.delete('/api/encomendas/:id', ...permissaoEncomendas, (req, res, next) => {
       encomendasController.cancelar(req, res, next);
     });

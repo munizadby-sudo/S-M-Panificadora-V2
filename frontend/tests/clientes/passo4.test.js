@@ -257,4 +257,101 @@ describe('Passo 4 — SeletorCliente reaproveitável', () => {
     assert.match(container.innerHTML, /Selecionado:/);
     assert.match(container.innerHTML, /João Novo/);
   });
+
+  test('busca e seleção restauram o scroll da janela (não voltam ao topo)', async () => {
+    const scrolls = [];
+    globalThis.scrollY = 420;
+    globalThis.scrollTo = (_x, y) => {
+      scrolls.push(y);
+    };
+
+    globalThis.fetch = async () =>
+      jsonOk({
+        data: [{ id: 5, nome: 'Maria Silva', telefone: '11999998888', ativo: 1 }],
+        pagination: { page: 1, limit: 10, total: 1, pages: 1 },
+      });
+
+    const corpoModal = { scrollTop: 180 };
+    const elementos = new Map();
+    let botoesResultado = [];
+    function obter(id) {
+      if (!elementos.has(id)) {
+        elementos.set(id, {
+          id,
+          value: '',
+          disabled: false,
+          listeners: {},
+          focus() {},
+          setSelectionRange() {},
+          addEventListener(evento, fn) {
+            this.listeners[evento] = fn;
+          },
+        });
+      }
+      return elementos.get(id);
+    }
+
+    const container = {
+      _html: '',
+      closest(seletor) {
+        return seletor === '.form-modal-corpo' ? corpoModal : null;
+      },
+      get innerHTML() {
+        return this._html;
+      },
+      set innerHTML(valor) {
+        this._html = String(valor || '');
+        botoesResultado = [...this._html.matchAll(/data-cliente-id="([^"]*)"[^>]*data-cliente-nome="([^"]*)"[^>]*data-cliente-telefone="([^"]*)"/g)].map(
+          (match) => ({
+            getAttribute(nome) {
+              if (nome === 'data-cliente-id') return match[1];
+              if (nome === 'data-cliente-nome') return match[2];
+              if (nome === 'data-cliente-telefone') return match[3];
+              return null;
+            },
+            addEventListener(evento, fn) {
+              if (evento === 'click') {
+                this._click = fn;
+              }
+            },
+            click() {
+              this._click?.();
+            },
+          }),
+        );
+      },
+      querySelector(seletor) {
+        if (!seletor?.startsWith('#')) {
+          return null;
+        }
+        const id = seletor.slice(1);
+        return this._html.includes(`id="${id}"`) ? obter(id) : null;
+      },
+      querySelectorAll(seletor) {
+        if (seletor !== '.clientes-item-seletor') {
+          return [];
+        }
+        return botoesResultado;
+      },
+    };
+
+    montarSeletorCliente(container, { prefixo: 'scroll-sel' });
+    assert.ok(scrolls.includes(420), 'montar o seletor não pode resetar o scroll');
+    assert.equal(corpoModal.scrollTop, 180);
+
+    const busca = container.querySelector('#scroll-sel-busca');
+    busca.value = 'maria';
+    busca.listeners.input({ target: busca });
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    assert.ok(scrolls.filter((y) => y === 420).length >= 2, 'depois da busca o scroll continua onde estava');
+    assert.equal(corpoModal.scrollTop, 180);
+
+    const [resultado] = container.querySelectorAll('.clientes-item-seletor');
+    resultado.click();
+
+    assert.match(container.innerHTML, /Selecionado:/);
+    assert.equal(scrolls.at(-1), 420);
+    assert.equal(corpoModal.scrollTop, 180);
+  });
 });

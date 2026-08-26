@@ -36,6 +36,14 @@ export class FluxoCaixaRepository {
   async registrar(_lancamento, _conexao) {
     throw new Error('FluxoCaixaRepository.registrar não implementado');
   }
+
+  async buscarAtivoPorEncomendaId(_encomendaId) {
+    return null;
+  }
+
+  async marcarExcluido(_lancamento) {
+    throw new Error('FluxoCaixaRepository.marcarExcluido não implementado');
+  }
 }
 
 export class CorrecaoPendenteRepository {

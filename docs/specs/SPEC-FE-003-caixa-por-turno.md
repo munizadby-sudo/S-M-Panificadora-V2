@@ -48,7 +48,7 @@ Nenhum outro módulo deve chamar `GET /api/caixa-turno/status` diretamente — s
 
 ### Passo 1 — Banner de status (somente leitura)
 - Implementar `estado.js` com `getTurnoAtual()` consumindo `GET /api/caixa-turno/status` (SPEC-BE-002, Seção 6.1).
-- Renderizar o banner (aberto/fechado, período) no shell.
+- Renderizar o banner (aberto/fechado, período) no shell, com bolinha: verde pulsando quando aberto, vermelha parada quando fechado.
 - **Testável:** abrir o sistema logado, ver o banner mostrando "Caixa fechado" corretamente, sem nenhuma ação de abrir/fechar ainda implementada.
 
 ### Passo 2 — Abertura de turno com pré-preenchimento

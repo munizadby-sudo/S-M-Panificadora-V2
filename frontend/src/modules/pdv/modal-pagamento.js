@@ -29,7 +29,7 @@ export function garantirModalPagamentoDom() {
   overlayModal.hidden = true;
   overlayModal.innerHTML = `
     <div class="caixa-turno-modal-caixa pdv-modal-pagamento-caixa">
-      <h2 id="titulo-modal-pdv-pagamento" class="pdv-modal-titulo">Finalizar venda</h2>
+      <h2 id="titulo-modal-pdv-pagamento" class="pdv-modal-titulo">Tipo de pagamento</h2>
       <div id="pdv-pagamento-conteudo-modal"></div>
       <button type="button" class="caixa-turno-modal-fechar" id="btn-fechar-modal-pdv-pagamento" aria-label="Fechar">×</button>
     </div>

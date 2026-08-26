@@ -124,6 +124,7 @@ describe('Passo 3 — ocorrência atestado', () => {
     });
     assert.match(html, /id="ocor-valor"[^>]*disabled/);
     assert.match(html, /value="0"/);
+    assert.match(html, /funcionarios-modal/);
   });
 });
 
@@ -140,6 +141,7 @@ describe('Passo 4–5 — fechamento e pagamento', () => {
       },
     });
     assert.match(html, /data-valor-liquido="1695"/);
+    assert.match(html, /modal-form-folha/);
   });
 
   test('409 vira mensagem de negócio', () => {

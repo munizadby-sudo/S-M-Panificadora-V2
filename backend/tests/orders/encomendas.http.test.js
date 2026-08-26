@@ -249,7 +249,7 @@ describe('HTTP PUT /api/encomendas/:id — substitui todos os itens', () => {
 });
 
 describe('HTTP PATCH /api/encomendas/:id/status', () => {
-  test('aceita qualquer status da whitelist e rejeita fora dela', async () => {
+  test('operador só avança pendente → pronto; PATCH para entregue é rejeitado', async () => {
     const ctx = montarAppMemoria();
     await comServidor(ctx.app, async (porta) => {
       const { token } = await tokenAdmin(porta, ctx);
@@ -277,12 +277,172 @@ describe('HTTP PATCH /api/encomendas/:id/status', () => {
       assert.equal(pronto.status, 200);
       assert.equal((await json(pronto)).status, 'pronto');
 
+      const entregueViaPatch = await fetch(`${origem}/api/encomendas/${criada.id}/status`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({ status: 'entregue' }),
+      });
+      assert.equal(entregueViaPatch.status, 400);
+
       const invalido = await fetch(`${origem}/api/encomendas/${criada.id}/status`, {
         method: 'PATCH',
         headers,
         body: JSON.stringify({ status: 'enviado' }),
       });
       assert.equal(invalido.status, 400);
+    });
+  });
+});
+
+describe('HTTP POST /api/encomendas/:id/finalizar', () => {
+  test('caixa fechado impede receber; com caixa aberto lança fluxo categoria encomenda', async () => {
+    const ctx = montarAppMemoria();
+    await comServidor(ctx.app, async (porta) => {
+      const { token } = await tokenAdmin(porta, ctx);
+      const origem = `http://127.0.0.1:${porta}`;
+      const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+      const produto = await criarProduto(origem, headers, 'Bolo', 40);
+      const criada = await json(
+        await fetch(`${origem}/api/encomendas`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            cliente_nome: 'Maria Souza',
+            cliente_telefone: '83900000000',
+            data_entrega: '2026-08-25',
+            sinal: 10,
+            itens: [{ produto_id: produto.id, quantidade: 1 }],
+          }),
+        }),
+      );
+      await fetch(`${origem}/api/encomendas/${criada.id}/status`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({ status: 'pronto' }),
+      });
+
+      const semCaixa = await fetch(`${origem}/api/encomendas/${criada.id}/finalizar`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ forma: 'dinheiro' }),
+      });
+      assert.equal(semCaixa.status, 403);
+
+      await fetch(`${origem}/api/caixa-turno/abrir`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ fundo_especie: 40, fundo_moedas: 10 }),
+      });
+
+      const finalizada = await fetch(`${origem}/api/encomendas/${criada.id}/finalizar`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ forma: 'dinheiro' }),
+      });
+      const corpo = await json(finalizada);
+      assert.equal(finalizada.status, 200);
+      assert.equal(corpo.status, 'entregue');
+      assert.equal(corpo.saldo_a_receber, 0);
+
+      const lancamento = ctx.fluxoCaixaRepository.lancamentos.find(
+        (item) => Number(item.encomendaId) === Number(criada.id) && item.ativo !== false,
+      );
+      assert.ok(lancamento, 'deve lançar no fluxo do turno');
+      assert.equal(lancamento.categoria, 'encomenda');
+      assert.equal(lancamento.geradoAuto, true);
+      assert.equal(lancamento.forma, 'dinheiro');
+      assert.equal(Number(lancamento.valor), 30);
+
+      const preview = await json(
+        await fetch(`${origem}/api/caixa-turno/preview-fechamento`, { headers }),
+      );
+      assert.equal(preview.esperado.dinheiro, 80, 'fundo 50 + encomenda 30');
+
+      const operador = await ctx.usuarioRepository.salvar(
+        new Usuario({
+          nome: 'Operador',
+          username: 'openc',
+          senhaHash: await ctx.hashService.hash('op123'),
+          role: 'operador',
+          permissoes: ['encomendas', 'caixa'],
+        }),
+      );
+      const loginOp = await json(
+        await fetch(`${origem}/api/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: operador.username, senha: 'op123' }),
+        }),
+      );
+      const tentativaOp = await fetch(`${origem}/api/encomendas/${criada.id}/status`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${loginOp.token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'pronto' }),
+      });
+      assert.equal(tentativaOp.status, 403);
+
+      const editar = await fetch(`${origem}/api/encomendas/${criada.id}`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({
+          cliente_nome: 'Maria Souza',
+          cliente_telefone: '83900000000',
+          data_entrega: '2026-08-25',
+          itens: [{ produto_id: produto.id, quantidade: 1 }],
+        }),
+      });
+      assert.equal(editar.status, 403);
+
+      const reabrir = await fetch(`${origem}/api/encomendas/${criada.id}/status`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({ status: 'pronto' }),
+      });
+      assert.equal(reabrir.status, 200);
+      assert.equal((await json(reabrir)).status, 'pronto');
+      assert.equal(lancamento.ativo, false, 'reabrir estorna o lançamento automático');
+    });
+  });
+
+  test('sinal que cobre o total entrega sem lançar fluxo', async () => {
+    const ctx = montarAppMemoria();
+    await comServidor(ctx.app, async (porta) => {
+      const { token } = await tokenAdmin(porta, ctx);
+      const origem = `http://127.0.0.1:${porta}`;
+      const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+      const produto = await criarProduto(origem, headers, 'Pão', 10);
+      const criada = await json(
+        await fetch(`${origem}/api/encomendas`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            cliente_nome: 'Pago',
+            cliente_telefone: '83900000000',
+            data_entrega: '2026-08-25',
+            sinal: 10,
+            itens: [{ produto_id: produto.id, quantidade: 1 }],
+          }),
+        }),
+      );
+      await fetch(`${origem}/api/encomendas/${criada.id}/status`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({ status: 'pronto' }),
+      });
+      await fetch(`${origem}/api/caixa-turno/abrir`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ fundo_especie: 40, fundo_moedas: 10 }),
+      });
+
+      const finalizada = await fetch(`${origem}/api/encomendas/${criada.id}/finalizar`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({}),
+      });
+      assert.equal(finalizada.status, 200);
+      assert.equal((await json(finalizada)).status, 'entregue');
+      assert.equal(ctx.fluxoCaixaRepository.lancamentos.length, 0);
     });
   });
 });

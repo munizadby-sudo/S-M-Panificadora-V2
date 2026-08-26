@@ -55,6 +55,8 @@ describe('Passo 3 — atestado desabilita valor', () => {
     });
     assert.match(html, /id="ocor-valor"[^>]*disabled/);
     assert.match(html, /value="0"/);
+    assert.match(html, /funcionarios-modal/);
+    assert.match(html, /modal-form-ocorrencia/);
   });
 });
 
@@ -72,6 +74,7 @@ describe('Passo 4 — líquido do backend e 409', () => {
     });
     assert.match(html, /data-valor-liquido="1695"/);
     assert.match(html, /1\.695,00|1695/);
+    assert.match(html, /modal-form-folha/);
   });
 
   test('mensagem de 409 é de negócio', () => {

@@ -19,9 +19,12 @@ export function htmlFormularioProducao({
     erro: errosCampos.produto,
   });
 
-  return `<section class="producao-formulario">
-    <h2>Lançar produção</h2>
-    <form id="form-producao" class="producao-form">
+  return `<div class="producao-modal" id="modal-form-producao" role="dialog" aria-modal="true" aria-labelledby="titulo-form-producao">
+  <form id="form-producao" class="producao-modal-caixa producao-form">
+    <header class="form-modal-cabecalho">
+      <h2 id="titulo-form-producao">Lançar produção</h2>
+    </header>
+    <div class="form-modal-corpo">
       ${seletor}
       <label>Quantidade
         <input type="number" id="producao-quantidade" name="quantidade" min="0.001" step="0.001" value="${escapar(formulario.quantidade)}">
@@ -32,19 +35,28 @@ export function htmlFormularioProducao({
       </label>
       <p class="campo-erro">${escapar(errosCampos.data || '')}</p>
       <p class="producao-erro" role="alert">${escapar(erro)}</p>
-      <div class="producao-form-acoes">
-        <button type="submit">Lançar produção</button>
-        <button type="button" id="btn-cancelar-producao">Cancelar</button>
-      </div>
-    </form>
-  </section>`;
+    </div>
+    <div class="producao-form-acoes">
+      <button type="button" id="btn-cancelar-producao">Cancelar</button>
+      <button type="submit">Lançar produção</button>
+    </div>
+  </form>
+</div>`;
 }
 
 function htmlConfirmacaoRegistro({ producao, disponivel }) {
-  return `<aside class="producao-confirmacao" role="status">
-    <h2>Produção lançada</h2>
-    <p>Produto #${escapar(producao.produto_id)} — ${formatarQuantidade(producao.quantidade)} un. em ${escapar(producao.data)}</p>
-    <p>Novo saldo disponível: <strong class="producao-disponivel-confirmacao">${formatarQuantidade(disponivel)}</strong></p>
-    <button type="button" id="btn-fechar-confirmacao-producao">Lançar outra produção</button>
-  </aside>`;
+  return `<div class="producao-modal" id="modal-form-producao" role="dialog" aria-modal="true" aria-labelledby="titulo-confirmacao-producao">
+  <aside class="producao-modal-caixa producao-confirmacao" role="status">
+    <header class="form-modal-cabecalho">
+      <h2 id="titulo-confirmacao-producao">Produção lançada</h2>
+    </header>
+    <div class="form-modal-corpo">
+      <p>Produto #${escapar(producao.produto_id)} — ${formatarQuantidade(producao.quantidade)} un. em ${escapar(producao.data)}</p>
+      <p>Novo saldo disponível: <strong class="producao-disponivel-confirmacao">${formatarQuantidade(disponivel)}</strong></p>
+    </div>
+    <div class="producao-form-acoes">
+      <button type="button" id="btn-fechar-confirmacao-producao">Lançar outra produção</button>
+    </div>
+  </aside>
+</div>`;
 }

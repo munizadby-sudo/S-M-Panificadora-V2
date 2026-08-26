@@ -97,9 +97,10 @@ describe('Passo 1 — estado e banner de caixa', () => {
         return JSON.stringify({ aberto: false, turno: null });
       },
     });
-    const el = { textContent: '', dataset: {} };
+    const el = { innerHTML: '', dataset: {} };
     await montarBanner(el);
-    assert.equal(el.textContent, 'Caixa fechado');
+    assert.match(el.innerHTML, /caixa-turno-banner-bola/);
+    assert.match(el.innerHTML, /Caixa fechado/);
     assert.equal(el.dataset.aberto, 'false');
   });
 

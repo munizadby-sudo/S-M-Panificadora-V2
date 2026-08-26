@@ -79,9 +79,44 @@ export function montarSeletorCliente(container, { onSelecionar, clienteInicial =
 
   let cancelarBusca = null;
 
-  function renderizar() {
+  function capturarScroll() {
+    return {
+      janela: Number(globalThis.scrollY ?? globalThis.pageYOffset ?? 0) || 0,
+      corpo: container.closest?.('.form-modal-corpo')?.scrollTop,
+      overlay: container.closest?.('.encomendas-modal')?.scrollTop,
+    };
+  }
+
+  function restaurarScroll(snap) {
+    const corpo = container.closest?.('.form-modal-corpo');
+    const overlay = container.closest?.('.encomendas-modal');
+    if (corpo && Number.isFinite(Number(snap?.corpo))) {
+      corpo.scrollTop = snap.corpo;
+    }
+    if (overlay && Number.isFinite(Number(snap?.overlay))) {
+      overlay.scrollTop = snap.overlay;
+    }
+    if (typeof globalThis.scrollTo === 'function') {
+      globalThis.scrollTo(0, snap?.janela || 0);
+    }
+  }
+
+  function renderizar({ restaurarBusca = false } = {}) {
+    const snap = capturarScroll();
+
     container.innerHTML = htmlSeletorCliente(estado);
     ligarEventos();
+    restaurarScroll(snap);
+    globalThis.requestAnimationFrame?.(() => restaurarScroll(snap));
+
+    if (restaurarBusca && !estado.cliente) {
+      const busca = container.querySelector(`#${estado.prefixo}-busca`);
+      if (busca && !busca.disabled) {
+        busca.focus?.({ preventScroll: true });
+        const fim = String(busca.value || '').length;
+        busca.setSelectionRange?.(fim, fim);
+      }
+    }
   }
 
   const buscarDebounced = debounce(async () => {
@@ -93,7 +128,7 @@ export function montarSeletorCliente(container, { onSelecionar, clienteInicial =
     if (!termo || estado.cliente) {
       estado.resultados = [];
       estado.mostrarCadastroRapido = false;
-      renderizar();
+      renderizar({ restaurarBusca: true });
       return;
     }
 
@@ -107,7 +142,7 @@ export function montarSeletorCliente(container, { onSelecionar, clienteInicial =
       estado.mostrarCadastroRapido = true;
       estado.erro = mensagemErroCliente(erro);
     }
-    renderizar();
+    renderizar({ restaurarBusca: true });
   }
 
   function selecionarCliente(cliente) {
@@ -161,6 +196,9 @@ export function montarSeletorCliente(container, { onSelecionar, clienteInicial =
     });
 
     for (const botao of container.querySelectorAll?.('.clientes-item-seletor') || []) {
+      botao.addEventListener('mousedown', (evento) => {
+        evento?.preventDefault?.();
+      });
       botao.addEventListener('click', () => {
         selecionarCliente({
           id: Number(botao.getAttribute('data-cliente-id')),
@@ -176,7 +214,7 @@ export function montarSeletorCliente(container, { onSelecionar, clienteInicial =
       estado.resultados = [];
       estado.mostrarCadastroRapido = false;
       estado.modalCadastro = null;
-      renderizar();
+      renderizar({ restaurarBusca: true });
       onSelecionar?.(null);
     });
 

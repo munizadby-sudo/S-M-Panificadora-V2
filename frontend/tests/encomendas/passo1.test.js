@@ -71,18 +71,38 @@ describe('Passo 1 — listagem com filtro por status', () => {
     assert.match(urls[0], /data_entrega_inicio=2026-08-01/);
   });
 
-  test('tabela mostra número, cliente, entrega, sinal, total e status', () => {
+  test('tabela mostra número, cliente, entrega, sinal, total e semáforo de status', () => {
     const html = htmlTabelaEncomendas([itemEncomenda]);
     assert.match(html, /45/);
     assert.match(html, /Maria Souza/);
     assert.match(html, /2026-08-25/);
-    assert.match(html, /Pendente|encomendas-select-status/);
+    assert.match(html, /encomendas-semaforo-pendente/);
+    assert.match(html, /data-avancar-status="3"/);
+    assert.doesNotMatch(html, /encomendas-select-status/);
   });
 
-  test('encomenda cancelada não mostra o seletor de status, só o rótulo', () => {
+  test('encomenda cancelada não mostra ação de avançar status, só o rótulo', () => {
     const html = htmlTabelaEncomendas([{ ...itemEncomenda, ativo: 0, status: 'pendente' }]);
-    assert.doesNotMatch(html, /encomendas-select-status/);
+    assert.doesNotMatch(html, /data-avancar-status/);
     assert.match(html, /Cancelada/);
+  });
+
+  test('encomenda entregue trava edição e só admin vê Reabrir', () => {
+    const entregue = { ...itemEncomenda, status: 'entregue' };
+    const operador = htmlTabelaEncomendas([entregue]);
+    assert.match(operador, /encomendas-semaforo-entregue/);
+    assert.doesNotMatch(operador, /data-editar-encomenda/);
+    assert.doesNotMatch(operador, /data-reabrir-encomenda/);
+
+    const admin = htmlTabelaEncomendas([entregue], { admin: true });
+    assert.match(admin, /data-reabrir-encomenda="3"/);
+  });
+
+  test('encomenda pronta oferece entregar, com dica de aguardando retirada', () => {
+    const html = htmlTabelaEncomendas([{ ...itemEncomenda, status: 'pronto' }]);
+    assert.match(html, /data-finalizar-encomenda="3"/);
+    assert.match(html, /Aguardando retirada/);
+    assert.doesNotMatch(html, /encomendas-select-status/);
   });
 
   test('filtros incluem status e período de entrega', () => {

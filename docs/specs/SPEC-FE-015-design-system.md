@@ -1,7 +1,7 @@
 # SPEC-FE-015 — Design System (Tokens, Componentes e Navegação)
 
-- **Status:** Em execução (onda clean full-system 2026-08-23)
-- **Data:** 2026-08-23 (atualizado 2026-08-23)
+- **Status:** Em execução (onda clean full-system 2026-08-23; refinos PDV e modais de cadastro 2026-08-26)
+- **Data:** 2026-08-23 (atualizado 2026-08-26 — PDV + caixas flutuantes alinhadas ao modal de Usuários)
 - **Módulo:** `frontend/index.html` (CSS central) + `frontend/login.html` — transversal a todos os módulos
 - **Depende de:** SPEC-FE-001 (Fundação), PRD-016 (Redesign de Interface)
 - **PRD de origem:** `PRD-016-redesign-de-interface.md`
@@ -25,7 +25,7 @@
 |------|--------|-------------------|--------|
 | **0** | Tokens + CSS base global | Controles sem classe não ficam cinza-claro; tokens únicos | Feito |
 | **1** | Login + shell | Login escuro alinhado; menu clean | Feito |
-| **2** | PDV + modal de pagamento + atalhos | Grade/carrinho/modal clean; atalhos sob demanda | Feito |
+| **2** | PDV + modal de pagamento + atalhos | Grade/carrinho/modal clean; atalhos visíveis; modal tipo V1 | Feito (refino 2026-08-26, SPEC-FE-007 §11) |
 | **3** | Caixa + Fluxo | Modais e KPIs clean | Feito |
 | **4** | Relatórios / Dashboard | Clean; faixa de horas dinâmica | Feito |
 | **5** | Estoque, Produção, Perdas, Encomendas | Tabelas/filtros/modais | Feito |
@@ -156,22 +156,28 @@ Ajustes de componente:
 ### 3.1 Estado de seleção (resolve PRD-016 Seção 3.2)
 Elemento selecionável (card de produto, opção de pagamento, linha de tabela ativa) usa **borda de cor cheia + `box-shadow: 0 0 0 1px var(--token) inset`** no estado selecionado — nunca só mudança sutil de espessura/tom de borda. O token de cor depende do papel: `--destaque` para "produto em foco no PDV" (é navegação, não confirmação), `--selecao` para "opção escolhida num formulário" (ex.: forma de pagamento).
 
+**Exceção (operador, 2026-08-26):** no modal de pagamento do PDV a forma **escolhida** usa fundo `--sucesso` (igual à V1). `--selecao` continua no anel de foco dos **cards de produto** (`.pdv-produto-foco`). Confirmar/Finalizar também usam `--sucesso` (Seção 3.3) — são confirmação, não o mesmo papel da grade.
+
 ### 3.2 Badges de status
 Sempre ícone/forma + texto, nunca só cor (acessibilidade a daltonismo, já parcialmente seguido no código atual — reforçar em todo lugar novo): `● Aberto` (`--sucesso`), `● Fechado` (`--perigo`), `● Selecionado` (`--selecao`). Visual: fundo translúcido + texto na cor cheia (Seção 2.6), não preenchimento sólido.
 
 ### 3.3 Botões — papel fixo por cor
 - Primário (`--destaque`): Salvar, Nova Encomenda, Cadastrar.
-- Sucesso (`--sucesso`): Finalizar Venda, Abrir Caixa, Confirmar.
+- Sucesso (`--sucesso`): Finalizar Venda, Abrir Caixa, Confirmar. **Finalizar Venda** (`#btn-finalizar-venda`) e **Confirmar venda** no modal: gradiente `--sucesso`, `--brilho-sucesso` e pulso só quando habilitados; desabilitados cinza, sem animação. `prefers-reduced-motion: reduce` desliga o pulso.
 - Perigo (`--perigo`): Fechar Caixa, Cancelar Encomenda, Desativar.
 - Ghost (transparente, borda `--linha`): Cancelar, Voltar.
 
-Nenhum botão reaproveita `--sucesso` para "opção selecionada" — usar `--selecao` (corrige o achado mais crítico da auditoria).
+**Caixas flutuantes de cadastro (2026-08-26):** Nova/Editar encomenda, Registrar perda, Lançar produção e Novo/Editar funcionário usam o mesmo cromo do modal **Editar usuário**: overlay `z-index: 100`, card `--superficie-elevada`, cabeçalho + corpo com scroll + rodapé com borda, **Cancelar** ghost à esquerda do par e ação primária em gradiente `--sucesso` à direita. O formulário é a própria caixa (`role="dialog"`). Adiantamentos, ocorrências e folha continuam inline.
+
+Nenhum botão reaproveita `--sucesso` para "opção selecionada" — usar `--selecao` (corrige o achado mais crítico da auditoria). **Exceção:** forma de pagamento selecionada no modal do PDV (Seção 3.1).
 
 ### 3.4 Legenda de atalhos de teclado (resolve PRD-016 Seção 3.7)
-Vira um `<details>`/`<summary>` nativo do HTML (`⌨ Ver atalhos`), fechado por padrão, no rodapé do módulo PDV — não JavaScript customizado, o elemento nativo já dá o comportamento de expandir/recolher sem lógica extra.
+Barra sempre visível (`ul.pdv-atalhos`) acima do título **Vendas**: teclas em `--aviso`, descrições em `--muted`, itens lado a lado. Sem `<details>`/`<summary>`. Conteúdo: `F1`, `F2-F8`, setas, `Enter`, `Del`, `Esc`, `F10`. **Não** incluir `1`/`2`/`3`/`4` na barra — só no modal. Não copiar F9 / `+` da V1. Detalhe: SPEC-FE-007 §11.1.
 
 ### 3.5 Navegação por teclado na grade de produtos (resolve PRD-016 Seção 3.8)
-Implementar como *roving tabindex*: o card com foco tem `tabindex="0"`, os demais `tabindex="-1"`. Handler de `keydown` no container da grade: `ArrowRight`/`ArrowLeft` movem uma posição; `ArrowUp`/`ArrowDown` movem uma linha inteira (calculado a partir do número de colunas visíveis); `Enter` adiciona o item focado ao carrinho; `Tab` sai da grade inteira (nunca intercepta `Tab` para navegar dentro da grade). Anel de foco visível: `outline: 2px solid var(--selecao); outline-offset: 2px`.
+Implementar como *roving tabindex*: o card com foco tem `tabindex="0"`, os demais `tabindex="-1"`. Handler de `keydown` no container da grade: `ArrowRight`/`ArrowLeft` movem uma posição; `ArrowUp`/`ArrowDown` movem uma linha inteira (número de colunas visíveis); se **não há** linha abaixo/acima, o índice não muda (não pular para o último/primeiro da mesma linha). `Enter` adiciona o item focado e o foco **permanece** nesse card depois do re-render. `Tab` sai da grade (nunca intercepta `Tab` para navegar dentro da grade).
+
+O atalho global de setas **não** trata o evento se `defaultPrevented` (evita andar duas casas no mesmo toque). Re-render da tela (busca, carrinho) restaura foco e cursor da busca (`capturarFocoUi` / `restaurarFocoUi`). Anel de foco: `outline: 2px solid var(--selecao); outline-offset: 2px` em `:focus`, `:focus-visible` e `.pdv-produto-foco`. Detalhe: SPEC-FE-007 §11.2.
 
 ### 3.6 Estado vazio (resolve PRD-016 Seção 3.9)
 Toda função `html*Vazio()`/equivalente (Encomendas, Perdas, Produção, Clientes, Funcionários) ganha uma segunda linha explicando o que aparece ali, além do texto "Nenhum/Nenhuma [item]." já existente — sem novo componente, só template.
@@ -212,8 +218,8 @@ O roteador (`core/router.js`) não muda sua API (`registrarModulo`, `navegarPara
 
 1. Tokens em `:root` + consolidação das cores hardcoded (Seção 2.1) + base global de controles (Seção 2.4) — mudança de base, afeta tudo de uma vez, deve ser feita e testada visualmente **em pelo menos 3 telas diferentes** (uma operacional, uma administrativa, um modal) antes de seguir — é exatamente aqui que a lacuna de botão/input sem estilo apareceu na primeira tentativa.
 2. Header/navegação agrupada (Seção 4).
-3. PDV/Caixa: estado de seleção de card, atalhos colapsáveis, navegação por teclado (Seções 3.1, 3.4, 3.5) — é a tela de maior uso, prioridade depois da base.
-4. Modal de pagamento: `--selecao` na forma escolhida (Seção 3.3).
+3. PDV/Caixa: estado de seleção de card, atalhos visíveis acima do título, navegação por teclado (Seções 3.1, 3.4, 3.5) — é a tela de maior uso, prioridade depois da base.
+4. Modal de pagamento: lista vertical, forma escolhida em `--sucesso` (exceção §3.1), **Valor recebido** só em Dinheiro (SPEC-FE-007 §11.3).
 5. Estados vazios de todos os módulos (Seção 3.6).
 6. Modal de usuário: feedback de senha (Seção 3.7).
 7. Refinamentos visuais (Seção 2.6): gradiente de fundo, sombras/glow, filtros em pílula, hover/press, badges translúcidas, scrollbar customizada — por último, depois que a estrutura (passos 1-6) já estiver validada, já que são ajustes puramente estéticos sobre uma base que precisa estar correta primeiro.
@@ -223,7 +229,7 @@ O roteador (`core/router.js`) não muda sua API (`registrarModulo`, `navegarPara
 ## 6. Critérios de aceite técnicos
 
 1. Nenhuma cor de estado (`sucesso`/`perigo`/`selecao`) aparece como valor hex literal fora do bloco `:root` depois da migração.
-2. `--selecao` e `--sucesso` nunca aparecem no mesmo componente representando o mesmo conceito — grep por `var(--sucesso)` em qualquer arquivo de UI de escolha/seleção (não confirmação) deve dar zero resultado.
+2. `--selecao` e `--sucesso` nunca aparecem no mesmo componente representando o mesmo conceito — grep por `var(--sucesso)` em qualquer arquivo de UI de escolha/seleção (não confirmação) deve dar zero resultado, **exceto** `.pdv-forma.ativo` no modal de pagamento (Seção 3.1, 2026-08-26).
 3. Menu do header mostra 3 itens operacionais sempre visíveis (Encomendas, Estoque, Fluxo — "Caixa" não é mais item de menu, ver Seção 7) + 1 agrupador administrativo, testável visualmente e via `frontend/tests`.
 4. Grade de produtos do PDV: `ArrowRight`/`ArrowLeft`/`ArrowUp`/`ArrowDown` movem o foco entre cards; `Enter` adiciona ao carrinho; `Tab` sai da grade inteira — testável simulando eventos de teclado sem mouse.
 5. Nenhuma fonte externa (Google Fonts ou similar) é carregada — `frontend/index.html` continua funcionando com a rede desligada (mesmo critério já usado pra validar ADR-003).

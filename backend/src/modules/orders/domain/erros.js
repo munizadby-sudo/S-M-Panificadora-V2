@@ -53,10 +53,37 @@ export class UsuarioExecutorObrigatorioError extends Error {
 }
 
 export class EncomendaNaoEncontradaError extends Error {
-  constructor() {
-    super('Encomenda não encontrada.');
+  constructor(mensagem = 'Encomenda não encontrada.') {
+    super(mensagem);
     this.name = 'EncomendaNaoEncontradaError';
     this.status = 404;
     this.codigo = 'ENCOMENDA_NAO_ENCONTRADA';
+  }
+}
+
+export class EncomendaEntregueBloqueadaError extends Error {
+  constructor(mensagem = 'Encomenda entregue está travada. Só o administrador pode reabrir.') {
+    super(mensagem);
+    this.name = 'EncomendaEntregueBloqueadaError';
+    this.status = 403;
+    this.codigo = 'ENCOMENDA_ENTREGUE_BLOQUEADA';
+  }
+}
+
+export class TransicaoStatusInvalidaError extends Error {
+  constructor(mensagem = 'Essa mudança de status não é permitida.') {
+    super(mensagem);
+    this.name = 'TransicaoStatusInvalidaError';
+    this.status = 400;
+    this.codigo = 'TRANSICAO_STATUS_INVALIDA';
+  }
+}
+
+export class EncomendaNaoEstaProntaError extends Error {
+  constructor(mensagem = 'Só é possível entregar uma encomenda com status Pronto.') {
+    super(mensagem);
+    this.name = 'EncomendaNaoEstaProntaError';
+    this.status = 400;
+    this.codigo = 'ENCOMENDA_NAO_ESTA_PRONTA';
   }
 }

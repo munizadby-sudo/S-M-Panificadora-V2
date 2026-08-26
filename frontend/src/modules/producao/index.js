@@ -155,6 +155,16 @@ function ligarEventos(container) {
     renderizar();
   });
 
+  container.querySelector('#modal-form-producao')?.addEventListener('click', (evento) => {
+    if (evento.target?.id !== 'modal-form-producao') {
+      return;
+    }
+    estado.mostrarFormulario = false;
+    estado.confirmacao = null;
+    estado.formulario = formularioVazio();
+    renderizar();
+  });
+
   container.querySelector('#btn-fechar-confirmacao-producao')?.addEventListener('click', () => {
     estado.confirmacao = null;
     estado.formulario = formularioVazio();

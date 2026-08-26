@@ -21,7 +21,7 @@ export async function garantirDatabase(nome = process.env.MYSQL_DATABASE || 'sm_
     user: process.env.MYSQL_USER || 'root',
     password: process.env.MYSQL_PASSWORD ?? '',
   });
-  await conexao.query(`CREATE DATABASE IF NOT EXISTS \`${nome}\``);
+  await conexao.query('CREATE DATABASE IF NOT EXISTS ??', [nome]);
   await conexao.end();
 }
 
@@ -285,6 +285,7 @@ export async function aplicarSchemaVendas(pool) {
     )
   `);
   await garantirColuna(pool, 'fluxo_caixa', 'venda_id', 'INT NULL');
+  await garantirColuna(pool, 'fluxo_caixa', 'encomenda_id', 'INT NULL');
 }
 
 export async function aplicarSchemaEncomendas(pool) {
@@ -418,6 +419,7 @@ export async function aplicarSchemaFluxoCaixa(pool) {
   await garantirColuna(pool, 'fluxo_caixa', 'excluido_por', 'INT NULL');
   await garantirColuna(pool, 'fluxo_caixa', 'excluido_em', 'DATETIME NULL');
   await garantirColuna(pool, 'fluxo_caixa', 'motivo_exclusao', 'TEXT NULL');
+  await garantirColuna(pool, 'fluxo_caixa', 'encomenda_id', 'INT NULL');
 }
 
 async function migrarUnicidadeAtivaProdutos(pool) {
@@ -443,30 +445,59 @@ async function garantirColuna(pool, tabela, coluna, definicao) {
   if (await temColuna(pool, tabela, coluna)) {
     return;
   }
-  await pool.query(`ALTER TABLE \`${tabela}\` ADD COLUMN \`${coluna}\` ${definicao}`);
+  await alterarAddColumn(pool, tabela, coluna, definicao);
 }
 
 async function garantirColunaGerada(pool, tabela, coluna, definicao) {
   if (await temColuna(pool, tabela, coluna)) {
     return;
   }
-  await pool.query(`ALTER TABLE \`${tabela}\` ADD COLUMN \`${coluna}\` ${definicao}`);
+  await alterarAddColumn(pool, tabela, coluna, definicao);
+}
+
+async function alterarAddColumn(pool, tabela, coluna, definicao) {
+  switch (definicao) {
+    case 'INT NULL':
+      await pool.query('ALTER TABLE ?? ADD COLUMN ?? INT NULL', [tabela, coluna]);
+      return;
+    case 'TINYINT(1) NOT NULL DEFAULT 1':
+      await pool.query('ALTER TABLE ?? ADD COLUMN ?? TINYINT(1) NOT NULL DEFAULT 1', [tabela, coluna]);
+      return;
+    case 'DATETIME NULL':
+      await pool.query('ALTER TABLE ?? ADD COLUMN ?? DATETIME NULL', [tabela, coluna]);
+      return;
+    case 'TEXT NULL':
+      await pool.query('ALTER TABLE ?? ADD COLUMN ?? TEXT NULL', [tabela, coluna]);
+      return;
+    case 'VARCHAR(60) GENERATED ALWAYS AS (IF(ativo = 1, nome, NULL)) STORED':
+      await pool.query(
+        'ALTER TABLE ?? ADD COLUMN ?? VARCHAR(60) GENERATED ALWAYS AS (IF(ativo = 1, nome, NULL)) STORED',
+        [tabela, coluna],
+      );
+      return;
+    case 'VARCHAR(100) GENERATED ALWAYS AS (IF(ativo = 1, nome, NULL)) STORED':
+      await pool.query(
+        'ALTER TABLE ?? ADD COLUMN ?? VARCHAR(100) GENERATED ALWAYS AS (IF(ativo = 1, nome, NULL)) STORED',
+        [tabela, coluna],
+      );
+      return;
+    default:
+      throw new Error('Definição de coluna não permitida nas migrações.');
+  }
 }
 
 async function garantirIndiceUnico(pool, tabela, indice, colunas) {
   if (await temIndice(pool, tabela, indice)) {
     return;
   }
-  await pool.query(
-    `ALTER TABLE \`${tabela}\` ADD UNIQUE KEY \`${indice}\` (${colunas.map((c) => `\`${c}\``).join(', ')})`,
-  );
+  await pool.query('ALTER TABLE ?? ADD UNIQUE KEY ?? (??)', [tabela, indice, colunas]);
 }
 
 async function droparIndiceSeExistir(pool, tabela, indice) {
   if (!(await temIndice(pool, tabela, indice))) {
     return;
   }
-  await pool.query(`ALTER TABLE \`${tabela}\` DROP INDEX \`${indice}\``);
+  await pool.query('ALTER TABLE ?? DROP INDEX ??', [tabela, indice]);
 }
 
 async function temColuna(pool, tabela, coluna) {

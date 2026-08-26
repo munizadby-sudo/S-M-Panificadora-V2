@@ -3,9 +3,11 @@ import { describe, test } from 'node:test';
 import { Encomenda } from '../../src/modules/orders/domain/Encomenda.js';
 import {
   ClienteContatoObrigatorioError,
+  EncomendaEntregueBloqueadaError,
   ItensObrigatoriosError,
   SinalInvalidoError,
   StatusEncomendaInvalidoError,
+  TransicaoStatusInvalidaError,
 } from '../../src/modules/orders/domain/erros.js';
 
 function base(overrides = {}) {
@@ -76,10 +78,36 @@ describe('domínio Encomenda', () => {
     assert.equal(encomenda.id, 3);
   });
 
-  test('mudarStatus valida a whitelist e atualiza', () => {
+  test('mudarStatus só avança pendente → pronto; entregue exige finalizar', () => {
     const encomenda = new Encomenda(base());
-    encomenda.mudarStatus('entregue');
-    assert.equal(encomenda.status, 'entregue');
+    encomenda.mudarStatus('pronto');
+    assert.equal(encomenda.status, 'pronto');
+    assert.throws(() => encomenda.mudarStatus('entregue'), TransicaoStatusInvalidaError);
     assert.throws(() => encomenda.mudarStatus('cancelado'), StatusEncomendaInvalidoError);
+  });
+
+  test('operador não volta status; admin reabre entregue para pronto', () => {
+    const encomenda = new Encomenda(base({ status: 'pronto' }));
+    assert.throws(() => encomenda.mudarStatus('pendente'), TransicaoStatusInvalidaError);
+    encomenda.mudarStatus('pendente', { role: 'admin' });
+    assert.equal(encomenda.status, 'pendente');
+
+    const entregue = new Encomenda(base({ status: 'pronto' }));
+    entregue.finalizarEntrega();
+    assert.equal(entregue.status, 'entregue');
+    assert.throws(() => entregue.mudarStatus('pronto'), EncomendaEntregueBloqueadaError);
+    entregue.mudarStatus('pronto', { role: 'admin' });
+    assert.equal(entregue.status, 'pronto');
+  });
+
+  test('saldo a receber nunca fica negativo e entregue trava edição/cancelamento', () => {
+    const encomenda = new Encomenda(base({ sinal: 20 }));
+    assert.equal(encomenda.total, 15);
+    assert.equal(encomenda.saldoAReceber(), 0);
+    encomenda.mudarStatus('pronto');
+    encomenda.finalizarEntrega();
+    assert.equal(encomenda.saldoAReceber(), 0);
+    assert.throws(() => encomenda.garantirEditavel(), EncomendaEntregueBloqueadaError);
+    assert.throws(() => encomenda.cancelar(), EncomendaEntregueBloqueadaError);
   });
 });

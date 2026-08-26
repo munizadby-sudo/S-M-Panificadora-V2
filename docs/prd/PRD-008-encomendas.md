@@ -28,8 +28,10 @@ Permitir registrar pedidos de clientes com itens, acompanhar status (pendente/pr
 - Listagem de encomendas com filtro por status (pendente, pronto, entregue).
 - Cadastro/edição: dados do cliente (nome, telefone, e futuramente vínculo com cadastro de Cliente — PRD-011), data de entrega, sinal, observações, itens com produto e quantidade.
 - Total exibido na tela é sempre o total recalculado retornado pelo backend, nunca um total calculado apenas no frontend e enviado como se fosse definitivo.
-- Ação de mudar status (pendente → pronto → entregue) restrita à whitelist de status válidos.
-- Ação de "excluir" encomenda deve ser tratada na UI como cancelamento (soft delete), preservando o registro no histórico — ver correção abaixo.
+- Status na listagem é um **semáforo** (bolinha + cor), nunca um `<select>` na linha. O ciclo só avança: cadastra → **Pendente** (amarelo) → padeiro marca **Pronto** (verde, dica “Aguardando retirada”) → cliente busca e o operador clica para **Entregar**.
+- Entregar abre caixa flutuante para receber o saldo (`max(0, total − sinal)`), com as mesmas formas do PDV (1 Dinheiro / 2 Pix / 3 Débito / 4 Crédito). Exige caixa aberto. **Não cria venda do PDV** e **não debita estoque** (ADR-002). O recebimento lança `fluxo_caixa` automático `categoria: 'encomenda'`. Se o sinal cobre o total, só confirma a entrega (sem lançamento).
+- **Entregue** trava a linha (cinza): sem Editar, Cancelar nem mudança de status. Só o administrador pode **Reabrir** (volta para Pronto e estorna o lançamento).
+- Ação de "excluir" encomenda deve ser tratada na UI como cancelamento (soft delete), preservando o registro no histórico — ver correção abaixo. Encomenda já entregue não pode ser cancelada.
 
 ---
 
@@ -44,7 +46,7 @@ Permitir registrar pedidos de clientes com itens, acompanhar status (pendente/pr
 ## 5. Correções em relação ao V1
 
 - **Exclusão de encomenda passa a ser soft delete** na UI (era exclusão física e definitiva no V1) — a ação na tela deve ser rotulada como "cancelar", não "excluir", e a encomenda cancelada deve continuar consultável no histórico.
-- Se a decisão de produto (PRD do backend, Seção 4.9) for de que encomendas passam a debitar/reservar estoque, a tela deve comunicar claramente ao operador quando um item da encomenda não tiver estoque suficiente — comportamento a confirmar junto com essa decisão de backend.
+- Entregar encomenda **não** vira venda do PDV nem mexe em estoque (ADR-002). O dinheiro do saldo entra no turno via `fluxo_caixa` (`categoria: 'encomenda'`), e o fechamento do caixa conta esse valor no esperado da gaveta junto com `vendas` e `estorno`.
 
 ---
 
@@ -59,5 +61,7 @@ Permitir registrar pedidos de clientes com itens, acompanhar status (pendente/pr
 
 1. Cancelar uma encomenda não a remove do histórico/consulta.
 2. Total exibido sempre corresponde ao cálculo do backend, nunca diverge do que foi enviado no formulário.
-3. Mudança de status só aceita valores da whitelist definida.
+3. Operador só avança Pendente → Pronto; Entregue só acontece pelo receber (modal), nunca por troca livre de status.
 4. Edição de itens substitui corretamente a lista anterior, sem duplicar itens.
+5. Entregar com saldo > 0 exige caixa aberto e forma; o valor entra no esperado da gaveta (junto com vendas/estorno).
+6. Linha Entregue fica travada; só admin reabre.

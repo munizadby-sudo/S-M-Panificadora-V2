@@ -1,4 +1,5 @@
 import { dinheiro } from '../domain/CaixaTurno.js';
+import { CATEGORIAS_ESPERADO_TURNO } from '../domain/categorias-esperado.js';
 import { calcularFechamento, classificarStatusResumo } from '../domain/FechamentoCaixa.js';
 import { TurnoNaoEncontradoError } from '../domain/erros.js';
 
@@ -25,7 +26,7 @@ export class FecharCaixa {
     }
 
     const totais = this.fluxoCaixaRepository
-      ? await this.fluxoCaixaRepository.somarPorFormaETurno(turno.id, ['vendas', 'estorno'])
+      ? await this.fluxoCaixaRepository.somarPorFormaETurno(turno.id, CATEGORIAS_ESPERADO_TURNO)
       : [];
     const apuracao = calcularFechamento({
       fundoEspecie: turno.fundoEspecie,

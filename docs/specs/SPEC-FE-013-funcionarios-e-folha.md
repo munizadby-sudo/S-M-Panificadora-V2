@@ -39,18 +39,17 @@ export default {
 - **Testável:** cadastrar, editar, desativar e reativar um funcionário.
 
 ### Passo 2 — Lançamento de adiantamento
-- Formulário: funcionário (busca simples, reaproveitando o padrão de seletor já usado em Perdas/Produção), valor, data, observação.
-- Listagem filtrável por funcionário e período.
+- Clique em **Lançar adiantamento** abre a caixa flutuante (mesmo cromo de Novo funcionário). A aba mostra a listagem até o operador pedir o formulário.
 - **Testável:** lançar um adiantamento e ver refletido na listagem.
 
 ### Passo 3 — Lançamento de ocorrência (falta/atestado/hora extra)
-- Formulário: funcionário, tipo (`<select>` fixo com as 3 opções — nunca texto livre), data, valor, observação.
+- Clique em **Nova ocorrência** abre a caixa flutuante. Tipo em `<select>` fixo (nunca texto livre). Listagem na aba.
 - **Quando o tipo selecionado for "Atestado", o campo de valor é desabilitado e fixado em R$ 0,00** — reflete a regra de que atestado nunca desconta (SPEC-BE-013, Seção 3.3). Não deixar o operador preencher um valor que o backend vai ignorar/zerar sem avisar.
 - **Testável:** lançar os três tipos e confirmar que atestado nunca aceita valor diferente de zero na própria UI, antes mesmo de chamar a API.
 
 ### Passo 4 — Fechamento de folha
-- Selecionar funcionário e período (`periodo_inicio`/`periodo_fim`), confirmar fechamento via `POST /api/folhas` (SPEC-BE-013, Seção 5.6).
-- Exibir o resultado do cálculo (salário base, adiantamentos, faltas, horas extras, líquido) imediatamente após fechar — nunca recalculado no frontend, sempre o que o backend devolveu.
+- Clique em **Fechar folha** abre a caixa flutuante. Selecionar funcionário e período (`periodo_inicio`/`periodo_fim`), confirmar via `POST /api/folhas` (SPEC-BE-013, Seção 5.6).
+- Exibir o resultado do cálculo (salário base, adiantamentos, faltas, horas extras, líquido) no próprio modal após fechar — nunca recalculado no frontend, sempre o que o backend devolveu.
 - Erro 409 (folha já fechada para o período) exibido como mensagem de negócio clara, não erro técnico.
 - **Testável:** fechar uma folha com adiantamento e hora extra lançados, e ver o líquido bater com o esperado.
 

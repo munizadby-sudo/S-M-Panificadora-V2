@@ -5,6 +5,7 @@ import { definirApiBaseUrl } from '../../src/core/api.js';
 import { salvarSessao } from '../../src/core/session.js';
 import { buscarEncomenda, atualizarEncomenda, cancelarEncomenda } from '../../src/modules/encomendas/api.js';
 import { htmlModalCancelamento } from '../../src/modules/encomendas/modal-cancelamento.js';
+import { htmlModalFinalizarEncomenda, saldoAReceber, formaPeloAtalho } from '../../src/modules/encomendas/modal-finalizar.js';
 
 beforeEach(() => {
   instalarAmbienteDeTeste();
@@ -85,6 +86,34 @@ describe('Passo 3/4/6 — edição, atualização e cancelamento', () => {
 
   test('modal de cancelamento vazio (sem encomenda selecionada) não renderiza nada', () => {
     assert.equal(htmlModalCancelamento({ encomenda: null }), '');
+  });
+
+  test('modal de finalizar mostra saldo e formas 1–4; sinal que cobre o total não pede forma', () => {
+    const comSaldo = htmlModalFinalizarEncomenda({
+      encomenda: { id: 3, numero: 45, cliente: 'Maria Souza', data_entrega: '2026-08-25', total: 40, sinal: 10 },
+    });
+    assert.match(comSaldo, /Finalizar encomenda/);
+    assert.match(comSaldo, /Valor a receber/);
+    assert.match(comSaldo, /data-forma-encomenda="dinheiro"/);
+    assert.match(comSaldo, /data-forma-encomenda="pix"/);
+    assert.match(comSaldo, /data-forma-encomenda="cartao"/);
+    assert.match(comSaldo, /data-forma-encomenda="credito"/);
+    assert.match(comSaldo, /disabled/);
+
+    const coberto = htmlModalFinalizarEncomenda({
+      encomenda: { id: 3, numero: 45, cliente: 'Maria Souza', data_entrega: '2026-08-25', total: 10, sinal: 10 },
+    });
+    assert.equal(saldoAReceber({ total: 10, sinal: 10 }), 0);
+    assert.match(coberto, /O sinal cobre o total/);
+    assert.doesNotMatch(coberto, /data-forma-encomenda/);
+  });
+
+  test('atalhos 1–4 escolhem a forma de pagamento do receber', () => {
+    assert.equal(formaPeloAtalho('1'), 'dinheiro');
+    assert.equal(formaPeloAtalho('2'), 'pix');
+    assert.equal(formaPeloAtalho('3'), 'cartao');
+    assert.equal(formaPeloAtalho('4'), 'credito');
+    assert.equal(formaPeloAtalho('5'), '');
   });
 
   test('cancelarEncomenda envia DELETE /encomendas/:id', async () => {

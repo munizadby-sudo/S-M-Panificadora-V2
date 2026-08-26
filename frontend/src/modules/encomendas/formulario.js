@@ -11,14 +11,17 @@ export function htmlFormularioEncomenda({
 }) {
   const seletorProdutoItem = htmlSeletorProduto({
     busca: formulario.buscaProdutoItem,
-    produto: formulario.produtoItem,
-    resultados: resultadosProdutoItem,
+    produto: produtoComPrecoNoCusto(formulario.produtoItem),
+    resultados: (resultadosProdutoItem || []).map(produtoComPrecoNoCusto),
     erro: '',
   });
 
-  return `<section class="encomendas-formulario">
-    <h2>${edicao ? 'Editar encomenda' : 'Nova encomenda'}</h2>
-    <form id="form-encomenda" class="encomendas-form">
+  return `<div class="encomendas-modal" id="modal-form-encomenda" role="dialog" aria-modal="true" aria-labelledby="titulo-form-encomenda">
+  <form id="form-encomenda" class="encomendas-modal-caixa encomendas-form">
+    <header class="form-modal-cabecalho">
+      <h2 id="titulo-form-encomenda">${edicao ? 'Editar encomenda' : 'Nova encomenda'}</h2>
+    </header>
+    <div class="form-modal-corpo">
       <div id="encomenda-cliente-seletor"></div>
 
       <label>Nome do contato
@@ -47,7 +50,7 @@ export function htmlFormularioEncomenda({
 
       <fieldset class="encomendas-itens">
         <legend>Itens do pedido</legend>
-        ${seletorProdutoItem}
+        <div id="encomenda-item-seletor">${seletorProdutoItem}</div>
         <label>Quantidade
           <input type="number" id="encomenda-item-quantidade" name="item_quantidade" min="0.001" step="0.001" value="${escapar(formulario.quantidadeItem)}">
         </label>
@@ -57,10 +60,18 @@ export function htmlFormularioEncomenda({
       </fieldset>
 
       <p class="encomendas-erro" role="alert">${escapar(erro)}</p>
-      <div class="encomendas-form-acoes">
-        <button type="submit">${edicao ? 'Salvar alterações' : 'Cadastrar encomenda'}</button>
-        <button type="button" id="btn-cancelar-form-encomenda">Cancelar</button>
-      </div>
-    </form>
-  </section>`;
+    </div>
+    <div class="encomendas-form-acoes">
+      <button type="button" id="btn-cancelar-form-encomenda">Cancelar</button>
+      <button type="submit">${edicao ? 'Salvar alterações' : 'Cadastrar encomenda'}</button>
+    </div>
+  </form>
+</div>`;
+}
+
+export function produtoComPrecoNoCusto(produto) {
+  if (!produto) {
+    return produto;
+  }
+  return { ...produto, custo: produto.custo ?? produto.preco };
 }

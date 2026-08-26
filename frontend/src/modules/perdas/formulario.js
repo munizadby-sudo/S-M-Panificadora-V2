@@ -26,9 +26,12 @@ export function htmlFormularioPerda({
       ? `<p class="perdas-previa-custo">Prévia de custo: <strong>${formatarMoeda(previaCusto)}</strong> <span class="perdas-previa-ajuda">(estimativa local — o valor oficial vem do backend após salvar)</span></p>`
       : '';
 
-  return `<section class="perdas-formulario">
-    <h2>Registrar perda</h2>
-    <form id="form-perda" class="perdas-form">
+  return `<div class="perdas-modal" id="modal-form-perda" role="dialog" aria-modal="true" aria-labelledby="titulo-form-perda">
+  <form id="form-perda" class="perdas-modal-caixa perdas-form">
+    <header class="form-modal-cabecalho">
+      <h2 id="titulo-form-perda">Registrar perda</h2>
+    </header>
+    <div class="form-modal-corpo">
       ${seletor}
       <label>Quantidade
         <input type="number" id="perda-quantidade" name="quantidade" min="0.001" step="0.001" value="${escapar(formulario.quantidade)}">
@@ -44,22 +47,31 @@ export function htmlFormularioPerda({
       <p class="campo-erro">${escapar(errosCampos.data || '')}</p>
       ${previa}
       <p class="perdas-erro" role="alert">${escapar(erro)}</p>
-      <div class="perdas-form-acoes">
-        <button type="submit">Registrar perda</button>
-        <button type="button" id="btn-cancelar-perda">Cancelar</button>
-      </div>
-    </form>
-  </section>`;
+    </div>
+    <div class="perdas-form-acoes">
+      <button type="button" id="btn-cancelar-perda">Cancelar</button>
+      <button type="submit">Registrar perda</button>
+    </div>
+  </form>
+</div>`;
 }
 
 function htmlConfirmacaoRegistro({ perda, disponivel }) {
-  return `<aside class="perdas-confirmacao" role="status">
-    <h2>Perda registrada</h2>
-    <p>Produto #${escapar(perda.produto_id)} — ${formatarQuantidade(perda.quantidade)} un. em ${escapar(perda.data)}</p>
-    <p>Custo calculado (backend): <strong>${formatarMoeda(perda.custo_calculado)}</strong></p>
-    <p>Novo saldo disponível: <strong class="perdas-disponivel-confirmacao">${formatarQuantidade(disponivel)}</strong></p>
-    <button type="button" id="btn-fechar-confirmacao">Registrar outra perda</button>
-  </aside>`;
+  return `<div class="perdas-modal" id="modal-form-perda" role="dialog" aria-modal="true" aria-labelledby="titulo-confirmacao-perda">
+  <aside class="perdas-modal-caixa perdas-confirmacao" role="status">
+    <header class="form-modal-cabecalho">
+      <h2 id="titulo-confirmacao-perda">Perda registrada</h2>
+    </header>
+    <div class="form-modal-corpo">
+      <p>Produto #${escapar(perda.produto_id)} — ${formatarQuantidade(perda.quantidade)} un. em ${escapar(perda.data)}</p>
+      <p>Custo calculado (backend): <strong>${formatarMoeda(perda.custo_calculado)}</strong></p>
+      <p>Novo saldo disponível: <strong class="perdas-disponivel-confirmacao">${formatarQuantidade(disponivel)}</strong></p>
+    </div>
+    <div class="perdas-form-acoes">
+      <button type="button" id="btn-fechar-confirmacao">Registrar outra perda</button>
+    </div>
+  </aside>
+</div>`;
 }
 
 function formatarQuantidade(valor) {

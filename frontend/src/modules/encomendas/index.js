@@ -1,3 +1,4 @@
+import { ehAdmin } from '../../core/session.js';
 import { listarProdutos } from '../produtos/api.js';
 import { montarSeletorCliente } from '../clientes/seletor-cliente.js';
 import {
@@ -8,11 +9,14 @@ import {
   mensagemErroEncomenda,
   mudarStatusEncomenda,
   atualizarEncomenda,
+  finalizarEncomenda,
 } from './api.js';
 import { dataHoje, escapar } from './html.js';
-import { htmlFormularioEncomenda } from './formulario.js';
+import { htmlFormularioEncomenda, produtoComPrecoNoCusto } from './formulario.js';
+import { htmlSeletorProduto } from '../perdas/seletor-produto.js';
 import { htmlFiltrosEncomendas, htmlTabelaEncomendas } from './lista.js';
 import { htmlModalCancelamento } from './modal-cancelamento.js';
+import { htmlModalFinalizarEncomenda, saldoAReceber, formaPeloAtalho } from './modal-finalizar.js';
 import { adicionarItem, removerItem } from './itens.js';
 import { validarFormularioEncomenda } from './validacao.js';
 
@@ -23,6 +27,7 @@ let containerAtual;
 let estado;
 let timerBuscaProdutoItem;
 let seletorCliente;
+let listenerAtalhosFinalizar;
 
 export default {
   id: 'encomendas',
@@ -35,12 +40,18 @@ export default {
     }
     containerAtual = container;
     estado = estadoInicial();
+    listenerAtalhosFinalizar = (evento) => tratarAtalhoFinalizar(evento);
+    globalThis.document?.addEventListener?.('keydown', listenerAtalhosFinalizar);
     await recarregar();
   },
   desmontar() {
     if (timerBuscaProdutoItem) {
       clearTimeout(timerBuscaProdutoItem);
       timerBuscaProdutoItem = undefined;
+    }
+    if (listenerAtalhosFinalizar) {
+      globalThis.document?.removeEventListener?.('keydown', listenerAtalhosFinalizar);
+      listenerAtalhosFinalizar = undefined;
     }
     seletorCliente?.destruir();
     seletorCliente = undefined;
@@ -63,6 +74,9 @@ function estadoInicial() {
     erroFormulario: '',
     cancelamentoModal: null,
     erroCancelamento: '',
+    finalizarModal: null,
+    formaFinalizar: '',
+    erroFinalizar: '',
   };
 }
 
@@ -112,11 +126,71 @@ async function carregarEncomendas() {
   }
 }
 
+function capturarScrollModal(container) {
+  return {
+    janela: Number(globalThis.scrollY ?? globalThis.pageYOffset ?? 0) || 0,
+    corpo: container?.querySelector?.('.form-modal-corpo')?.scrollTop,
+    overlay: container?.querySelector?.('.encomendas-modal')?.scrollTop,
+  };
+}
+
+function restaurarScrollModal(container, snap) {
+  if (!container || !snap) {
+    return;
+  }
+  const corpo = container.querySelector?.('.form-modal-corpo');
+  const overlay = container.querySelector?.('.encomendas-modal');
+  if (corpo && Number.isFinite(Number(snap.corpo))) {
+    corpo.scrollTop = snap.corpo;
+  }
+  if (overlay && Number.isFinite(Number(snap.overlay))) {
+    overlay.scrollTop = snap.overlay;
+  }
+  if (typeof globalThis.scrollTo === 'function') {
+    globalThis.scrollTo(0, snap.janela);
+  }
+}
+
+function htmlSeletorProdutoItem() {
+  return htmlSeletorProduto({
+    busca: estado.formulario.buscaProdutoItem,
+    produto: produtoComPrecoNoCusto(estado.formulario.produtoItem),
+    resultados: (estado.resultadosProdutoItem || []).map(produtoComPrecoNoCusto),
+    erro: '',
+  });
+}
+
+function atualizarSeletorProdutoItem({ restaurarBusca = false } = {}) {
+  const container = containerAtual;
+  const alvo = container?.querySelector('#encomenda-item-seletor');
+  if (!alvo) {
+    renderizar();
+    return;
+  }
+
+  const snap = capturarScrollModal(container);
+  alvo.innerHTML = htmlSeletorProdutoItem();
+  ligarEventosSeletorProduto(container);
+  restaurarScrollModal(container, snap);
+  globalThis.requestAnimationFrame?.(() => restaurarScrollModal(container, snap));
+
+  if (restaurarBusca && !estado.formulario.produtoItem) {
+    const busca = container.querySelector('#perda-busca-produto');
+    if (busca && !busca.disabled) {
+      busca.focus?.({ preventScroll: true });
+      const fim = String(busca.value || '').length;
+      busca.setSelectionRange?.(fim, fim);
+    }
+  }
+}
+
 function renderizar() {
   const container = containerAtual;
   if (!container) {
     return;
   }
+
+  const snap = capturarScrollModal(container);
 
   const formulario = estado.mostrarFormulario
     ? htmlFormularioEncomenda({
@@ -138,9 +212,14 @@ function renderizar() {
       ${htmlFiltrosEncomendas({ filtros: estado.filtros })}
       <div class="encomendas-acoes-topo">${botaoNova}</div>
       <p id="encomendas-erro-lista" class="encomendas-erro" role="alert">${escapar(estado.erro)}</p>
-      <div id="lista-encomendas">${htmlTabelaEncomendas(estado.itensLista)}</div>
+      <div id="lista-encomendas">${htmlTabelaEncomendas(estado.itensLista, { admin: ehAdmin() })}</div>
       ${formulario}
       ${htmlModalCancelamento({ encomenda: estado.cancelamentoModal, erro: estado.erroCancelamento })}
+      ${htmlModalFinalizarEncomenda({
+        encomenda: estado.finalizarModal,
+        forma: estado.formaFinalizar,
+        erro: estado.erroFinalizar,
+      })}
     </section>
   `;
 
@@ -149,6 +228,12 @@ function renderizar() {
   }
 
   ligarEventos(container);
+  restaurarScrollModal(container, snap);
+  globalThis.requestAnimationFrame?.(() => restaurarScrollModal(container, snap));
+
+  if (estado.finalizarModal) {
+    container.querySelector('#form-finalizar-encomenda')?.focus?.({ preventScroll: true });
+  }
 }
 
 function montarSeletorClienteNoFormulario(container) {
@@ -201,6 +286,16 @@ function ligarEventos(container) {
     renderizar();
   });
 
+  container.querySelector('#modal-form-encomenda')?.addEventListener('click', (evento) => {
+    if (evento.target?.id !== 'modal-form-encomenda') {
+      return;
+    }
+    estado.mostrarFormulario = false;
+    estado.edicaoId = null;
+    estado.formulario = formularioVazio();
+    renderizar();
+  });
+
   container.querySelector('#form-encomenda')?.addEventListener('submit', async (evento) => {
     evento.preventDefault();
     await salvarEncomenda(container);
@@ -226,29 +321,7 @@ function ligarEventos(container) {
     estado.formulario.quantidadeItem = evento.target.value;
   });
 
-  container.querySelector('#perda-busca-produto')?.addEventListener('input', (evento) => {
-    estado.formulario.buscaProdutoItem = evento.target.value;
-    agendarBuscaProdutoItem();
-  });
-
-  for (const botao of container.querySelectorAll?.('.perdas-item-produto') || []) {
-    botao.addEventListener('click', () => {
-      estado.formulario.produtoItem = {
-        id: Number(botao.getAttribute('data-produto-id')),
-        nome: botao.getAttribute('data-produto-nome'),
-      };
-      estado.formulario.buscaProdutoItem = estado.formulario.produtoItem.nome;
-      estado.resultadosProdutoItem = [];
-      renderizar();
-    });
-  }
-
-  container.querySelector('#perda-limpar-produto')?.addEventListener('click', () => {
-    estado.formulario.produtoItem = null;
-    estado.formulario.buscaProdutoItem = '';
-    estado.resultadosProdutoItem = [];
-    renderizar();
-  });
+  ligarEventosSeletorProduto(container);
 
   container.querySelector('#btn-adicionar-item-encomenda')?.addEventListener('click', () => {
     if (!estado.formulario.produtoItem) {
@@ -278,12 +351,56 @@ function ligarEventos(container) {
     });
   }
 
-  for (const select of container.querySelectorAll?.('[data-status-encomenda]') || []) {
-    select.addEventListener('change', async (evento) => {
-      const id = Number(select.getAttribute('data-status-encomenda'));
-      await alterarStatus(id, evento.target.value);
+  for (const botao of container.querySelectorAll?.('[data-avancar-status]') || []) {
+    botao.addEventListener('click', async () => {
+      await alterarStatus(Number(botao.getAttribute('data-avancar-status')), 'pronto');
     });
   }
+
+  for (const botao of container.querySelectorAll?.('[data-finalizar-encomenda]') || []) {
+    botao.addEventListener('click', () => {
+      const id = Number(botao.getAttribute('data-finalizar-encomenda'));
+      estado.finalizarModal = estado.itensLista.find((item) => Number(item.id) === id) || null;
+      estado.formaFinalizar = '';
+      estado.erroFinalizar = '';
+      renderizar();
+    });
+  }
+
+  for (const botao of container.querySelectorAll?.('[data-reabrir-encomenda]') || []) {
+    botao.addEventListener('click', async () => {
+      await alterarStatus(Number(botao.getAttribute('data-reabrir-encomenda')), 'pronto');
+    });
+  }
+
+  for (const botao of container.querySelectorAll?.('[data-forma-encomenda]') || []) {
+    botao.addEventListener('click', () => {
+      estado.formaFinalizar = botao.getAttribute('data-forma-encomenda') || '';
+      renderizar();
+    });
+  }
+
+  container.querySelector('#btn-cancelar-finalizar-encomenda')?.addEventListener('click', () => {
+    estado.finalizarModal = null;
+    estado.formaFinalizar = '';
+    estado.erroFinalizar = '';
+    renderizar();
+  });
+
+  container.querySelector('#modal-finalizar-encomenda')?.addEventListener('click', (evento) => {
+    if (evento.target?.id !== 'modal-finalizar-encomenda') {
+      return;
+    }
+    estado.finalizarModal = null;
+    estado.formaFinalizar = '';
+    estado.erroFinalizar = '';
+    renderizar();
+  });
+
+  container.querySelector('#form-finalizar-encomenda')?.addEventListener('submit', async (evento) => {
+    evento.preventDefault();
+    await confirmarFinalizar();
+  });
 
   for (const botao of container.querySelectorAll?.('[data-cancelar-encomenda]') || []) {
     botao.addEventListener('click', () => {
@@ -305,6 +422,39 @@ function ligarEventos(container) {
   });
 }
 
+function ligarEventosSeletorProduto(container) {
+  container.querySelector('#perda-busca-produto')?.addEventListener('input', (evento) => {
+    estado.formulario.buscaProdutoItem = evento.target.value;
+    agendarBuscaProdutoItem();
+  });
+
+  for (const botao of container.querySelectorAll?.('.perdas-item-produto') || []) {
+    botao.addEventListener('mousedown', (evento) => {
+      evento?.preventDefault?.();
+    });
+    botao.addEventListener('click', () => {
+      const id = Number(botao.getAttribute('data-produto-id'));
+      const catalogo = estado.produtos.find((p) => p.id === id);
+      estado.formulario.produtoItem = {
+        id,
+        nome: botao.getAttribute('data-produto-nome'),
+        custo: Number(botao.getAttribute('data-produto-custo')),
+        preco: catalogo?.preco ?? Number(botao.getAttribute('data-produto-custo')),
+      };
+      estado.formulario.buscaProdutoItem = estado.formulario.produtoItem.nome;
+      estado.resultadosProdutoItem = [];
+      atualizarSeletorProdutoItem();
+    });
+  }
+
+  container.querySelector('#perda-limpar-produto')?.addEventListener('click', () => {
+    estado.formulario.produtoItem = null;
+    estado.formulario.buscaProdutoItem = '';
+    estado.resultadosProdutoItem = [];
+    atualizarSeletorProdutoItem({ restaurarBusca: true });
+  });
+}
+
 function agendarBuscaProdutoItem() {
   if (timerBuscaProdutoItem) {
     clearTimeout(timerBuscaProdutoItem);
@@ -318,7 +468,7 @@ async function buscarProdutosItem() {
   const termo = estado.formulario.buscaProdutoItem?.trim();
   if (!termo || estado.formulario.produtoItem) {
     estado.resultadosProdutoItem = [];
-    renderizar();
+    atualizarSeletorProdutoItem({ restaurarBusca: true });
     return;
   }
 
@@ -328,7 +478,7 @@ async function buscarProdutosItem() {
   } catch {
     estado.resultadosProdutoItem = [];
   }
-  renderizar();
+  atualizarSeletorProdutoItem({ restaurarBusca: true });
 }
 
 async function abrirEdicao(id) {
@@ -411,6 +561,66 @@ async function alterarStatus(id, status) {
     renderizar();
   } catch (erro) {
     estado.erro = mensagemErroEncomenda(erro);
+    renderizar();
+  }
+}
+
+function tratarAtalhoFinalizar(evento) {
+  if (!estado?.finalizarModal) {
+    return;
+  }
+  if (evento.key === 'Escape') {
+    evento.preventDefault();
+    estado.finalizarModal = null;
+    estado.formaFinalizar = '';
+    estado.erroFinalizar = '';
+    renderizar();
+    return;
+  }
+  const forma = formaPeloAtalho(evento.key);
+  if (forma && saldoAReceber(estado.finalizarModal) > 0) {
+    evento.preventDefault();
+    if (estado.formaFinalizar === forma) {
+      return;
+    }
+    estado.formaFinalizar = forma;
+    renderizar();
+    return;
+  }
+  if (evento.key !== 'Enter') {
+    return;
+  }
+  if (evento.target?.closest?.('#form-finalizar-encomenda')) {
+    return;
+  }
+  const saldo = saldoAReceber(estado.finalizarModal);
+  if (saldo > 0 && !estado.formaFinalizar) {
+    return;
+  }
+  evento.preventDefault();
+  confirmarFinalizar();
+}
+
+async function confirmarFinalizar() {
+  const encomenda = estado.finalizarModal;
+  if (!encomenda) {
+    return;
+  }
+  const saldo = saldoAReceber(encomenda);
+  if (saldo > 0 && !estado.formaFinalizar) {
+    estado.erroFinalizar = 'Escolha a forma de pagamento.';
+    renderizar();
+    return;
+  }
+  try {
+    estado.erroFinalizar = '';
+    await finalizarEncomenda(encomenda.id, { forma: estado.formaFinalizar });
+    estado.finalizarModal = null;
+    estado.formaFinalizar = '';
+    await carregarEncomendas();
+    renderizar();
+  } catch (erro) {
+    estado.erroFinalizar = mensagemErroEncomenda(erro);
     renderizar();
   }
 }

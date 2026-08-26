@@ -48,12 +48,13 @@ Especificar o modelo de dados, os contratos de API e a estrutura de classes do m
 | `turno_id` | `INT` FK `caixa_turnos.id` | **obrigatório na V2** (no V1 é `NULL`-ável para compatibilidade com lançamentos legados sem turno — a V2 não carrega esse legado) |
 | `tipo` | `ENUM('entrada','saida')` | obrigatório |
 | `descricao` | `VARCHAR(200)` | obrigatório |
-| `categoria` | `VARCHAR(50)` | ex.: `vendas`, `estorno`, `sangria`, `suprimento` |
+| `categoria` | `VARCHAR(50)` | ex.: `vendas`, `estorno`, `encomenda`, `sangria`, `suprimento` |
 | `forma` | `VARCHAR(30)` | `dinheiro`, `pix`, `cartao` |
 | `valor` | `DECIMAL(10,2)` | obrigatório, > 0 |
 | `data` | `DATE` | obrigatório |
 | `gerado_auto` | `TINYINT(1)` | `1` = criado pelo sistema (venda/estorno); `0` = manual |
-| `venda_id` | `INT` FK `vendas.id`, nulo | **adicionado durante a implementação da SPEC-BE-007** (não previsto aqui originalmente) — rastreia qual venda gerou o lançamento automático, quando aplicável. Nulo para lançamentos manuais e para os que não se originam de uma venda. |
+| `venda_id` | `INT` FK `vendas.id`, nulo | rastreia venda automática, quando aplicável |
+| `encomenda_id` | `INT` FK `encomendas.id`, nulo | rastreia recebimento de encomenda (SPEC-BE-011 `POST .../finalizar`) |
 | `criado_em` | `TIMESTAMP` | padrão `CURRENT_TIMESTAMP` |
 
 ---
@@ -87,7 +88,7 @@ diferenca_total   = Σ diferenca_forma
 
 status_resumo = diferenca_total == 0 ? 'bateu certo' : (diferenca_total > 0 ? 'sobra' : 'falta')
 ```
-- Considera apenas lançamentos de `fluxo_caixa` com `categoria IN ('vendas', 'estorno')` — sangrias/suprimentos manuais não entram no "esperado" de venda, mas entram na conciliação geral do fluxo (módulo separado).
+- Considera apenas lançamentos de `fluxo_caixa` com `categoria IN ('vendas', 'estorno', 'encomenda')` — sangrias/suprimentos manuais não entram no "esperado" da gaveta, mas entram na conciliação geral do fluxo (módulo separado). Recebimento de encomenda (SPEC-BE-011) entra no esperado porque o dinheiro está na gaveta do turno.
 - Todo o cálculo acima deve viver na camada de domínio, como função pura, testável sem banco (recebe os totais já agregados e devolve o resultado).
 
 ### 3.3 Exceções de domínio

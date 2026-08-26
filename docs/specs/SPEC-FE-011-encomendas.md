@@ -53,10 +53,12 @@ export default {
 - A lista de itens carregada é o ponto de partida — adicionar/remover nela e salvar reenvia a lista inteira (nunca um diff incremental), refletindo a regra do backend (SPEC-BE-011, Seção 4.2).
 - **Testável:** editar uma encomenda removendo um item e adicionando outro; confirmar que o item removido não aparece mais depois de salvar.
 
-### Passo 5 — Mudança de status
-- Ação de mudar status (`pendente` → `pronto` → `entregue`) via `<select>` fixo com as 3 opções — nunca campo livre.
-- Submeter via `PATCH /api/encomendas/:id/status` (SPEC-BE-011, Seção 5.3).
-- **Testável:** mudar o status de uma encomenda existente e ver refletido na listagem.
+### Passo 5 — Semáforo de status e finalizar entrega
+- Status na linha é um **semáforo** (bolinha + rótulo), nunca `<select>`. Cores: Pendente `--aviso`, Pronto `--sucesso` + dica “Aguardando retirada”, Entregue `--muted` (linha cinza).
+- Clique em Pendente envia `PATCH /api/encomendas/:id/status` com `{ status: "pronto" }` — único avanço permitido ao operador.
+- Clique em Pronto abre o modal **Finalizar encomenda** (mesmo cromo das outras caixas flutuantes): total, sinal, saldo `max(0, total − sinal)`, formas 1 Dinheiro / 2 Pix / 3 Débito (`cartao`) / 4 Crédito. Confirmar envia `POST /api/encomendas/:id/finalizar`. Sem saldo a receber, só confirma a entrega.
+- Linha **Entregue** esconde Editar/Cancelar. Só admin vê **Reabrir** (`PATCH` para `pronto`).
+- **Testável:** avançar Pendente → Pronto; entregar com caixa aberto e ver Entregue travado; admin reabrir.
 
 ### Passo 6 — Cancelamento (soft delete)
 - Botão rotulado **"Cancelar"**, nunca "Excluir" — reflete a correção da SPEC-BE-011 em relação ao V1.
@@ -74,6 +76,8 @@ export default {
 | `FormularioEncomenda` | Cadastro/edição — cliente, dados do pedido, itens |
 | `montarSeletorCliente` | Reaproveitado integralmente do módulo `clientes` (SPEC-FE-009) |
 | `ItensEncomenda` | Lista de itens ao estilo carrinho, adaptada de `modules/pdv/carrinho.js` para quantidade livre por item |
+| `htmlSemaforoStatus` | Bolinha + cor; clique avança Pendente ou abre o receber em Pronto |
+| `htmlModalFinalizarEncomenda` | Caixa flutuante para receber o saldo e confirmar entrega |
 
 ---
 
@@ -84,7 +88,9 @@ export default {
 | `400` — itens vazio | Mensagem de negócio clara antes de tentar salvar (validação local espelha a regra, mas o backend é a fonte de verdade) |
 | `404` — cliente vinculado não existe mais | Não deveria ser alcançável (seleção vem do seletor); tratar defensivamente |
 | `404`/`400` — produto do item inválido | Mensagem de negócio identificando o item, nunca erro técnico genérico |
-| `400` — status fora da whitelist | Não deveria ser alcançável (select fixo); tratar defensivamente |
+| `400` — transição de status inválida | Não deveria ser alcançável pelo semáforo; mostrar a mensagem do backend |
+| `403` — caixa fechado ao finalizar | Mensagem “Abra o caixa para receber a encomenda.” no modal |
+| `403` — encomenda entregue travada | Não deveria ser alcançável (ações ocultas); só admin vê Reabrir |
 
 ---
 
@@ -104,3 +110,5 @@ export default {
 4. Editar uma encomenda e remover um item faz esse item desaparecer de fato após salvar — nunca permanece "fantasma".
 5. O seletor de cliente reaproveitado permite cadastro rápido sem sair da tela de encomenda.
 6. Cada um dos 6 passos da Seção 3 é individualmente testável no navegador, na ordem descrita.
+7. Não existe `<select>` de status na linha; Pendente/Pronto/Entregue aparecem como semáforo.
+8. Finalizar entrega nunca cria venda do PDV: o modal chama só `POST /encomendas/:id/finalizar`.

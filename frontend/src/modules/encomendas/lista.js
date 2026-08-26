@@ -1,5 +1,5 @@
 import { escapar, formatarMoeda, formatarQuantidade } from './html.js';
-import { htmlOpcoesStatus, rotuloStatus } from './status.js';
+import { htmlOpcoesStatus, htmlSemaforoStatus, rotuloStatus } from './status.js';
 
 export function htmlFiltrosEncomendas({ filtros }) {
   return `<form id="form-filtro-encomendas" class="encomendas-filtros">
@@ -21,7 +21,7 @@ export function htmlFiltrosEncomendas({ filtros }) {
   </form>`;
 }
 
-export function htmlTabelaEncomendas(itens) {
+export function htmlTabelaEncomendas(itens, { admin = false } = {}) {
   if (!Array.isArray(itens) || itens.length === 0) {
     return '<p class="estado-vazio">Nenhuma encomenda encontrada.<span class="estado-vazio-dica">Aqui aparecem as encomendas do período. Cadastre a primeira pela ação Nova encomenda.</span></p>';
   }
@@ -29,15 +29,24 @@ export function htmlTabelaEncomendas(itens) {
   const linhas = itens
     .map((item) => {
       const cancelada = Number(item.ativo) === 0;
-      const classe = cancelada ? 'encomendas-linha-cancelada' : '';
+      const entregue = item.status === 'entregue';
+      const classe = cancelada
+        ? 'encomendas-linha-cancelada'
+        : entregue
+          ? 'encomendas-linha-entregue'
+          : '';
       const marca = cancelada ? ' <span class="encomendas-marca-cancelada">Cancelada</span>' : '';
       const status = cancelada
-        ? escapar(rotuloStatus(item.status))
-        : `<select class="encomendas-select-status" data-status-encomenda="${escapar(item.id)}">${htmlOpcoesStatus(item.status)}</select>`;
+        ? `<span class="encomendas-semaforo encomendas-semaforo-${escapar(item.status)}">
+            <span class="encomendas-semaforo-bola" aria-hidden="true"></span>
+            ${escapar(rotuloStatus(item.status))}
+          </span>`
+        : htmlSemaforoStatus(item, { admin });
 
-      const acoes = cancelada
-        ? '<td></td>'
-        : `<td class="encomendas-acoes">
+      const acoes =
+        cancelada || entregue
+          ? '<td></td>'
+          : `<td class="encomendas-acoes">
             <button type="button" data-editar-encomenda="${escapar(item.id)}">Editar</button>
             <button type="button" data-cancelar-encomenda="${escapar(item.id)}">Cancelar</button>
           </td>`;

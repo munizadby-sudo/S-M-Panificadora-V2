@@ -48,6 +48,7 @@ import { ProducaoController } from '../../src/modules/production/infrastructure/
 import { CreateEncomenda } from '../../src/modules/orders/application/CreateEncomenda.js';
 import { UpdateEncomenda } from '../../src/modules/orders/application/UpdateEncomenda.js';
 import { UpdateStatusEncomenda } from '../../src/modules/orders/application/UpdateStatusEncomenda.js';
+import { FinalizarEncomenda } from '../../src/modules/orders/application/FinalizarEncomenda.js';
 import { CancelEncomenda } from '../../src/modules/orders/application/CancelEncomenda.js';
 import { ListEncomendas } from '../../src/modules/orders/application/ListEncomendas.js';
 import { GetEncomenda } from '../../src/modules/orders/application/GetEncomenda.js';
@@ -220,7 +221,15 @@ export function montarAppMemoria() {
   };
 
   const encomendaRepository = new MemoriaEncomendaRepository({ sequenciaRepository });
-  const depsEncomendas = { encomendaRepository, produtoRepository, clienteRepository, sequenciaRepository, auditor };
+  const depsEncomendas = {
+    encomendaRepository,
+    produtoRepository,
+    clienteRepository,
+    sequenciaRepository,
+    caixaTurnoRepository,
+    fluxoCaixaRepository,
+    auditor,
+  };
 
   const app = criarApp({
     authController: new AuthController(new Login(deps)),
@@ -284,6 +293,7 @@ export function montarAppMemoria() {
       createEncomenda: new CreateEncomenda(depsEncomendas),
       updateEncomenda: new UpdateEncomenda(depsEncomendas),
       updateStatusEncomenda: new UpdateStatusEncomenda(depsEncomendas),
+      finalizarEncomenda: new FinalizarEncomenda(depsEncomendas),
       cancelEncomenda: new CancelEncomenda(depsEncomendas),
       listEncomendas: new ListEncomendas({ encomendaRepository }),
       getEncomenda: new GetEncomenda({ encomendaRepository }),

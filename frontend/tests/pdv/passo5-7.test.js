@@ -79,22 +79,25 @@ describe('Ajustes UI — total, atalhos e Débito', () => {
     assert.match(html, /Total a pagar/);
     assert.match(html, /R\$ 12,75/);
     assert.match(html, /data-forma="cartao"/);
-    assert.match(html, />Débito</);
+    assert.match(html, /pdv-forma-tecla">3</);
+    assert.match(html, /Débito/);
     assert.doesNotMatch(html, />Cartão</);
-    assert.match(html, /3 Débito/);
+    assert.match(html, /pdv-forma-tecla">4</);
+    assert.match(html, /Crédito/);
+    assert.match(html, /pdv-recebido-wrap"[^>]*hidden/);
   });
 
-  test('grade documenta F10 e atalhos 1/2/3 corretamente', () => {
+  test('grade documenta F10 e não mistura atalhos de pagamento', () => {
     const fonte = readFileSync(join(frontend, 'src', 'modules', 'pdv', 'grade.js'), 'utf8');
-    assert.match(fonte, /<kbd>F10<\/kbd> abre o pagamento/);
-    assert.match(fonte, /<kbd>1<\/kbd> <kbd>2<\/kbd> <kbd>3<\/kbd>/);
+    assert.match(fonte, /<kbd>F10<\/kbd> Finalizar Venda/);
+    assert.doesNotMatch(fonte, /Forma de pagto/);
     assert.doesNotMatch(fonte, /F1.*F10.*atalhos de pagamento/);
   });
 });
 
 describe('Passo 6 — atalhos de teclado no pagamento', () => {
-  test('atalhos 1/2/3 mapeiam Dinheiro/Pix/Débito', () => {
-    assert.deepEqual(ATALHOS_FORMA_PAGAMENTO, ['dinheiro', 'pix', 'cartao']);
+  test('atalhos 1/2/3/4 mapeiam Dinheiro/Pix/Débito/Crédito', () => {
+    assert.deepEqual(ATALHOS_FORMA_PAGAMENTO, ['dinheiro', 'pix', 'cartao', 'credito']);
   });
 
   test('módulo registra listener de F10 e trata atalhos 1/2/3/Enter no painel', () => {

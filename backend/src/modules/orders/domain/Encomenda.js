@@ -1,10 +1,13 @@
 import { dinheiro } from '../../products/domain/Produto.js';
 import {
   ClienteContatoObrigatorioError,
+  EncomendaEntregueBloqueadaError,
+  EncomendaNaoEstaProntaError,
   ItensObrigatoriosError,
   QuantidadeItemInvalidaError,
   SinalInvalidoError,
   StatusEncomendaInvalidoError,
+  TransicaoStatusInvalidaError,
   UsuarioExecutorObrigatorioError,
 } from './erros.js';
 
@@ -112,12 +115,62 @@ export class Encomenda {
   }
 
   cancelar() {
+    if (this.status === 'entregue') {
+      throw new EncomendaEntregueBloqueadaError('Encomenda entregue não pode ser cancelada. Reabra pelo administrador se precisar corrigir.');
+    }
     this.ativo = false;
     return this;
   }
 
-  mudarStatus(status) {
-    this.status = validarStatus(status);
+  saldoAReceber() {
+    if (this.status === 'entregue') {
+      return 0;
+    }
+    const saldo = dinheiro(this.total - this.sinal);
+    return saldo > 0 ? saldo : 0;
+  }
+
+  mudarStatus(status, { role } = {}) {
+    const novo = validarStatus(status);
+    if (novo === this.status) {
+      return this;
+    }
+    if (this.status === 'entregue' && role !== 'admin') {
+      throw new EncomendaEntregueBloqueadaError();
+    }
+    if (novo === 'entregue') {
+      throw new TransicaoStatusInvalidaError(
+        'Para marcar como entregue, finalize a encomenda recebendo o saldo.',
+      );
+    }
+    const admin = role === 'admin';
+    if (this.status === 'pendente' && novo === 'pronto') {
+      this.status = novo;
+      return this;
+    }
+    if (admin && this.status === 'pronto' && novo === 'pendente') {
+      this.status = novo;
+      return this;
+    }
+    if (admin && this.status === 'entregue' && novo === 'pronto') {
+      this.status = novo;
+      return this;
+    }
+    throw new TransicaoStatusInvalidaError();
+  }
+
+  finalizarEntrega() {
+    if (this.status !== 'pronto') {
+      throw new EncomendaNaoEstaProntaError();
+    }
+    this.status = 'entregue';
+    return this;
+  }
+
+  garantirEditavel() {
+    if (this.status === 'entregue') {
+      throw new EncomendaEntregueBloqueadaError('Encomenda entregue não pode ser editada.');
+    }
     return this;
   }
 
@@ -133,6 +186,7 @@ export class Encomenda {
       observacoes: this.observacoes,
       total: this.total,
       status: this.status,
+      saldo_a_receber: this.saldoAReceber(),
       itens: this.itens.map((item) => ({
         produto_id: item.produtoId,
         quantidade: item.quantidade,
@@ -152,6 +206,7 @@ export class Encomenda {
       sinal: this.sinal,
       total: this.total,
       status: this.status,
+      saldo_a_receber: this.saldoAReceber(),
       ativo: this.ativo ? 1 : 0,
     };
   }

@@ -184,6 +184,16 @@ function ligarEventos(container) {
     renderizar();
   });
 
+  container.querySelector('#modal-form-perda')?.addEventListener('click', (evento) => {
+    if (evento.target?.id !== 'modal-form-perda') {
+      return;
+    }
+    estado.mostrarFormulario = false;
+    estado.confirmacao = null;
+    estado.formulario = formularioVazio();
+    renderizar();
+  });
+
   container.querySelector('#btn-fechar-confirmacao')?.addEventListener('click', () => {
     estado.confirmacao = null;
     estado.formulario = formularioVazio();
