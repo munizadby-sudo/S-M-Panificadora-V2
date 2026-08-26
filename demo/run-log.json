@@ -1,0 +1,37 @@
+{
+  "log": [
+    {
+      "nome": "login",
+      "ok": true
+    },
+    {
+      "nome": "caixa",
+      "ok": true
+    },
+    {
+      "nome": "pdv",
+      "ok": true
+    },
+    {
+      "nome": "estoque",
+      "ok": true
+    },
+    {
+      "nome": "funcionarios",
+      "ok": true
+    },
+    {
+      "nome": "relatorios",
+      "ok": true
+    },
+    {
+      "nome": "fluxo",
+      "ok": true
+    },
+    {
+      "nome": "caixa-conferencia",
+      "ok": true
+    }
+  ],
+  "saida": "C:\\Users\\Panificadora S&M\\Desktop\\PDV_2V\\S-M-Panificadora-V2\\demo\\sm-panificadora-demo.mp4"
+}
