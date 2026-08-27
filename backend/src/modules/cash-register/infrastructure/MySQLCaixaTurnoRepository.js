@@ -151,17 +151,22 @@ export class MySQLFluxoCaixaRepository {
   }
 
   async buscarAtivoPorEncomendaId(encomendaId) {
+    const lista = await this.listarAtivosPorEncomendaId(encomendaId);
+    return lista[0] ?? null;
+  }
+
+  async listarAtivosPorEncomendaId(encomendaId) {
     const id = Number(encomendaId);
     if (!Number.isInteger(id) || id <= 0) {
-      return null;
+      return [];
     }
     const [linhas] = await this.pool.query(
       `SELECT id, encomenda_id FROM fluxo_caixa
         WHERE encomenda_id = ? AND ativo = 1
-        ORDER BY id DESC LIMIT 1`,
+        ORDER BY id ASC`,
       [id],
     );
-    return linhas[0] ? { id: linhas[0].id, encomendaId: linhas[0].encomenda_id } : null;
+    return linhas.map((linha) => ({ id: linha.id, encomendaId: linha.encomenda_id }));
   }
 
   async marcarExcluido(lancamento) {

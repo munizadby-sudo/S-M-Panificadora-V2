@@ -1,13 +1,15 @@
 import { ClienteNaoEncontradoError } from '../../customers/domain/erros.js';
+import { dinheiro } from '../../products/domain/Produto.js';
 import { Encomenda } from '../domain/Encomenda.js';
-import { EncomendaNaoEncontradaError } from '../domain/erros.js';
+import { EncomendaNaoEncontradaError, SinalJaLancadoError } from '../domain/erros.js';
 import { resolverItens } from './resolverItens.js';
 
 export class UpdateEncomenda {
-  constructor({ encomendaRepository, produtoRepository, clienteRepository, auditor }) {
+  constructor({ encomendaRepository, produtoRepository, clienteRepository, fluxoCaixaRepository, auditor }) {
     this.encomendaRepository = encomendaRepository;
     this.produtoRepository = produtoRepository;
     this.clienteRepository = clienteRepository;
+    this.fluxoCaixaRepository = fluxoCaixaRepository;
     this.auditor = auditor;
   }
 
@@ -28,6 +30,12 @@ export class UpdateEncomenda {
         throw new EncomendaNaoEncontradaError();
       }
       existente.garantirEditavel();
+
+      const lancamentos = (await this.fluxoCaixaRepository?.listarAtivosPorEncomendaId?.(existente.id)) || [];
+      const sinalNovo = dinheiro(entrada.sinal ?? 0);
+      if (lancamentos.length > 0 && sinalNovo !== existente.sinal) {
+        throw new SinalJaLancadoError();
+      }
 
       const estadoAntes = existente.paraPublico();
 

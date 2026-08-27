@@ -130,13 +130,16 @@ export class MemoriaFluxoCaixaRepository extends FluxoCaixaRepository {
   }
 
   async buscarAtivoPorEncomendaId(encomendaId) {
+    const lista = await this.listarAtivosPorEncomendaId(encomendaId);
+    return lista[0] ?? null;
+  }
+
+  async listarAtivosPorEncomendaId(encomendaId) {
     const id = Number(encomendaId);
-    return (
-      this.lancamentos.find(
-        (item) =>
-          this.lancamentoAtivo(item)
-          && Number(item.encomendaId ?? item.encomenda_id) === id,
-      ) || null
+    return this.lancamentos.filter(
+      (item) =>
+        this.lancamentoAtivo(item)
+        && Number(item.encomendaId ?? item.encomenda_id) === id,
     );
   }
 

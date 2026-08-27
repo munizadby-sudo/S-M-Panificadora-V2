@@ -1,8 +1,10 @@
-import { getTurnoAtual, obterTurnoId, turnoEstaAberto } from './estado.js';
+import { getUsuario } from '../../core/session.js';
+import { getTurnoAtual, obterTurnoId, peekTurno, turnoEstaAberto } from './estado.js';
 import { abrirTurno, mensagemErroAbertura, obterFundoPadrao } from './abertura.js';
 import {
   calcularRevisao,
   classificarDiferenca,
+  completarCabecalhoComprovante,
   contagemPreenchida,
   criarControleImpressao,
   fecharTurno,
@@ -287,6 +289,7 @@ function renderizarContagem(area, previa) {
       ...calcularRevisao({ esperado, contado: contagem }),
       periodo: previa.periodo,
       turno_id: previa.turno_id ?? obterTurnoId(),
+      data: peekTurno()?.data,
       observacao: contagem.observacao,
     };
     controleImpressao = criarControleImpressao();
@@ -334,7 +337,14 @@ function renderizarBoxRevisao(area, revisao) {
   };
 
   area.querySelector('#btn-imprimir-comprovante').addEventListener('click', async () => {
-    await controleImpressao.imprimirPrevia(htmlComprovanteRevisao(revisao));
+    await controleImpressao.imprimirPrevia(
+      htmlComprovanteRevisao(
+        completarCabecalhoComprovante(revisao, {
+          usuario: getUsuario(),
+          turno: peekTurno(),
+        }),
+      ),
+    );
     sincronizarBotoes();
   });
 

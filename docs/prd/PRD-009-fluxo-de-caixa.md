@@ -27,6 +27,7 @@ Permitir lançar entradas e saídas manuais (sangrias, suprimentos, contas) e vi
 ## 3. Requisitos funcionais
 
 - Formulário de lançamento manual: tipo (entrada/saída), categoria, descrição, valor, forma de pagamento, vinculado ao turno vigente.
+- Listagem inclui lançamentos automáticos de venda, estorno **e encomenda** (sinal na criação e saldo na entrega — PRD-018).
 - Listagem de lançamentos com filtro por turno/período (não apenas por data corrida — ver correção abaixo).
 - Lançamentos automáticos (venda, estorno) aparecem na listagem, mas sem opção de exclusão para operador comum — apenas `admin` pode excluir, com confirmação explícita.
 - Exportação em CSV do período filtrado.

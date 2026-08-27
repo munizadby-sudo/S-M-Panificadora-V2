@@ -1,6 +1,18 @@
 import { apiGet, apiPost, ApiError } from '../../core/api.js';
 import { getTurnoAtual, obterTurnoId } from './estado.js';
-import { formatarMoeda } from '../../core/utils.js';
+
+export {
+  completarCabecalhoComprovante,
+  dataUriLogoCupom,
+  formatarDataTurno,
+  formatarDiferencaCupom,
+  formatarHoraImpressao,
+  formatarPeriodoTurno,
+  formatarRotuloTurno,
+  htmlComprovanteRevisao,
+  htmlLinhaValor,
+  htmlPreviaImprimivel,
+} from './comprovante.js';
 
 export async function obterPreviaFechamento() {
   return apiGet('/caixa-turno/preview-fechamento');
@@ -83,44 +95,6 @@ export function contagemPreenchida(contado) {
   });
 }
 
-/** @deprecated preferir htmlComprovanteRevisao — mantido para testes legados */
-export function htmlPreviaImprimivel(previa) {
-  return htmlComprovanteRevisao({
-    periodo: previa?.periodo,
-    turno_id: previa?.turno_id,
-    esperado: previa?.esperado,
-    contado: previa?.esperado,
-    diferenca: { dinheiro: 0, pix: 0, cartao: 0, total: 0 },
-    status_resumo: 'bateu certo',
-  });
-}
-
-export function htmlComprovanteRevisao(revisao) {
-  const esperado = revisao?.esperado || {};
-  const contado = revisao?.contado || {};
-  const diferenca = revisao?.diferenca || {};
-  return `<!DOCTYPE html>
-<html lang="pt-BR"><head><meta charset="UTF-8"><title>Comprovante de fechamento</title></head>
-<body>
-  <h1>Comprovante de fechamento</h1>
-  <p>Turno ${escapar(revisao?.periodo || '')} — ${escapar(revisao?.turno_id ?? '')}</p>
-  <h2>Esperado</h2>
-  <p>Dinheiro: ${formatarMoeda(esperado.dinheiro)}</p>
-  <p>Pix: ${formatarMoeda(esperado.pix)}</p>
-  <p>Cartão: ${formatarMoeda(esperado.cartao)}</p>
-  <h2>Contado</h2>
-  <p>Dinheiro: ${formatarMoeda(contado.dinheiro)}</p>
-  <p>Pix: ${formatarMoeda(contado.pix)}</p>
-  <p>Cartão: ${formatarMoeda(contado.cartao)}</p>
-  <h2>Diferença</h2>
-  <p>${escapar(classificarDiferenca(revisao?.status_resumo))}</p>
-  <p>Dinheiro: ${formatarMoeda(diferenca.dinheiro)}</p>
-  <p>Pix: ${formatarMoeda(diferenca.pix)}</p>
-  <p>Cartão: ${formatarMoeda(diferenca.cartao)}</p>
-  <p>Total: ${formatarMoeda(diferenca.total)}</p>
-</body></html>`;
-}
-
 export async function fecharTurno(entrada) {
   const turno_id = entrada?.turno_id ?? obterTurnoId();
   const resposta = await apiPost('/caixa-turno/fechar', { ...entrada, turno_id });
@@ -180,11 +154,4 @@ function statusPorTotal(total) {
     return 'falta';
   }
   return 'bateu certo';
-}
-
-function escapar(valor) {
-  return String(valor ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
 }

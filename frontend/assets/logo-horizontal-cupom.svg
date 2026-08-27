@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 160" width="576" height="160">
+  <!-- Fonte 1-bit do comprovante térmico (SPEC-FE-017). Embutida no JS via data URI. -->
+  <rect width="576" height="160" fill="#fff"/>
+  <path fill="#000" d="M28 124c0-52 36-92 80-92s80 40 80 92v8H28z"/>
+  <path fill="none" stroke="#fff" stroke-width="7" d="M62 78l36-22M82 96l36-22M102 114l36-22"/>
+  <rect x="204" y="24" width="3" height="112" fill="#000"/>
+  <text x="224" y="62" fill="#000" font-family="Times New Roman, Times, serif" font-size="22" letter-spacing="6">PANIFICADORA</text>
+  <text x="224" y="132" fill="#000" font-family="Times New Roman, Times, serif" font-size="62" font-weight="700">S &amp; M</text>
+</svg>

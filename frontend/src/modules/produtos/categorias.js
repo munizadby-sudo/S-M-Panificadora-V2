@@ -21,11 +21,11 @@ export function montarSeletorCategoria(select, categorias, { valor = '', incluir
   }
 }
 
-export function htmlPainelCategorias(categorias, { podeDesativar = false, erro = '' } = {}) {
+export function htmlPainelCategorias(categorias, { podeDesativar = false, erro = '', comoModal = false } = {}) {
   const lista = Array.isArray(categorias) ? categorias : [];
   const itens =
     lista.length === 0
-      ? '<li class="estado-vazio">Nenhuma categoria cadastrada.<span class="estado-vazio-dica">Aqui ficam as categorias do cardápio. Cadastre a primeira no formulário ao lado.</span></li>'
+      ? `<li class="estado-vazio">Nenhuma categoria cadastrada.<span class="estado-vazio-dica">${comoModal ? 'Cadastre a primeira no formulário acima.' : 'Aqui ficam as categorias do cardápio. Cadastre a primeira no formulário ao lado.'}</span></li>`
       : lista
           .map((item) => {
             const inativa = Number(item.ativo) === 0;
@@ -40,13 +40,29 @@ export function htmlPainelCategorias(categorias, { podeDesativar = false, erro =
           })
           .join('');
 
-  return `<section class="produtos-categorias">
-      <h2>Categorias</h2>
-      <form id="form-nova-categoria" class="produtos-form-categoria">
+  const corpo = `<form id="form-nova-categoria" class="produtos-form-categoria">
         <label>Nova categoria <input type="text" id="nome-categoria" name="nome" maxlength="60" required></label>
         <button type="submit">Criar categoria</button>
       </form>
       <p id="categorias-erro" class="produtos-erro" role="alert">${escapar(erro)}</p>
-      <ul id="lista-categorias">${itens}</ul>
+      <ul id="lista-categorias">${itens}</ul>`;
+
+  if (!comoModal) {
+    return `<section class="produtos-categorias">
+      <h2>Categorias</h2>
+      ${corpo}
     </section>`;
+  }
+
+  return `<div class="produtos-modal" id="modal-categorias" role="dialog" aria-modal="true" aria-labelledby="titulo-modal-categorias">
+    <div class="produtos-modal-caixa produtos-categorias-caixa">
+      <header class="form-modal-cabecalho">
+        <h2 id="titulo-modal-categorias">Categorias</h2>
+      </header>
+      <div class="form-modal-corpo produtos-categorias">${corpo}</div>
+      <div class="produtos-acoes">
+        <button type="button" id="btn-fechar-categorias">Fechar</button>
+      </div>
+    </div>
+  </div>`;
 }

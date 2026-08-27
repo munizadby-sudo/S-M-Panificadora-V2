@@ -60,6 +60,28 @@ describe('Passo 2 — CRUD de categorias', () => {
     assert.match(chamadas[0].url, /\/categorias\/3$/);
   });
 
+  test('painel flutuante envolve categorias em dialog, o inline não', () => {
+    const inline = htmlPainelCategorias([{ id: 3, nome: 'Pães' }], { podeDesativar: true });
+    assert.doesNotMatch(inline, /modal-categorias/);
+    assert.match(inline, /form-nova-categoria/);
+
+    const modal = htmlPainelCategorias([{ id: 3, nome: 'Pães' }], { podeDesativar: true, comoModal: true });
+    assert.match(modal, /id="modal-categorias"/);
+    assert.match(modal, /btn-fechar-categorias/);
+    assert.match(modal, /role="dialog"/);
+    assert.match(modal, /form-nova-categoria/);
+    assert.match(modal, /Desativar/);
+  });
+
+  test('tela de produtos só monta o painel de categorias quando o botão pede', () => {
+    const fonte = readFileSync(join(frontend, 'src', 'modules', 'produtos', 'index.js'), 'utf8');
+    assert.match(fonte, /id="btn-categorias"/);
+    assert.match(fonte, />Categoria</);
+    assert.match(fonte, /id="btn-novo-produto"/);
+    assert.match(fonte, /modalCategorias/);
+    assert.match(fonte, /comoModal: true/);
+  });
+
   test('listagem de categorias rotula a ação como Desativar, nunca Excluir', () => {
     const html = htmlPainelCategorias([{ id: 3, nome: 'Pães' }], { podeDesativar: true });
     assert.match(html, /Pães/);

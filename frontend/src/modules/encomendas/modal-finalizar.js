@@ -1,4 +1,5 @@
 import { escapar, formatarMoeda } from './html.js';
+import { podeConfirmarPagamento, textoTroco } from './sinal.js';
 
 const FORMAS = [
   { id: 'dinheiro', tecla: '1', rotulo: 'Dinheiro' },
@@ -18,24 +19,61 @@ export function saldoAReceber(encomenda) {
   return saldo > 0 ? saldo : 0;
 }
 
-export function htmlModalFinalizarEncomenda({ encomenda, forma = '', erro = '' } = {}) {
-  if (!encomenda) {
+export function htmlBlocoPagamentoEncomenda({
+  valorACobrar,
+  forma = '',
+  recebido = '',
+  inputId = 'encomenda-recebido',
+} = {}) {
+  const valor = Number(valorACobrar) || 0;
+  if (!(valor > 0)) {
     return '';
   }
-  const saldo = saldoAReceber(encomenda);
-  const formas =
-    saldo > 0
-      ? `<div class="encomendas-formas" role="group" aria-label="Forma de pagamento">
+  const dinheiro = forma === 'dinheiro';
+  const troco = dinheiro ? textoTroco(recebido, valor) : null;
+  const formas = `<div class="encomendas-formas" role="group" aria-label="Forma de pagamento">
         ${FORMAS.map(
           (item) => `<button type="button" class="encomendas-forma${forma === item.id ? ' ativo' : ''}" data-forma-encomenda="${item.id}">
             <span class="encomendas-forma-tecla">${item.tecla}</span>
             ${item.rotulo}
           </button>`,
         ).join('')}
-      </div>`
+      </div>`;
+  const painelDinheiro = `<div id="${escapar(inputId)}-wrap" class="pdv-recebido-painel"${dinheiro ? '' : ' hidden'}>
+      <label for="${escapar(inputId)}">Valor recebido (R$)</label>
+      <input type="number" min="0" step="0.01" id="${escapar(inputId)}" name="recebido" value="${escapar(recebido)}" inputmode="decimal" placeholder="0,00">
+      <p id="${escapar(inputId)}-troco"${troco == null ? ' hidden' : ''}>${troco == null ? '' : `Troco: ${formatarMoeda(troco)}`}</p>
+    </div>`;
+  return `${formas}${painelDinheiro}`;
+}
+
+export function htmlModalFinalizarEncomenda({
+  encomenda,
+  forma = '',
+  recebido = '',
+  erro = '',
+} = {}) {
+  if (!encomenda) {
+    return '';
+  }
+  const saldo = saldoAReceber(encomenda);
+  const pagamento =
+    saldo > 0
+      ? htmlBlocoPagamentoEncomenda({
+          valorACobrar: saldo,
+          forma,
+          recebido,
+          inputId: 'encomenda-finalizar-recebido',
+        })
       : '<p class="encomendas-finalizar-ajuda">O sinal cobre o total. Confirme a entrega.</p>';
 
-  const confirmarDesabilitado = saldo > 0 && !forma ? ' disabled' : '';
+  const confirmarDesabilitado = podeConfirmarPagamento({
+    valorACobrar: saldo,
+    forma,
+    recebido,
+  })
+    ? ''
+    : ' disabled';
 
   return `<div class="encomendas-modal" id="modal-finalizar-encomenda" role="dialog" aria-modal="true" aria-labelledby="titulo-finalizar-encomenda">
     <form id="form-finalizar-encomenda" class="encomendas-modal-caixa encomendas-form" data-encomenda-id="${escapar(encomenda.id)}" tabindex="-1">
@@ -46,12 +84,12 @@ export function htmlModalFinalizarEncomenda({ encomenda, forma = '', erro = '' }
         <p>${escapar(encomenda.cliente)} — entrega ${escapar(encomenda.data_entrega)}</p>
         <p>Total <strong>${formatarMoeda(encomenda.total)}</strong> · Sinal ${formatarMoeda(encomenda.sinal)}</p>
         <p class="encomendas-finalizar-saldo">Valor a receber: <strong>${formatarMoeda(saldo)}</strong></p>
-        ${formas}
+        ${pagamento}
         <p class="encomendas-erro" role="alert">${escapar(erro)}</p>
       </div>
       <div class="encomendas-form-acoes">
         <button type="button" id="btn-cancelar-finalizar-encomenda">Cancelar</button>
-        <button type="submit"${confirmarDesabilitado}>Confirmar entrega</button>
+        <button type="submit" id="btn-confirmar-finalizar-encomenda"${confirmarDesabilitado}>Confirmar entrega</button>
       </div>
     </form>
   </div>`;

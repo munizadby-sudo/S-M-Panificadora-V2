@@ -69,7 +69,7 @@ describe('HTTP POST /api/encomendas', () => {
           cliente_nome: 'João Sem Cadastro',
           cliente_telefone: '83988887777',
           data_entrega: '2026-08-25',
-          sinal: 10,
+          sinal: 0,
           itens: [{ produto_id: produto.id, quantidade: 10 }],
         }),
       });
@@ -310,7 +310,7 @@ describe('HTTP POST /api/encomendas/:id/finalizar', () => {
             cliente_nome: 'Maria Souza',
             cliente_telefone: '83900000000',
             data_entrega: '2026-08-25',
-            sinal: 10,
+            sinal: 0,
             itens: [{ produto_id: produto.id, quantidade: 1 }],
           }),
         }),
@@ -351,12 +351,12 @@ describe('HTTP POST /api/encomendas/:id/finalizar', () => {
       assert.equal(lancamento.categoria, 'encomenda');
       assert.equal(lancamento.geradoAuto, true);
       assert.equal(lancamento.forma, 'dinheiro');
-      assert.equal(Number(lancamento.valor), 30);
+      assert.equal(Number(lancamento.valor), 40);
 
       const preview = await json(
         await fetch(`${origem}/api/caixa-turno/preview-fechamento`, { headers }),
       );
-      assert.equal(preview.esperado.dinheiro, 80, 'fundo 50 + encomenda 30');
+      assert.equal(preview.esperado.dinheiro, 90, 'fundo 50 + encomenda 40');
 
       const operador = await ctx.usuarioRepository.salvar(
         new Usuario({
@@ -404,13 +404,18 @@ describe('HTTP POST /api/encomendas/:id/finalizar', () => {
     });
   });
 
-  test('sinal que cobre o total entrega sem lançar fluxo', async () => {
+  test('sinal que cobre o total entrega sem lançar saldo (sinal já entrou na criação)', async () => {
     const ctx = montarAppMemoria();
     await comServidor(ctx.app, async (porta) => {
       const { token } = await tokenAdmin(porta, ctx);
       const origem = `http://127.0.0.1:${porta}`;
       const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
       const produto = await criarProduto(origem, headers, 'Pão', 10);
+      await fetch(`${origem}/api/caixa-turno/abrir`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ fundo_especie: 40, fundo_moedas: 10 }),
+      });
       const criada = await json(
         await fetch(`${origem}/api/encomendas`, {
           method: 'POST',
@@ -420,6 +425,7 @@ describe('HTTP POST /api/encomendas/:id/finalizar', () => {
             cliente_telefone: '83900000000',
             data_entrega: '2026-08-25',
             sinal: 10,
+            forma: 'pix',
             itens: [{ produto_id: produto.id, quantidade: 1 }],
           }),
         }),
@@ -429,11 +435,6 @@ describe('HTTP POST /api/encomendas/:id/finalizar', () => {
         headers,
         body: JSON.stringify({ status: 'pronto' }),
       });
-      await fetch(`${origem}/api/caixa-turno/abrir`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ fundo_especie: 40, fundo_moedas: 10 }),
-      });
 
       const finalizada = await fetch(`${origem}/api/encomendas/${criada.id}/finalizar`, {
         method: 'POST',
@@ -442,7 +443,204 @@ describe('HTTP POST /api/encomendas/:id/finalizar', () => {
       });
       assert.equal(finalizada.status, 200);
       assert.equal((await json(finalizada)).status, 'entregue');
+      const ativos = ctx.fluxoCaixaRepository.lancamentos.filter((item) => item.ativo !== false);
+      assert.equal(ativos.length, 1);
+      assert.equal(Number(ativos[0].valor), 10);
+      assert.match(ativos[0].descricao, /^Sinal encomenda/);
+    });
+  });
+});
+
+describe('SPEC-BE-015 — sinal no fluxo na criação', () => {
+  test('listarAtivosPorEncomendaId devolve os dois lançamentos, sem LIMIT 1', async () => {
+    const ctx = montarAppMemoria();
+    ctx.fluxoCaixaRepository.lancamentos.push(
+      { id: 1, encomendaId: 9, ativo: true, valor: 5 },
+      { id: 2, encomendaId: 9, ativo: true, valor: 5 },
+      { id: 3, encomendaId: 9, ativo: false, valor: 99 },
+      { id: 4, encomendaId: 8, ativo: true, valor: 1 },
+    );
+    const lista = await ctx.fluxoCaixaRepository.listarAtivosPorEncomendaId(9);
+    assert.equal(lista.length, 2);
+    assert.deepEqual(lista.map((item) => item.id), [1, 2]);
+  });
+
+  test('sinal 0 cria com caixa fechado; sinal > 0 sem caixa é 403 e não cria', async () => {
+    const ctx = montarAppMemoria();
+    await comServidor(ctx.app, async (porta) => {
+      const { token } = await tokenAdmin(porta, ctx);
+      const origem = `http://127.0.0.1:${porta}`;
+      const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+      const produto = await criarProduto(origem, headers, 'Pão', 10);
+
+      const semSinal = await fetch(`${origem}/api/encomendas`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          cliente_nome: 'Fim de semana',
+          cliente_telefone: '83900000000',
+          data_entrega: '2026-08-25',
+          sinal: 0,
+          itens: [{ produto_id: produto.id, quantidade: 1 }],
+        }),
+      });
+      assert.equal(semSinal.status, 200);
+
+      const comSinal = await fetch(`${origem}/api/encomendas`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          cliente_nome: 'Maria',
+          cliente_telefone: '83911111111',
+          data_entrega: '2026-08-25',
+          sinal: 5,
+          forma: 'dinheiro',
+          itens: [{ produto_id: produto.id, quantidade: 1 }],
+        }),
+      });
+      const corpo = await json(comSinal);
+      assert.equal(comSinal.status, 403);
+      assert.match(corpo.erro || '', /caixa/i);
+      const lista = await json(await fetch(`${origem}/api/encomendas`, { headers }));
+      assert.equal(lista.data.length, 1);
+    });
+  });
+
+  test('sinal 5 com caixa aberto e pix lança 5; PUT não muda o sinal', async () => {
+    const ctx = montarAppMemoria();
+    await comServidor(ctx.app, async (porta) => {
+      const { token } = await tokenAdmin(porta, ctx);
+      const origem = `http://127.0.0.1:${porta}`;
+      const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+      const produto = await criarProduto(origem, headers, 'Pão', 10);
+      await fetch(`${origem}/api/caixa-turno/abrir`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ fundo_especie: 40, fundo_moedas: 10 }),
+      });
+
+      const semForma = await fetch(`${origem}/api/encomendas`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          cliente_nome: 'Maria',
+          cliente_telefone: '83900000000',
+          data_entrega: '2026-08-25',
+          sinal: 5,
+          itens: [{ produto_id: produto.id, quantidade: 1 }],
+        }),
+      });
+      assert.equal(semForma.status, 400);
+
+      const criada = await json(
+        await fetch(`${origem}/api/encomendas`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            cliente_nome: 'Maria',
+            cliente_telefone: '83900000000',
+            data_entrega: '2026-08-25',
+            sinal: 5,
+            forma: 'pix',
+            itens: [{ produto_id: produto.id, quantidade: 1 }],
+          }),
+        }),
+      );
+      assert.equal(criada.sinal, 5);
+      const lancamentos = ctx.fluxoCaixaRepository.lancamentos.filter((item) => item.ativo !== false);
+      assert.equal(lancamentos.length, 1);
+      assert.equal(Number(lancamentos[0].valor), 5);
+      assert.equal(lancamentos[0].forma, 'pix');
+      assert.match(lancamentos[0].descricao, /^Sinal encomenda/);
+
+      const recusaSinal = await fetch(`${origem}/api/encomendas/${criada.id}`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({
+          cliente_nome: 'Maria',
+          cliente_telefone: '83900000000',
+          data_entrega: '2026-08-25',
+          sinal: 0,
+          itens: [{ produto_id: produto.id, quantidade: 1 }],
+        }),
+      });
+      assert.equal(recusaSinal.status, 400);
+
+      const mesmoSinal = await fetch(`${origem}/api/encomendas/${criada.id}`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({
+          cliente_nome: 'Maria',
+          cliente_telefone: '83900000000',
+          data_entrega: '2026-08-26',
+          sinal: 5,
+          itens: [{ produto_id: produto.id, quantidade: 1 }],
+        }),
+      });
+      assert.equal(mesmoSinal.status, 200);
+    });
+  });
+
+  test('criar sinal 0 e PUT sinal 5 não lança fluxo; cancelar com sinal estorna o lançamento', async () => {
+    const ctx = montarAppMemoria();
+    await comServidor(ctx.app, async (porta) => {
+      const { token } = await tokenAdmin(porta, ctx);
+      const origem = `http://127.0.0.1:${porta}`;
+      const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+      const produto = await criarProduto(origem, headers, 'Pão', 10);
+      const pagaDepois = await json(
+        await fetch(`${origem}/api/encomendas`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            cliente_nome: 'Fim de semana',
+            cliente_telefone: '83900000000',
+            data_entrega: '2026-08-25',
+            sinal: 0,
+            itens: [{ produto_id: produto.id, quantidade: 1 }],
+          }),
+        }),
+      );
+      const editada = await fetch(`${origem}/api/encomendas/${pagaDepois.id}`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({
+          cliente_nome: 'Fim de semana',
+          cliente_telefone: '83900000000',
+          data_entrega: '2026-08-25',
+          sinal: 5,
+          itens: [{ produto_id: produto.id, quantidade: 1 }],
+        }),
+      });
+      assert.equal(editada.status, 200);
       assert.equal(ctx.fluxoCaixaRepository.lancamentos.length, 0);
+
+      await fetch(`${origem}/api/caixa-turno/abrir`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ fundo_especie: 40, fundo_moedas: 10 }),
+      });
+      const comSinal = await json(
+        await fetch(`${origem}/api/encomendas`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            cliente_nome: 'Maria',
+            cliente_telefone: '83911111111',
+            data_entrega: '2026-08-25',
+            sinal: 5,
+            forma: 'dinheiro',
+            itens: [{ produto_id: produto.id, quantidade: 1 }],
+          }),
+        }),
+      );
+      assert.equal(ctx.fluxoCaixaRepository.lancamentos.filter((item) => item.ativo !== false).length, 1);
+      const cancelada = await fetch(`${origem}/api/encomendas/${comSinal.id}`, {
+        method: 'DELETE',
+        headers,
+      });
+      assert.equal(cancelada.status, 200);
+      assert.equal(ctx.fluxoCaixaRepository.lancamentos.filter((item) => item.ativo !== false).length, 0);
     });
   });
 });

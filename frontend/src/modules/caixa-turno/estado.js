@@ -23,6 +23,10 @@ export function obterTurnoId() {
   return cache?.turno?.id ?? null;
 }
 
+export function peekTurno() {
+  return cache?.turno ?? null;
+}
+
 export function onMudancaDeTurno(callback) {
   ouvintes.add(callback);
   return () => {

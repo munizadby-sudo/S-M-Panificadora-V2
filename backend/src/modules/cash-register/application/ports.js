@@ -41,6 +41,10 @@ export class FluxoCaixaRepository {
     return null;
   }
 
+  async listarAtivosPorEncomendaId(_encomendaId) {
+    return [];
+  }
+
   async marcarExcluido(_lancamento) {
     throw new Error('FluxoCaixaRepository.marcarExcluido não implementado');
   }

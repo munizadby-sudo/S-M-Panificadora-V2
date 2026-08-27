@@ -39,6 +39,7 @@ Permitir abrir o turno com o fundo de caixa inicial, acompanhar o status do turn
 - **Caminho de exceção (impressora indisponível):** "Prosseguir sem impressão" só no box de revisão, e só depois de uma tentativa de impressão sem sucesso — nunca como atalho padrão. Fecha normalmente com auditoria `sem_impressao` (SPEC-BE-002).
 - Após fechamento confirmado, tela de resumo do turno com diferença classificada (bateu certo/sobra/falta) — conferência visual; a impressão do comprovante acontece no box de revisão, antes do POST.
 - Bug conhecido (impressão abre `about:blank` vazio): ver `docs/issues/ISSUE-001-impressao-previa-caixa-em-branco.md`.
+- **Layout do comprovante impresso (2026-08-26 — modelo 2, cupom térmico 80 mm):** o papel é o comprovante de responsabilização, **cupom não fiscal** (documento interno de controle, não é venda). Ver SPEC-FE-017. Conteúdo de cima para baixo: logo horizontal 1-bit PNG; título "Comprovante de Fechamento de Caixa"; `CUPOM NÃO FISCAL`; dados do turno; bloco "Operador(a) responsável"; Esperado / Contado / Diferença por forma; total de sobra/falta em destaque; linha de assinatura; rodapé "S&M Panificadora — Souza & Moraes". Impressora monocromática: diferença usa sinal `+`/`-` e o texto `(sobra)`/`(falta)`, nunca cor. Fluxo `sem_impressao` não muda.
 
 ---
 
@@ -79,3 +80,4 @@ Permitir abrir o turno com o fundo de caixa inicial, acompanhar o status do turn
 7. O box de revisão permite imprimir o comprovante (esperado + contado + diferença) antes de confirmar. A tela de resumo pós-fechamento não tem segundo botão de impressão.
 8. O botão "Confirmar e fechar" (no box) fica desabilitado até impressão bem-sucedida ou exceção auditada; a contagem em si não exige impressão; sair e voltar da tela não é bloqueado.
 9. "Prosseguir sem impressão" só aparece depois de uma tentativa de impressão sem sucesso, nunca antes; usá-lo confirma o fechamento normalmente e registra a exceção na auditoria (sem comprovante impresso).
+10. O comprovante impresso cabe em cupom térmico 80 mm, em preto e branco, com logo, operador responsável, diferença por forma sem cor, total em destaque, assinatura e rodapé da padaria (SPEC-FE-017).

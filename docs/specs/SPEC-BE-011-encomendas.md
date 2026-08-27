@@ -231,3 +231,4 @@ Requer token + permissão `encomendas`. Paginado.
 7. Numeração de encomenda nunca colide com numeração de venda, mesmo estando na mesma tabela `sequencias` (chaves distintas).
 8. `PATCH .../status` só aceita `pendente → pronto` (e, para admin, `pronto → pendente` e `entregue → pronto`). PATCH para `entregue` retorna 400.
 9. `POST .../finalizar` com caixa aberto marca `entregue` e lança `fluxo_caixa` `categoria: 'encomenda'` quando há saldo; caixa fechado retorna 403. Não cria venda nem mexe em estoque.
+10. Sinal na criação, dois lançamentos por pedido e estorno de todos ao reabrir/cancelar: SPEC-BE-015 / PRD-018 (não reabrir o desenho antigo “só o saldo entra no caixa”).

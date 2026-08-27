@@ -11,14 +11,15 @@ import {
   atualizarEncomenda,
   finalizarEncomenda,
 } from './api.js';
-import { dataHoje, escapar } from './html.js';
+import { dataHoje, escapar, formatarMoeda } from './html.js';
 import { htmlFormularioEncomenda, produtoComPrecoNoCusto } from './formulario.js';
 import { htmlSeletorProduto } from '../perdas/seletor-produto.js';
 import { htmlFiltrosEncomendas, htmlTabelaEncomendas } from './lista.js';
 import { htmlModalCancelamento } from './modal-cancelamento.js';
 import { htmlModalFinalizarEncomenda, saldoAReceber, formaPeloAtalho } from './modal-finalizar.js';
-import { adicionarItem, removerItem } from './itens.js';
+import { adicionarItem, removerItem, totalLocalItens } from './itens.js';
 import { validarFormularioEncomenda } from './validacao.js';
+import { aplicarSinalDoFormulario, podeConfirmarPagamento, textoTroco } from './sinal.js';
 
 export { htmlTabelaEncomendas, htmlFiltrosEncomendas } from './lista.js';
 export { htmlFormularioEncomenda } from './formulario.js';
@@ -76,6 +77,7 @@ function estadoInicial() {
     erroCancelamento: '',
     finalizarModal: null,
     formaFinalizar: '',
+    recebidoFinalizar: '',
     erroFinalizar: '',
   };
 }
@@ -87,6 +89,10 @@ function formularioVazio() {
     clienteTelefone: '',
     dataEntrega: dataHoje(),
     sinal: '',
+    pagaDepois: false,
+    sinalEditadoNaMao: false,
+    forma: '',
+    recebido: '',
     observacoes: '',
     buscaProdutoItem: '',
     produtoItem: null,
@@ -184,6 +190,33 @@ function atualizarSeletorProdutoItem({ restaurarBusca = false } = {}) {
   }
 }
 
+function sincronizarSinalSugerido() {
+  estado.formulario.sinal = aplicarSinalDoFormulario({
+    total: totalLocalItens(estado.formulario.itens),
+    sinalAtual: estado.formulario.sinal,
+    pagaDepois: estado.formulario.pagaDepois,
+    sinalEditadoNaMao: estado.formulario.sinalEditadoNaMao,
+  });
+}
+
+function atualizarLinhaTroco(container, inputId, valorACobrar, forma, recebido) {
+  const linha = container.querySelector(`#${inputId}-troco`);
+  if (linha) {
+    const troco = forma === 'dinheiro' ? textoTroco(recebido, valorACobrar) : null;
+    if (troco == null) {
+      linha.hidden = true;
+      linha.textContent = '';
+    } else {
+      linha.hidden = false;
+      linha.textContent = `Troco: ${formatarMoeda(troco)}`;
+    }
+  }
+  const botao = container.querySelector('#btn-confirmar-finalizar-encomenda');
+  if (botao) {
+    botao.disabled = !podeConfirmarPagamento({ valorACobrar, forma, recebido });
+  }
+}
+
 function renderizar() {
   const container = containerAtual;
   if (!container) {
@@ -218,6 +251,7 @@ function renderizar() {
       ${htmlModalFinalizarEncomenda({
         encomenda: estado.finalizarModal,
         forma: estado.formaFinalizar,
+        recebido: estado.recebidoFinalizar,
         erro: estado.erroFinalizar,
       })}
     </section>
@@ -312,7 +346,40 @@ function ligarEventos(container) {
     estado.formulario.dataEntrega = evento.target.value;
   });
   container.querySelector('#encomenda-sinal')?.addEventListener('input', (evento) => {
+    estado.formulario.sinalEditadoNaMao = true;
     estado.formulario.sinal = evento.target.value;
+  });
+  container.querySelector('#encomenda-sinal')?.addEventListener('change', () => {
+    renderizar();
+  });
+  container.querySelector('#encomenda-paga-depois')?.addEventListener('change', (evento) => {
+    estado.formulario.pagaDepois = Boolean(evento.target.checked);
+    if (estado.formulario.pagaDepois) {
+      estado.formulario.forma = '';
+      estado.formulario.recebido = '';
+    }
+    sincronizarSinalSugerido();
+    renderizar();
+  });
+  container.querySelector('#encomenda-sinal-recebido')?.addEventListener('input', (evento) => {
+    estado.formulario.recebido = evento.target.value;
+    atualizarLinhaTroco(
+      container,
+      'encomenda-sinal-recebido',
+      Number(estado.formulario.sinal) || 0,
+      estado.formulario.forma,
+      estado.formulario.recebido,
+    );
+  });
+  container.querySelector('#encomenda-finalizar-recebido')?.addEventListener('input', (evento) => {
+    estado.recebidoFinalizar = evento.target.value;
+    atualizarLinhaTroco(
+      container,
+      'encomenda-finalizar-recebido',
+      saldoAReceber(estado.finalizarModal),
+      estado.formaFinalizar,
+      estado.recebidoFinalizar,
+    );
   });
   container.querySelector('#encomenda-observacoes')?.addEventListener('input', (evento) => {
     estado.formulario.observacoes = evento.target.value;
@@ -334,6 +401,7 @@ function ligarEventos(container) {
     estado.formulario.quantidadeItem = '';
     estado.resultadosProdutoItem = [];
     estado.errosCampos = { ...estado.errosCampos, itens: '' };
+    sincronizarSinalSugerido();
     renderizar();
   });
 
@@ -341,6 +409,7 @@ function ligarEventos(container) {
     botao.addEventListener('click', () => {
       const produtoId = Number(botao.getAttribute('data-remover-item-encomenda'));
       estado.formulario.itens = removerItem(estado.formulario.itens, produtoId);
+      sincronizarSinalSugerido();
       renderizar();
     });
   }
@@ -362,6 +431,7 @@ function ligarEventos(container) {
       const id = Number(botao.getAttribute('data-finalizar-encomenda'));
       estado.finalizarModal = estado.itensLista.find((item) => Number(item.id) === id) || null;
       estado.formaFinalizar = '';
+      estado.recebidoFinalizar = '';
       estado.erroFinalizar = '';
       renderizar();
     });
@@ -375,7 +445,18 @@ function ligarEventos(container) {
 
   for (const botao of container.querySelectorAll?.('[data-forma-encomenda]') || []) {
     botao.addEventListener('click', () => {
-      estado.formaFinalizar = botao.getAttribute('data-forma-encomenda') || '';
+      const forma = botao.getAttribute('data-forma-encomenda') || '';
+      if (estado.finalizarModal) {
+        estado.formaFinalizar = forma;
+        if (forma !== 'dinheiro') {
+          estado.recebidoFinalizar = '';
+        }
+      } else {
+        estado.formulario.forma = forma;
+        if (forma !== 'dinheiro') {
+          estado.formulario.recebido = '';
+        }
+      }
       renderizar();
     });
   }
@@ -383,6 +464,7 @@ function ligarEventos(container) {
   container.querySelector('#btn-cancelar-finalizar-encomenda')?.addEventListener('click', () => {
     estado.finalizarModal = null;
     estado.formaFinalizar = '';
+    estado.recebidoFinalizar = '';
     estado.erroFinalizar = '';
     renderizar();
   });
@@ -393,6 +475,7 @@ function ligarEventos(container) {
     }
     estado.finalizarModal = null;
     estado.formaFinalizar = '';
+    estado.recebidoFinalizar = '';
     estado.erroFinalizar = '';
     renderizar();
   });
@@ -495,6 +578,10 @@ async function abrirEdicao(id) {
       clienteTelefone: encomenda.cliente_telefone,
       dataEntrega: encomenda.data_entrega,
       sinal: encomenda.sinal,
+      pagaDepois: false,
+      sinalEditadoNaMao: true,
+      forma: '',
+      recebido: '',
       observacoes: encomenda.observacoes || '',
       buscaProdutoItem: '',
       produtoItem: null,
@@ -524,11 +611,30 @@ async function salvarEncomenda() {
     dataEntrega: estado.formulario.dataEntrega,
     sinal: estado.formulario.sinal,
     itens: estado.formulario.itens,
+    forma: estado.formulario.forma,
+    exigirFormaDoSinal: estado.edicaoId == null,
   });
 
   if (!validacao.ok) {
     estado.errosCampos = validacao.erros;
     estado.erroFormulario = '';
+    renderizar();
+    return;
+  }
+
+  if (
+    estado.edicaoId == null
+    && validacao.valores.sinal > 0
+    && !podeConfirmarPagamento({
+      valorACobrar: validacao.valores.sinal,
+      forma: estado.formulario.forma,
+      recebido: estado.formulario.recebido,
+    })
+  ) {
+    estado.errosCampos = {
+      ...validacao.erros,
+      forma: estado.formulario.forma === 'dinheiro' ? 'Informe o valor recebido.' : 'Escolha como o sinal foi pago.',
+    };
     renderizar();
     return;
   }
@@ -566,6 +672,20 @@ async function alterarStatus(id, status) {
 }
 
 function tratarAtalhoFinalizar(evento) {
+  const digitando = ['INPUT', 'TEXTAREA', 'SELECT'].includes(evento.target?.tagName);
+  if (estado?.mostrarFormulario && !estado.finalizarModal && !digitando) {
+    const valorSinal = Number(estado.formulario.sinal) || 0;
+    const formaCriacao = formaPeloAtalho(evento.key);
+    if (valorSinal > 0 && formaCriacao) {
+      evento.preventDefault();
+      estado.formulario.forma = formaCriacao;
+      if (formaCriacao !== 'dinheiro') {
+        estado.formulario.recebido = '';
+      }
+      renderizar();
+      return;
+    }
+  }
   if (!estado?.finalizarModal) {
     return;
   }
@@ -573,17 +693,21 @@ function tratarAtalhoFinalizar(evento) {
     evento.preventDefault();
     estado.finalizarModal = null;
     estado.formaFinalizar = '';
+    estado.recebidoFinalizar = '';
     estado.erroFinalizar = '';
     renderizar();
     return;
   }
   const forma = formaPeloAtalho(evento.key);
-  if (forma && saldoAReceber(estado.finalizarModal) > 0) {
+  if (forma && saldoAReceber(estado.finalizarModal) > 0 && !digitando) {
     evento.preventDefault();
     if (estado.formaFinalizar === forma) {
       return;
     }
     estado.formaFinalizar = forma;
+    if (forma !== 'dinheiro') {
+      estado.recebidoFinalizar = '';
+    }
     renderizar();
     return;
   }
@@ -594,7 +718,11 @@ function tratarAtalhoFinalizar(evento) {
     return;
   }
   const saldo = saldoAReceber(estado.finalizarModal);
-  if (saldo > 0 && !estado.formaFinalizar) {
+  if (!podeConfirmarPagamento({
+    valorACobrar: saldo,
+    forma: estado.formaFinalizar,
+    recebido: estado.recebidoFinalizar,
+  })) {
     return;
   }
   evento.preventDefault();
@@ -607,8 +735,14 @@ async function confirmarFinalizar() {
     return;
   }
   const saldo = saldoAReceber(encomenda);
-  if (saldo > 0 && !estado.formaFinalizar) {
-    estado.erroFinalizar = 'Escolha a forma de pagamento.';
+  if (!podeConfirmarPagamento({
+    valorACobrar: saldo,
+    forma: estado.formaFinalizar,
+    recebido: estado.recebidoFinalizar,
+  })) {
+    estado.erroFinalizar = estado.formaFinalizar === 'dinheiro'
+      ? 'Informe o valor recebido.'
+      : 'Escolha a forma de pagamento.';
     renderizar();
     return;
   }
@@ -617,6 +751,7 @@ async function confirmarFinalizar() {
     await finalizarEncomenda(encomenda.id, { forma: estado.formaFinalizar });
     estado.finalizarModal = null;
     estado.formaFinalizar = '';
+    estado.recebidoFinalizar = '';
     await carregarEncomendas();
     renderizar();
   } catch (erro) {

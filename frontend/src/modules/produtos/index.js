@@ -53,6 +53,7 @@ function estadoInicial() {
     erroProdutos: '',
     erroCategorias: '',
     modalProduto: null,
+    modalCategorias: false,
   };
 }
 
@@ -125,13 +126,22 @@ function renderizar() {
         </label>
         <button type="submit">Filtrar</button>
         <button type="button" id="btn-novo-produto">Novo produto</button>
+        <button type="button" id="btn-categorias">Categoria</button>
       </form>
       <p id="produtos-erro" class="produtos-erro" role="alert">${escapar(estado.erroProdutos)}</p>
       <div id="lista-produtos">${htmlTabelaProdutos(estado.produtos, estado.categorias, {
         acoes: true,
         podeDesativar: podeDesativar(),
       })}</div>
-      ${htmlPainelCategorias(estado.categorias, { podeDesativar: podeDesativar(), erro: estado.erroCategorias })}
+      ${
+        estado.modalCategorias
+          ? htmlPainelCategorias(estado.categorias, {
+              podeDesativar: podeDesativar(),
+              erro: estado.erroCategorias,
+              comoModal: true,
+            })
+          : ''
+      }
       ${modal}
     </section>
   `;
@@ -165,7 +175,14 @@ function ligarEventos(container) {
     await recarregar();
   });
 
+  container.querySelector('#btn-categorias')?.addEventListener('click', () => {
+    estado.modalProduto = null;
+    estado.modalCategorias = true;
+    renderizar();
+  });
+
   container.querySelector('#btn-novo-produto')?.addEventListener('click', () => {
+    estado.modalCategorias = false;
     estado.modalProduto = { aberto: true, produto: {}, erro: '', errosCampos: {} };
     renderizar();
   });
@@ -174,10 +191,26 @@ function ligarEventos(container) {
     botao.addEventListener('click', () => {
       const id = String(botao.getAttribute('data-editar-produto'));
       const produto = estado.produtos.find((item) => String(item.id) === id) || { id };
+      estado.modalCategorias = false;
       estado.modalProduto = { aberto: true, produto: { ...produto }, erro: '', errosCampos: {} };
       renderizar();
     });
   }
+
+  container.querySelector('#btn-fechar-categorias')?.addEventListener('click', () => {
+    estado.modalCategorias = false;
+    estado.erroCategorias = '';
+    renderizar();
+  });
+
+  container.querySelector('#modal-categorias')?.addEventListener('click', (evento) => {
+    if (evento.target?.id !== 'modal-categorias') {
+      return;
+    }
+    estado.modalCategorias = false;
+    estado.erroCategorias = '';
+    renderizar();
+  });
 
   container.querySelector('#btn-cancelar-produto')?.addEventListener('click', () => {
     estado.modalProduto = null;

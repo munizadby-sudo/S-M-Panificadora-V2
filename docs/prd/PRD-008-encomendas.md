@@ -5,6 +5,7 @@
 - **Módulo:** Cadastro e acompanhamento de pedidos de clientes
 - **Referência/legado:** `S-M-Panificadora` (V1) — `tela-encomendas` em `index.html` (`enc-grid`, `modal-enc`, `enc-cliente`, `enc-fone`, `enc-data`, `enc-sinal`, `enc-obs`, `enc-itens-modal`, `setFiltroEnc`), funções `abrirModalEnc`, `abrirEditEnc`, `renderEncomendas`, `addLinhaEnc`, `selecionarProdEnc` em `app.js`
 - **Depende de:** PRD-001, PRD-002, PRD-005 (produto), PRD-011 (Clientes — vínculo opcional)
+- **Complemento (2026-08-26):** sinal no caixa, “paga depois” e troco — ver `PRD-018-sinal-e-pagamento-encomenda.md`
 
 ---
 
@@ -29,7 +30,7 @@ Permitir registrar pedidos de clientes com itens, acompanhar status (pendente/pr
 - Cadastro/edição: dados do cliente (nome, telefone, e futuramente vínculo com cadastro de Cliente — PRD-011), data de entrega, sinal, observações, itens com produto e quantidade.
 - Total exibido na tela é sempre o total recalculado retornado pelo backend, nunca um total calculado apenas no frontend e enviado como se fosse definitivo.
 - Status na listagem é um **semáforo** (bolinha + cor), nunca um `<select>` na linha. O ciclo só avança: cadastra → **Pendente** (amarelo) → padeiro marca **Pronto** (verde, dica “Aguardando retirada”) → cliente busca e o operador clica para **Entregar**.
-- Entregar abre caixa flutuante para receber o saldo (`max(0, total − sinal)`), com as mesmas formas do PDV (1 Dinheiro / 2 Pix / 3 Débito / 4 Crédito). Exige caixa aberto. **Não cria venda do PDV** e **não debita estoque** (ADR-002). O recebimento lança `fluxo_caixa` automático `categoria: 'encomenda'`. Se o sinal cobre o total, só confirma a entrega (sem lançamento).
+- Entregar abre caixa flutuante para receber o saldo (`max(0, total − sinal)`), com as mesmas formas do PDV (1 Dinheiro / 2 Pix / 3 Débito / 4 Crédito). Em dinheiro, informar o recebido e ver o troco (igual ao PDV); o fluxo registra o saldo, não a nota. Exige caixa aberto. **Não cria venda do PDV** e **não debita estoque** (ADR-002). O recebimento lança `fluxo_caixa` automático `categoria: 'encomenda'`. Se o sinal cobre o total, só confirma a entrega (sem lançamento). Detalhe do sinal na criação e da exceção “paga depois”: PRD-018.
 - **Entregue** trava a linha (cinza): sem Editar, Cancelar nem mudança de status. Só o administrador pode **Reabrir** (volta para Pronto e estorna o lançamento).
 - Ação de "excluir" encomenda deve ser tratada na UI como cancelamento (soft delete), preservando o registro no histórico — ver correção abaixo. Encomenda já entregue não pode ser cancelada.
 

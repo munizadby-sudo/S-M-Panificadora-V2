@@ -1,4 +1,5 @@
 import { EncomendaNaoEncontradaError } from '../domain/erros.js';
+import { estornarLancamentosDaEncomenda } from './estornarLancamentosDaEncomenda.js';
 
 export class UpdateStatusEncomenda {
   constructor({ encomendaRepository, fluxoCaixaRepository, auditor }) {
@@ -18,14 +19,12 @@ export class UpdateStatusEncomenda {
     const salva = await this.encomendaRepository.atualizar(existente);
 
     if (statusAnterior === 'entregue' && salva.status === 'pronto') {
-      const lancamento = await this.fluxoCaixaRepository?.buscarAtivoPorEncomendaId?.(salva.id);
-      if (lancamento) {
-        await this.fluxoCaixaRepository.marcarExcluido({
-          id: lancamento.id,
-          excluidoPor: executor?.id,
-          motivoExclusao: 'Reabertura de encomenda entregue',
-        });
-      }
+      await estornarLancamentosDaEncomenda(
+        this.fluxoCaixaRepository,
+        salva.id,
+        executor,
+        'Reabertura de encomenda entregue',
+      );
     }
 
     if (this.auditor) {

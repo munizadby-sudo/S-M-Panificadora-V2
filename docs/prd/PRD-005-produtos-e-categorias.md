@@ -18,7 +18,7 @@ Permitir manter o catálogo de produtos e categorias atualizado — cadastro, ed
 
 - Tela lista produtos em tabela (`prod-body`) com busca (`busca-cad`).
 - Modal de cadastro/edição (`modal-prod`) com nome, categoria, preço, custo e ícone (emoji).
-- Gestão de categorias na mesma tela (`nova-cat`, `cats`), com seletor de categoria reaproveitado em outras telas (`renderCatSelects`).
+- Gestão de categorias na mesma tela, via botão **Categoria** ao lado de Novo produto, em caixa flutuante (SPEC-FE-018) — não mais um bloco fixo abaixo da tabela.
 - Exclusão é sempre soft delete no backend (produto/categoria continuam existindo para preservar histórico).
 
 ---
@@ -62,3 +62,4 @@ Permitir manter o catálogo de produtos e categorias atualizado — cadastro, ed
 2. Cadastro exige nome, categoria e preço antes de permitir salvar.
 3. Erro de nome duplicado retornado pelo backend aparece como mensagem clara na tela.
 4. Seletor de categoria usado em outras telas (venda, estoque) reflete corretamente o cadastro atual.
+5. Categorias abrem em caixa flutuante pelo botão **Categoria** na barra de Produtos; a tabela de produtos permanece a tela principal (SPEC-FE-018).

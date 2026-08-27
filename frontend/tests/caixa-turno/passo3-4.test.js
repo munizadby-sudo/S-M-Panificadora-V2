@@ -7,10 +7,16 @@ import { getTurnoAtual, invalidarCacheTurno, turnoEstaAberto } from '../../src/m
 import {
   calcularRevisao,
   classificarDiferenca,
+  completarCabecalhoComprovante,
   contagemPreenchida,
   criarControleImpressao,
+  dataUriLogoCupom,
   fecharTurno,
+  formatarDiferencaCupom,
+  formatarPeriodoTurno,
+  formatarRotuloTurno,
   htmlComprovanteRevisao,
+  htmlLinhaValor,
   imprimirHtml,
 } from '../../src/modules/caixa-turno/fechamento.js';
 
@@ -63,19 +69,37 @@ describe('Passo 3 — contagem e revisão', () => {
     assert.equal(controle.semImpressao(), false);
   });
 
-  test('comprovante imprimível detalha diferença por forma', () => {
+  test('comprovante térmico 80mm detalha diferença por forma sem cor', () => {
     const comprovante = htmlComprovanteRevisao({
       periodo: 'tarde',
       turno_id: 12,
+      data: '26/08/2026',
+      hora: '16:05',
+      operador: 'Maria',
       esperado: { dinheiro: 50, pix: 10, cartao: 20 },
       contado: { dinheiro: 45, pix: 10, cartao: 25 },
       diferenca: { dinheiro: -5, pix: 0, cartao: 5, total: 0 },
       status_resumo: 'bateu certo',
     });
-    assert.match(
-      comprovante,
-      /<h2>Diferença<\/h2>\s*<p>Bateu certo<\/p>\s*<p>Dinheiro: .*?<\/p>\s*<p>Pix: .*?<\/p>\s*<p>Cartão: .*?<\/p>\s*<p>Total: .*?<\/p>/s,
-    );
+    assert.match(comprovante, /Comprovante de Fechamento de Caixa/);
+    assert.match(comprovante, /CUPOM NÃO FISCAL/);
+    assert.match(comprovante, /Documento interno de controle/);
+    assert.match(comprovante, /80mm/);
+    assert.match(comprovante, /72mm/);
+    assert.match(comprovante, /Tarde — Nº 12/);
+    assert.match(comprovante, /Operador\(a\) responsável/);
+    assert.match(comprovante, /Maria/);
+    assert.match(comprovante, /<h2>Esperado<\/h2>/);
+    assert.match(comprovante, /<h2>Contado<\/h2>/);
+    assert.match(comprovante, /<h2>Diferença<\/h2>/);
+    assert.match(comprovante, /\(falta\)/);
+    assert.match(comprovante, /\(sobra\)/);
+    assert.match(comprovante, /Assinatura do operador/);
+    assert.match(comprovante, /Souza &amp; Moraes/);
+    assert.match(comprovante, /data:image\/png;base64,/);
+    assert.match(comprovante, /alt="S&amp;M Panificadora"/);
+    assert.doesNotMatch(comprovante, /src="\/assets\//);
+    assert.doesNotMatch(comprovante, /color-mix|rgb\(|linear-gradient/i);
   });
 
   test('Prosseguir sem impressão só aparece depois de uma tentativa que falha', async () => {
@@ -93,6 +117,48 @@ describe('Passo 3 — contagem e revisão', () => {
     assert.equal(controle.confirmarHabilitado(), true);
     assert.equal(controle.semImpressao(), true);
     assert.equal(controle.mostrarProsseguirSemImpressao(), false);
+  });
+});
+
+describe('SPEC-FE-017 — comprovante térmico (passos 1–4)', () => {
+  test('formata período, rótulo do turno e linha de valor', () => {
+    assert.equal(formatarPeriodoTurno('manha'), 'Manhã');
+    assert.equal(formatarPeriodoTurno('tarde'), 'Tarde');
+    assert.equal(formatarRotuloTurno({ periodo: 'tarde', turno_id: 11 }), 'Tarde — Nº 11');
+    assert.match(htmlLinhaValor('Pix', 'R$ 10,00'), /<td>Pix<\/td><td class="v">R\$ 10,00<\/td>/);
+  });
+
+  test('diferença monocromática usa sinal e texto, nunca só o número', () => {
+    assert.match(formatarDiferencaCupom(3), /\+/);
+    assert.match(formatarDiferencaCupom(3), /sobra/);
+    assert.match(formatarDiferencaCupom(-5.5), /-/);
+    assert.match(formatarDiferencaCupom(-5.5), /falta/);
+    assert.equal(formatarDiferencaCupom(0).includes('sobra'), false);
+    assert.equal(formatarDiferencaCupom(0).includes('falta'), false);
+    assert.match(formatarDiferencaCupom(0), /0,00/);
+  });
+
+  test('logo do cupom vai como data URI PNG, não como arquivo relativo', () => {
+    assert.match(dataUriLogoCupom(), /^data:image\/png;base64,/);
+  });
+
+  test('cabecalho da impressão usa o operador da sessão e a hora do clique', () => {
+    const preenchido = completarCabecalhoComprovante(
+      { periodo: 'tarde', turno_id: 11, esperado: {}, contado: {}, diferenca: {} },
+      {
+        agora: new Date('2026-08-26T19:05:00-03:00'),
+        usuario: { nome: 'Maria Silva' },
+        turno: { data: '2026-08-26', id: 11, periodo: 'tarde' },
+      },
+    );
+    assert.equal(preenchido.operador, 'Maria Silva');
+    assert.equal(preenchido.data, '26/08/2026');
+    assert.match(preenchido.hora, /\d{2}:\d{2}/);
+
+    const html = htmlComprovanteRevisao(preenchido);
+    assert.match(html, /Maria Silva/);
+    assert.match(html, /Operador\(a\) responsável/);
+    assert.match(html, /CUPOM NÃO FISCAL/);
   });
 });
 

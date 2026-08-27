@@ -87,3 +87,12 @@ export class EncomendaNaoEstaProntaError extends Error {
     this.codigo = 'ENCOMENDA_NAO_ESTA_PRONTA';
   }
 }
+
+export class SinalJaLancadoError extends Error {
+  constructor(mensagem = 'Sinal já lançado no caixa. Não altere o valor.') {
+    super(mensagem);
+    this.name = 'SinalJaLancadoError';
+    this.status = 400;
+    this.codigo = 'SINAL_JA_LANCADO';
+  }
+}

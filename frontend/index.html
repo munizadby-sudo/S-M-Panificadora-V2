@@ -204,12 +204,14 @@
     }
 
     .caixa-turno-banner-bola {
+      --bola-cor: var(--perigo);
       width: 0.38rem;
       height: 0.38rem;
       border-radius: 999px;
       flex-shrink: 0;
-      background: var(--perigo);
-      box-shadow: 0 0 0 2px color-mix(in srgb, var(--perigo) 28%, transparent);
+      background: var(--bola-cor);
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--bola-cor) 28%, transparent);
+      animation: caixa-turno-bola-pulso 2.8s ease-in-out infinite;
     }
 
     .caixa-turno-banner[data-aberto="true"] {
@@ -219,9 +221,7 @@
     }
 
     .caixa-turno-banner[data-aberto="true"] .caixa-turno-banner-bola {
-      background: var(--sucesso);
-      box-shadow: 0 0 0 2px color-mix(in srgb, var(--sucesso) 30%, transparent);
-      animation: caixa-turno-bola-pulso 2.8s ease-in-out infinite;
+      --bola-cor: var(--sucesso);
     }
 
     .caixa-turno-banner[data-aberto="false"] {
@@ -234,16 +234,16 @@
       0%,
       100% {
         transform: scale(1);
-        box-shadow: 0 0 0 2px color-mix(in srgb, var(--sucesso) 22%, transparent);
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--bola-cor) 22%, transparent);
       }
       50% {
         transform: scale(1.12);
-        box-shadow: 0 0 0 4px color-mix(in srgb, var(--sucesso) 42%, transparent);
+        box-shadow: 0 0 0 4px color-mix(in srgb, var(--bola-cor) 42%, transparent);
       }
     }
 
     @media (prefers-reduced-motion: reduce) {
-      .caixa-turno-banner[data-aberto="true"] .caixa-turno-banner-bola {
+      .caixa-turno-banner-bola {
         animation: none;
       }
     }
@@ -497,6 +497,7 @@
       box-shadow: 0 0 0 3px color-mix(in srgb, var(--destaque) 22%, transparent);
     }
 
+    #btn-categorias,
     #btn-novo-produto,
     #btn-novo-cliente,
     .produtos-filtros button[type="submit"],
@@ -564,6 +565,32 @@
       border: 1px solid var(--linha);
       border-radius: calc(var(--raio) + 2px);
       box-shadow: 0 10px 28px rgba(0, 0, 0, 0.2);
+    }
+
+    .produtos-categorias-caixa {
+      max-width: 36rem;
+      max-height: calc(100vh - 2rem);
+      overflow: hidden;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+    }
+
+    .produtos-categorias-caixa .produtos-categorias {
+      margin: 0;
+      max-width: none;
+      padding: 0;
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      border-radius: 0;
+      overflow-y: auto;
+      min-height: 0;
+    }
+
+    .produtos-categorias-caixa .produtos-acoes {
+      justify-content: flex-end;
+      padding-top: 0.75rem;
+      border-top: 1px solid var(--linha);
+      margin-top: 0;
     }
 
     .produtos-categorias h2 {
@@ -1364,6 +1391,12 @@
       background: transparent;
       border: 1px solid color-mix(in srgb, var(--aviso) 40%, var(--linha));
       border-radius: 8px;
+    }
+
+    .encomendas-form .produtos-toggle {
+      min-width: 0;
+      max-width: 100%;
+      margin: 0.35rem 0 0.15rem;
     }
 
     .encomendas-formas {

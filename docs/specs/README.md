@@ -38,6 +38,7 @@ Cada spec é uma **entrega vertical testável**: ao terminá-la, o sistema faz a
 | [SPEC-BE-012](./SPEC-BE-012-relatorios.md) | Relatórios | 4 relatórios só-leitura: vendas, fechamento de caixa, curva ABC, resultado — sem tabela própria |
 | [SPEC-BE-013](./SPEC-BE-013-funcionarios-e-folha.md) | Funcionários e Folha | Cadastro, adiantamento, ocorrências (falta/atestado/hora extra), fechamento simplificado — admin-only, sem PRD legado disponível (ver Seção 0 da spec) |
 | [SPEC-BE-014](./SPEC-BE-014-dashboard-relatorios.md) | Dashboard de Relatórios | Extensão do relatório de Vendas (ticket médio, itens, nº de vendas) + relatório novo de vendas por hora, sem faixa fixa (correção do V1) |
+| [SPEC-BE-015](./SPEC-BE-015-sinal-encomenda-no-fluxo.md) | Encomendas + Fluxo | Sinal > 0 lança no caixa na criação; reabrir/cancelar estorna todos os lançamentos do pedido (PRD-018) |
 
 **Em stand-by (aguardando priorização):** Contratos TEF e Fiscal.
 
@@ -65,6 +66,9 @@ Fundação HTTP (CORS, CSP, rate limit geral, abort sem `JWT_SECRET`) e persist�
 | [SPEC-FE-014](./SPEC-FE-014-usuarios-e-permissoes.md) | Usuários e Permissões — tela admin (backend já existia via SPEC-BE-001) |
 | [SPEC-FE-015](./SPEC-FE-015-design-system.md) | Design System — tokens, componentes e navegação, transversal a todos os módulos (ver `PRD-016-redesign-de-interface.md`) |
 | [SPEC-FE-016](./SPEC-FE-016-dashboard-relatorios-e-fluxo.md) | Dashboard de Relatórios e Fluxo — cards de KPI e gráficos CSS-only sobre dado já existente (ver `PRD-017-dashboard-de-vendas-e-fluxo.md`) |
+| [SPEC-FE-017](./SPEC-FE-017-comprovante-fechamento-termico.md) | Comprovante de fechamento em cupom térmico 80 mm — layout do papel; fluxo `sem_impressao` inalterado (ver PRD-004) |
+| [SPEC-FE-018](./SPEC-FE-018-categorias-flutuante.md) | Categorias em caixa flutuante na tela de Produtos (botão ao lado de Novo produto) |
+| [SPEC-FE-019](./SPEC-FE-019-sinal-paga-depois-e-troco.md) | Sinal sugerido (metade), “paga depois”, forma/troco na encomenda (PRD-018; depende SPEC-BE-015 no Passo 4) |
 
 **Ainda não especificado:** Configurações (tela admin), Ponto por celular.
 
@@ -103,6 +107,9 @@ flowchart TD
   S001 --> S009[BE-009 Clientes]
   S004 --> S011[BE-011 Encomendas]
   S009 --> S011
+  S011 --> S015[BE-015 Sinal encomenda no fluxo]
+  S008 --> S015
+  S002 --> S015
   S007 --> S012[BE-012 Relatórios]
   S002 --> S012
   S008 --> S012

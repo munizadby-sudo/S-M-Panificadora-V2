@@ -1,8 +1,10 @@
 import { EncomendaNaoEncontradaError } from '../domain/erros.js';
+import { estornarLancamentosDaEncomenda } from './estornarLancamentosDaEncomenda.js';
 
 export class CancelEncomenda {
-  constructor({ encomendaRepository, auditor }) {
+  constructor({ encomendaRepository, fluxoCaixaRepository, auditor }) {
     this.encomendaRepository = encomendaRepository;
+    this.fluxoCaixaRepository = fluxoCaixaRepository;
     this.auditor = auditor;
   }
 
@@ -14,6 +16,13 @@ export class CancelEncomenda {
 
     existente.cancelar();
     const cancelada = await this.encomendaRepository.atualizar(existente);
+
+    await estornarLancamentosDaEncomenda(
+      this.fluxoCaixaRepository,
+      cancelada.id,
+      executor,
+      'Cancelamento de encomenda',
+    );
 
     if (this.auditor) {
       await this.auditor.registrar({

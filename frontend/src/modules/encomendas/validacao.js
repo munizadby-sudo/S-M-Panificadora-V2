@@ -1,4 +1,12 @@
-export function validarFormularioEncomenda({ clienteNome, clienteTelefone, dataEntrega, sinal, itens }) {
+export function validarFormularioEncomenda({
+  clienteNome,
+  clienteTelefone,
+  dataEntrega,
+  sinal,
+  itens,
+  forma = '',
+  exigirFormaDoSinal = false,
+}) {
   const erros = {};
 
   if (!String(clienteNome ?? '').trim()) {
@@ -22,6 +30,10 @@ export function validarFormularioEncomenda({ clienteNome, clienteTelefone, dataE
     erros.itens = 'Adicione pelo menos um item.';
   }
 
+  if (exigirFormaDoSinal && valorSinal > 0 && !['dinheiro', 'pix', 'cartao', 'credito'].includes(String(forma))) {
+    erros.forma = 'Escolha como o sinal foi pago.';
+  }
+
   if (Object.keys(erros).length > 0) {
     return { ok: false, erros };
   }
@@ -34,6 +46,7 @@ export function validarFormularioEncomenda({ clienteNome, clienteTelefone, dataE
       data_entrega: data,
       sinal: Math.round(valorSinal * 100) / 100,
       itens: itens.map((item) => ({ produto_id: item.produtoId, quantidade: item.quantidade })),
+      ...(exigirFormaDoSinal && valorSinal > 0 ? { forma: String(forma) } : {}),
     },
   };
 }
