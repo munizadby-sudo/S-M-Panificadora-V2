@@ -11,6 +11,7 @@ export class CreateFuncionario {
       nome: entrada?.nome,
       cargo: entrada?.cargo,
       salarioBase: entrada?.salario_base ?? entrada?.salarioBase,
+      periodicidade: entrada?.periodicidade,
       dataAdmissao: entrada?.data_admissao ?? entrada?.dataAdmissao,
       ativo: true,
     });

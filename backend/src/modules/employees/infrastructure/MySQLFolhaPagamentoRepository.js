@@ -11,9 +11,9 @@ export class MySQLFolhaPagamentoRepository extends FolhaPagamentoRepository {
     const [resultado] = await this.pool.query(
       `INSERT INTO folhas_pagamento (
          funcionario_id, periodo_inicio, periodo_fim, salario_base,
-         total_adiantamentos, total_faltas, total_horas_extras, valor_liquido,
+         total_adiantamentos, total_faltas, total_horas_extras, total_nao_cumprimento, valor_liquido,
          status, pago_em, usuario_id
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         folha.funcionarioId,
         folha.periodoInicio,
@@ -22,6 +22,7 @@ export class MySQLFolhaPagamentoRepository extends FolhaPagamentoRepository {
         folha.totalAdiantamentos,
         folha.totalFaltas,
         folha.totalHorasExtras,
+        folha.totalNaoCumprimento,
         folha.valorLiquido,
         folha.status,
         folha.pagoEm,
@@ -123,6 +124,7 @@ function deLinha(linha) {
     totalAdiantamentos: linha.total_adiantamentos,
     totalFaltas: linha.total_faltas,
     totalHorasExtras: linha.total_horas_extras,
+    totalNaoCumprimento: linha.total_nao_cumprimento ?? 0,
     valorLiquido: linha.valor_liquido,
     status: linha.status,
     pagoEm: linha.pago_em,

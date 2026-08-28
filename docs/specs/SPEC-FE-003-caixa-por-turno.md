@@ -108,3 +108,4 @@ Nenhum outro módulo deve chamar `GET /api/caixa-turno/status` diretamente — s
 3. `correcoes_pendentes` aparece na tela de abertura sempre que o backend retornar a lista não vazia, sem bloquear a abertura.
 4. O banner de status reflete o estado real do turno imediatamente após abrir/fechar, sem exigir recarregar a página.
 5. Cada um dos 4 passos da Seção 3 é individualmente testável no navegador, na ordem descrita, sem exigir os passos seguintes implementados.
+6. Passos 1–2 no Chromium (banner fechado → abrir turno): `cd demo && npm run testar` (SPEC-FE-020). Fechamento completo (Passos 3–4) ainda é conferência na loja.

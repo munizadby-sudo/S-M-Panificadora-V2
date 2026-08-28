@@ -54,7 +54,10 @@ export class MemoriaOcorrenciaFolhaRepository extends OcorrenciaFolhaRepository 
     const horasExtras = doPeriodo
       .filter((item) => item.tipo === 'hora_extra')
       .reduce((acc, item) => acc + Number(item.valor), 0);
-    return { faltas, horasExtras };
+    const naoCumprimento = doPeriodo
+      .filter((item) => item.tipo === 'nao_cumprimento')
+      .reduce((acc, item) => acc + Number(item.valor), 0);
+    return { faltas, horasExtras, naoCumprimento };
   }
 
   async comNome(ocorrencia) {

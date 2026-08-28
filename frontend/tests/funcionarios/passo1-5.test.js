@@ -20,6 +20,14 @@ import {
   htmlTabelaFuncionarios,
   valorOcorrenciaParaTipo,
 } from '../../src/modules/funcionarios/ui.js';
+import {
+  periodoPagaDia5,
+  periodoPagaDia20,
+  periodoPagaDia5Vigente,
+  periodoMesAnterior,
+  quinzenaSugerida,
+} from '../../src/modules/funcionarios/quinzena.js';
+import { htmlHolerite } from '../../src/modules/funcionarios/holerite.js';
 import moduloFuncionarios from '../../src/modules/funcionarios/index.js';
 
 const raiz = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -110,6 +118,23 @@ describe('Passo 1 — contrato e cadastro', () => {
     assert.match(html, /Reativar/);
     assert.doesNotMatch(html, /Excluir/);
   });
+
+  test('padeiro aparece como quinzenal (dia 5 e 20) na listagem', () => {
+    const html = htmlTabelaFuncionarios([
+      {
+        id: 1,
+        nome: 'João',
+        cargo: 'Padeiro',
+        salario_base: 1800,
+        periodicidade: 'quinzenal',
+        salario_periodo: 900,
+        data_admissao: '2026-01-01',
+        ativo: 1,
+      },
+    ]);
+    assert.match(html, /dias 5 e 20/);
+    assert.match(html, /Quinzena/);
+  });
 });
 
 describe('Passo 3 — ocorrência atestado', () => {
@@ -142,6 +167,54 @@ describe('Passo 4–5 — fechamento e pagamento', () => {
     });
     assert.match(html, /data-valor-liquido="1695"/);
     assert.match(html, /modal-form-folha/);
+  });
+
+  test('atalhos de quinzena aparecem para padeiro', () => {
+    const html = htmlFormularioFechamento({
+      funcionarios: [{ id: 1, nome: 'João', cargo: 'Padeiro', periodicidade: 'quinzenal', ativo: 1 }],
+      formulario: { funcionario_id: 1 },
+    });
+    assert.match(html, /data-quinzena="dia5"/);
+    assert.match(html, /data-quinzena="dia20"/);
+    assert.match(html, /1ª quinzena \(paga dia 5\)/);
+    assert.match(html, /2ª quinzena \(paga dia 20\)/);
+  });
+
+  test('balconista mensal sugere mês anterior', () => {
+    assert.deepEqual(periodoMesAnterior('2026-08-28'), {
+      inicio: '2026-07-01',
+      fim: '2026-07-31',
+    });
+    const html = htmlFormularioFechamento({
+      funcionarios: [{ id: 2, nome: 'Ana', cargo: 'Balconista', periodicidade: 'mensal', ativo: 1 }],
+      formulario: { funcionario_id: 2, periodo_inicio: '2026-07-01', periodo_fim: '2026-07-31' },
+    });
+    assert.match(html, /data-mes-anterior/);
+    assert.match(html, /Mês anterior/);
+    assert.doesNotMatch(html, /data-quinzena/);
+  });
+
+  test('períodos da quinzena: 1ª (16–fim) e 2ª (1–15)', () => {
+    assert.deepEqual(periodoPagaDia5('2026-08-27'), {
+      inicio: '2026-07-16',
+      fim: '2026-07-31',
+      paga_em: '2026-08-05',
+    });
+    assert.deepEqual(periodoPagaDia20('2026-08-27'), {
+      inicio: '2026-08-01',
+      fim: '2026-08-15',
+      paga_em: '2026-08-20',
+    });
+    assert.deepEqual(quinzenaSugerida('2026-08-28'), {
+      inicio: '2026-08-16',
+      fim: '2026-08-31',
+      paga_em: '2026-09-05',
+    });
+    assert.deepEqual(periodoPagaDia5Vigente('2026-08-28'), {
+      inicio: '2026-08-16',
+      fim: '2026-08-31',
+      paga_em: '2026-09-05',
+    });
   });
 
   test('409 vira mensagem de negócio', () => {
@@ -201,5 +274,63 @@ describe('Passo 4–5 — fechamento e pagamento', () => {
       },
     ]);
     assert.match(tabela, /Marcar como paga/);
+    assert.match(tabela, /data-imprimir-folha="9"/);
+    assert.match(tabela, /Imprimir \(2 vias\)/);
+  });
+});
+
+describe('Holerite e não cumprimento', () => {
+  test('formulário de ocorrência oferece não cumprimento com motivos', () => {
+    const html = htmlFormularioOcorrencia({
+      funcionarios: [{ id: 1, nome: 'Ana', ativo: 1 }],
+      formulario: { tipo: 'nao_cumprimento', valor: 40 },
+    });
+    assert.match(html, /value="nao_cumprimento"/);
+    assert.match(html, /id="ocor-motivo"/);
+    assert.match(html, /nao_limpou_producao/);
+    assert.match(html, /nao_limpou_cozinha/);
+    assert.match(html, /producao_incorreta/);
+    assert.match(html, /Não limparam a produção/);
+    assert.equal(campoValorOcorrenciaDesabilitado('nao_cumprimento'), false);
+  });
+
+  test('holerite imprime duas vias com cálculo detalhado', () => {
+    const html = htmlHolerite({
+      folha: {
+        funcionario_nome: 'Ana',
+        periodo_inicio: '2026-08-01',
+        periodo_fim: '2026-08-15',
+        salario_base: 900,
+        total_horas_extras: 45,
+        total_faltas: 0,
+        total_nao_cumprimento: 40,
+        total_adiantamentos: 150,
+        valor_liquido: 755,
+        status: 'pendente',
+      },
+      funcionario: { nome: 'Ana', cargo: 'Padeira', periodicidade: 'quinzenal' },
+      ocorrencias: [
+        {
+          tipo: 'nao_cumprimento',
+          data: '2026-08-10',
+          valor: 40,
+          motivo: 'nao_limpou_producao',
+        },
+      ],
+      adiantamentos: [{ data: '2026-08-05', valor: 150, observacao: 'Vale' }],
+    });
+    assert.match(html, /Recibo de pagamento de salário/);
+    assert.match(html, /VIA EMPRESA/);
+    assert.match(html, /VIA FUNCIONÁRIO/);
+    assert.match(html, /Proventos/);
+    assert.match(html, /Descontos/);
+    assert.match(html, /Valor líquido/);
+    assert.match(html, /Assinatura do funcionário/);
+    assert.match(html, /Assinatura da empresa/);
+    assert.match(html, /Não cumprimento/);
+    assert.match(html, /Não limparam a produção/);
+    assert.match(html, /Adiantamento/);
+    assert.match(html, /size: A4/);
+    assert.match(html, /page-break-after/);
   });
 });

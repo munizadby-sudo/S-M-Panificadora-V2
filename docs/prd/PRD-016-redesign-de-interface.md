@@ -1,7 +1,7 @@
 # PRD-016 — Redesign de Interface (Frontend)
 
 - **Status:** Em execução (onda de polish 2026-08-23)
-- **Data:** 2026-08-23 (atualizado 2026-08-23 — escopo full-system + tom clean)
+- **Data:** 2026-08-23 (atualizado 2026-08-28 — layout que se adapta à largura da janela)
 - **Módulo:** Diretrizes de interface aplicáveis a **todo** o frontend — do login ao último modal
 - **Referência visual (só olhar, não copiar código):** `C:\Users\Panificadora S&M\Desktop\Sistema-Padaria-Docker\padaria-pdv` (`frontend/css/style.css`, `frontend/login.html`, `frontend/index.html`)
 - **Referência de auditoria:** artifact ["Redesign do PDV — S&M Panificadora"](https://claude.ai/code/artifact/58087395-4497-462c-b7af-1d9950010e9d)
@@ -23,7 +23,8 @@ Elevar a consistência e a usabilidade da interface já em produção, corrigind
 O sistema já tem identidade visual escura com laranja/âmbar como cor de marca no shell (`index.html`). O `login.html` ainda estava na paleta clara legada — alinhar ao tema escuro faz parte desta onda. Uma auditoria estruturada encontrou 9 problemas concretos (cor, tipografia, contraste, navegação, estado vazio, feedback), detalhados no artifact de referência.
 
 **Decisões confirmadas:**
-- (2026-08-23) PDV continua teclado/mouse — sem touch nesta fase.
+- (2026-08-23) PDV continua teclado/mouse como fluxo principal de venda — não vira POS de toque.
+- (2026-08-28) Layout se adapta à largura da janela (tablet, celular, PC redimensionado): empilha painéis, menu rola na horizontal, tabelas e modais cabem sem cortar. Toque pontual em botões/menu é consequência do layout, não um PDV redesenhado para dedo.
 - (2026-08-23) Tom visual: **clean mínimo** (pouco ruído, tipografia clara, espaço consistente).
 - (2026-08-23) Escopo: **sistema todo**; ordem de rollout no SPEC-FE-015 (fases 0–7).
 - (2026-08-23) Limites: só apresentação (CSS/HTML de template); sem backend; sem Google Fonts; sem lib de gráfico; sem importar código do `padaria-pdv`.
@@ -69,6 +70,9 @@ Campos de senha em formulários administrativos dão feedback visual mínimo de 
 ### 3.11 Tema único login ↔ app
 Login e shell compartilham a mesma família de tokens (tema escuro + âmbar). Não há tela “clara legada” no fluxo principal.
 
+### 3.12 Layout que se adapta à largura da janela
+Em janela estreita o conteúdo permanece usável: header e menu não empurram a página para o lado; grades de duas colunas empilham; tabelas largas rolam **dentro** da tabela; modais cabem na viewport com scroll interno. O PDV continua o mesmo fluxo de teclado (F1–F10, setas, Enter/Esc); só o arranjo visual muda.
+
 ---
 
 ## 4. Regras herdadas (mantidas)
@@ -95,12 +99,13 @@ Login e shell compartilham a mesma família de tokens (tema escuro + âmbar). N�
 | Estado vazio sem orientação | Explicação + próximo passo (Seção 3.9) |
 | Sem feedback no campo de senha | Feedback mínimo (Seção 3.10) |
 | Login ainda na paleta clara | Alinhar tokens ao tema escuro (Seção 3.11) |
+| Janela estreita corta conteúdo / força scroll da página | Layout que se adapta (Seção 3.12) |
 
 ---
 
 ## 6. Fora de escopo desta fase
 
-- Suporte a tela touch.
+- PDV touch-first (botões grandes de POS, grade só para dedo, abandono de atalhos). Layout estreito (Seção 3.12) não implica redesenhar a venda para toque.
 - Troca da base técnica do frontend (framework, build step) — ADR-003.
 - Importar/copiar código do `padaria-pdv`.
 - Reintroduzir bugs corrigidos do V1 (faixa fixa 6h–19h; KPI “Descontos”/“Resumo” sem dado).
@@ -122,3 +127,4 @@ Login e shell compartilham a mesma família de tokens (tema escuro + âmbar). N�
 7. Navegação por teclado na grade segue comportamento documentado e testável.
 8. `login.html` e `index.html` compartilham a mesma família de tokens (tema escuro + âmbar).
 9. Suíte `frontend/` (`npm test`) permanece 100% verde após cada fase do SPEC-FE-015.
+10. Em viewport ~390px o shell não gera scroll horizontal da página; PDV empilha grade e carrinho; login continua centralizado e legível.

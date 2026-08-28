@@ -23,6 +23,7 @@ export class CreateOcorrenciaFolha {
       tipo: entrada?.tipo,
       data: entrada?.data,
       valor: entrada?.valor,
+      motivo: entrada?.motivo,
       observacao: entrada?.observacao,
       usuarioId: executor?.id,
     });

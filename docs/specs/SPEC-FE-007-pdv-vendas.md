@@ -250,6 +250,7 @@ Não é cupom fiscal (fora de escopo). É o ticket de balcão do V1, reimplement
 13. `#pdv-recebido-wrap` tem `hidden` (e CSS `display: none !important`) em qualquer forma que não seja `dinheiro`.
 14. A barra `ul.pdv-atalhos` **não** contém “Forma de pagto” / `1/2/3/4`.
 15. `#btn-finalizar-venda` usa `--sucesso` + pulso só quando habilitado; desabilitado fica mudo.
+16. Passos 1–3 no Chromium (aviso com caixa fechado; grade + venda em dinheiro com caixa aberto): `cd demo && npm run testar` (SPEC-FE-020). Atalhos e cupom continuam no `npm test` do frontend.
 
 ---
 

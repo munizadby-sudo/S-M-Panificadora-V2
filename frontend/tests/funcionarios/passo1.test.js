@@ -102,5 +102,6 @@ describe('Passo 5 — marcar paga idempotente na UI', () => {
       },
     ]);
     assert.match(html, /data-pagar-folha="9"/);
+    assert.match(html, /data-imprimir-folha="9"/);
   });
 });

@@ -67,6 +67,16 @@ describe('shell e guarda de rota', () => {
     assert.deepEqual(destinos, ['index.html']);
   });
 
+  test('index.html e login.html definem layout para janela estreita', () => {
+    assert.match(indexHtml, /layout-responsivo/);
+    assert.match(indexHtml, /@media \(max-width: 1100px\)/);
+    assert.match(indexHtml, /@media \(max-width: 900px\)/);
+    assert.match(indexHtml, /@media \(max-width: 800px\)/);
+    assert.match(indexHtml, /@media \(max-width: 560px\)/);
+    assert.match(indexHtml, /layout-responsivo[\s\S]*#menu-principal \{[\s\S]*overflow-x: auto;/);
+    assert.match(loginHtml, /@media \(max-width: 560px\)/);
+  });
+
   test('nenhum arquivo fora de core/api.js chama fetch()', () => {
     const arquivos = listarArquivosJs(join(frontend, 'src'))
       .filter((arquivo) => !arquivo.endsWith(`${join('core', 'api.js')}`));

@@ -353,6 +353,7 @@ export async function aplicarSchemaFuncionarios(pool) {
       nome VARCHAR(100) NOT NULL,
       cargo VARCHAR(60) NOT NULL,
       salario_base DECIMAL(10,2) NOT NULL,
+      periodicidade ENUM('mensal','quinzenal') NOT NULL DEFAULT 'mensal',
       data_admissao DATE NOT NULL,
       ativo TINYINT(1) NOT NULL DEFAULT 1,
       criado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -379,9 +380,10 @@ export async function aplicarSchemaFuncionarios(pool) {
     CREATE TABLE IF NOT EXISTS ocorrencias_folha (
       id INT NOT NULL AUTO_INCREMENT,
       funcionario_id INT NOT NULL,
-      tipo ENUM('falta','atestado','hora_extra') NOT NULL,
+      tipo ENUM('falta','atestado','hora_extra','nao_cumprimento') NOT NULL,
       data DATE NOT NULL,
       valor DECIMAL(10,2) NOT NULL DEFAULT 0,
+      motivo VARCHAR(40) NULL,
       observacao TEXT NULL,
       usuario_id INT NOT NULL,
       criado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -401,6 +403,7 @@ export async function aplicarSchemaFuncionarios(pool) {
       total_adiantamentos DECIMAL(10,2) NOT NULL DEFAULT 0,
       total_faltas DECIMAL(10,2) NOT NULL DEFAULT 0,
       total_horas_extras DECIMAL(10,2) NOT NULL DEFAULT 0,
+      total_nao_cumprimento DECIMAL(10,2) NOT NULL DEFAULT 0,
       valor_liquido DECIMAL(10,2) NOT NULL,
       status ENUM('pendente','paga') NOT NULL DEFAULT 'pendente',
       pago_em DATETIME NULL,
@@ -412,6 +415,30 @@ export async function aplicarSchemaFuncionarios(pool) {
       CONSTRAINT fk_folhas_pagamento_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
     )
   `);
+
+  await garantirEnumTipoOcorrencia(pool);
+  await garantirColuna(pool, 'ocorrencias_folha', 'motivo', 'VARCHAR(40) NULL');
+  await garantirColuna(
+    pool,
+    'folhas_pagamento',
+    'total_nao_cumprimento',
+    'DECIMAL(10,2) NOT NULL DEFAULT 0',
+  );
+
+  const jaTinhaPeriodicidade = await temColuna(pool, 'funcionarios', 'periodicidade');
+  await garantirColuna(
+    pool,
+    'funcionarios',
+    'periodicidade',
+    "ENUM('mensal','quinzenal') NOT NULL DEFAULT 'mensal'",
+  );
+  if (!jaTinhaPeriodicidade) {
+    await pool.query(
+      `UPDATE funcionarios
+          SET periodicidade = 'quinzenal'
+        WHERE LOWER(TRIM(cargo)) IN ('padeiro','padeira','padeiros','padeiras','ajudante','ajudantes')`,
+    );
+  }
 }
 
 export async function aplicarSchemaFluxoCaixa(pool) {
@@ -448,6 +475,17 @@ async function garantirColuna(pool, tabela, coluna, definicao) {
   await alterarAddColumn(pool, tabela, coluna, definicao);
 }
 
+async function garantirEnumTipoOcorrencia(pool) {
+  const [linhas] = await pool.query("SHOW COLUMNS FROM ocorrencias_folha LIKE 'tipo'");
+  const tipo = String(linhas[0]?.Type || '');
+  if (tipo.includes('nao_cumprimento')) {
+    return;
+  }
+  await pool.query(
+    "ALTER TABLE ocorrencias_folha MODIFY COLUMN tipo ENUM('falta','atestado','hora_extra','nao_cumprimento') NOT NULL",
+  );
+}
+
 async function garantirColunaGerada(pool, tabela, coluna, definicao) {
   if (await temColuna(pool, tabela, coluna)) {
     return;
@@ -468,6 +506,21 @@ async function alterarAddColumn(pool, tabela, coluna, definicao) {
       return;
     case 'TEXT NULL':
       await pool.query('ALTER TABLE ?? ADD COLUMN ?? TEXT NULL', [tabela, coluna]);
+      return;
+    case "ENUM('mensal','quinzenal') NOT NULL DEFAULT 'mensal'":
+      await pool.query(
+        "ALTER TABLE ?? ADD COLUMN ?? ENUM('mensal','quinzenal') NOT NULL DEFAULT 'mensal'",
+        [tabela, coluna],
+      );
+      return;
+    case 'VARCHAR(40) NULL':
+      await pool.query('ALTER TABLE ?? ADD COLUMN ?? VARCHAR(40) NULL', [tabela, coluna]);
+      return;
+    case 'DECIMAL(10,2) NOT NULL DEFAULT 0':
+      await pool.query(
+        'ALTER TABLE ?? ADD COLUMN ?? DECIMAL(10,2) NOT NULL DEFAULT 0',
+        [tabela, coluna],
+      );
       return;
     case 'VARCHAR(60) GENERATED ALWAYS AS (IF(ativo = 1, nome, NULL)) STORED':
       await pool.query(

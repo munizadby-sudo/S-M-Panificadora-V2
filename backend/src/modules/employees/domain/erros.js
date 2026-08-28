@@ -25,6 +25,15 @@ export class CargoInvalidoError extends Error {
   }
 }
 
+export class PeriodicidadeInvalidaError extends Error {
+  constructor(mensagem = 'Periodicidade deve ser mensal ou quinzenal.') {
+    super(mensagem);
+    this.name = 'PeriodicidadeInvalidaError';
+    this.status = 400;
+    this.codigo = 'PERIODICIDADE_INVALIDA';
+  }
+}
+
 export class DataAdmissaoInvalidaError extends Error {
   constructor(mensagem = 'Data de admissão é obrigatória.') {
     super(mensagem);
@@ -49,6 +58,17 @@ export class TipoOcorrenciaInvalidoError extends Error {
     this.name = 'TipoOcorrenciaInvalidoError';
     this.status = 400;
     this.codigo = 'TIPO_OCORRENCIA_INVALIDO';
+  }
+}
+
+export class MotivoOcorrenciaInvalidoError extends Error {
+  constructor(
+    mensagem = 'Informe o motivo do não cumprimento (produção, cozinha ou produção incorreta).',
+  ) {
+    super(mensagem);
+    this.name = 'MotivoOcorrenciaInvalidoError';
+    this.status = 400;
+    this.codigo = 'MOTIVO_OCORRENCIA_INVALIDO';
   }
 }
 

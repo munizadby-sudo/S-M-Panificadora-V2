@@ -18,6 +18,8 @@ export class UpdateFuncionario {
       nome: entrada?.nome ?? atual.nome,
       cargo: entrada?.cargo ?? atual.cargo,
       salarioBase: entrada?.salario_base ?? entrada?.salarioBase ?? atual.salarioBase,
+      periodicidade:
+        entrada?.periodicidade ?? (entrada?.cargo != null ? undefined : atual.periodicidade),
       dataAdmissao: entrada?.data_admissao ?? entrada?.dataAdmissao ?? atual.dataAdmissao,
       ativo: atual.ativo,
       criadoEm: atual.criadoEm,

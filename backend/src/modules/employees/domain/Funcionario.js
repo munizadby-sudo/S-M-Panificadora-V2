@@ -6,6 +6,11 @@ import {
   NomeInvalidoError,
   SalarioInvalidoError,
 } from './erros.js';
+import {
+  PERIODICIDADE_QUINZENAL,
+  normalizarPeriodicidade,
+  salarioDoPeriodo,
+} from './periodicidade.js';
 
 export class Funcionario {
   constructor({
@@ -14,6 +19,7 @@ export class Funcionario {
     cargo,
     salarioBase,
     dataAdmissao,
+    periodicidade,
     ativo = true,
     criadoEm = null,
   }) {
@@ -21,6 +27,7 @@ export class Funcionario {
     this.nome = normalizarNome(nome);
     this.cargo = normalizarCargo(cargo);
     this.salarioBase = validarSalario(salarioBase);
+    this.periodicidade = normalizarPeriodicidade(periodicidade, { cargo: this.cargo });
     this.dataAdmissao = validarDataAdmissao(dataAdmissao);
     this.ativo = Boolean(Number(ativo));
     this.criadoEm = criadoEm;
@@ -42,6 +49,9 @@ export class Funcionario {
       nome: this.nome,
       cargo: this.cargo,
       salario_base: this.salarioBase,
+      periodicidade: this.periodicidade,
+      salario_periodo: salarioDoPeriodo(this.salarioBase, this.periodicidade),
+      dias_pagamento: this.periodicidade === PERIODICIDADE_QUINZENAL ? [5, 20] : null,
       data_admissao: this.dataAdmissao,
       ativo: this.ativo ? 1 : 0,
       criado_em: this.criadoEm,

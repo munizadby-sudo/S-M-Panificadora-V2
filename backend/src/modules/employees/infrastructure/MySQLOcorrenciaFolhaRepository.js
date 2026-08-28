@@ -9,13 +9,14 @@ export class MySQLOcorrenciaFolhaRepository extends OcorrenciaFolhaRepository {
 
   async salvar(ocorrencia) {
     const [resultado] = await this.pool.query(
-      `INSERT INTO ocorrencias_folha (funcionario_id, tipo, data, valor, observacao, usuario_id)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO ocorrencias_folha (funcionario_id, tipo, data, valor, motivo, observacao, usuario_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [
         ocorrencia.funcionarioId,
         ocorrencia.tipo,
         ocorrencia.data,
         ocorrencia.valor,
+        ocorrencia.motivo,
         ocorrencia.observacao,
         ocorrencia.usuarioId,
       ],
@@ -80,12 +81,13 @@ export class MySQLOcorrenciaFolhaRepository extends OcorrenciaFolhaRepository {
       `SELECT tipo, COALESCE(SUM(valor), 0) AS total
          FROM ocorrencias_folha
         WHERE funcionario_id = ? AND data >= ? AND data <= ?
-          AND tipo IN ('falta', 'hora_extra')
+          AND tipo IN ('falta', 'hora_extra', 'nao_cumprimento')
         GROUP BY tipo`,
       [funcionarioId, inicio, fim],
     );
     let faltas = 0;
     let horasExtras = 0;
+    let naoCumprimento = 0;
     for (const linha of linhas) {
       if (linha.tipo === 'falta') {
         faltas = Number(linha.total) || 0;
@@ -93,8 +95,11 @@ export class MySQLOcorrenciaFolhaRepository extends OcorrenciaFolhaRepository {
       if (linha.tipo === 'hora_extra') {
         horasExtras = Number(linha.total) || 0;
       }
+      if (linha.tipo === 'nao_cumprimento') {
+        naoCumprimento = Number(linha.total) || 0;
+      }
     }
-    return { faltas, horasExtras };
+    return { faltas, horasExtras, naoCumprimento };
   }
 }
 
@@ -105,6 +110,7 @@ function deLinha(linha) {
     tipo: linha.tipo,
     data: formatarData(linha.data),
     valor: linha.valor,
+    motivo: linha.motivo,
     observacao: linha.observacao,
     usuarioId: linha.usuario_id,
     criadoEm: linha.criado_em,

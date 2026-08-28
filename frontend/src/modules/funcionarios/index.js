@@ -26,6 +26,16 @@ import {
   htmlTabelaOcorrencias,
   valorOcorrenciaParaTipo,
 } from './ui.js';
+import { imprimirHtml } from '../caixa-turno/fechamento.js';
+import { htmlHolerite } from './holerite.js';
+import {
+  cargoSugereQuinzena,
+  funcionarioEhQuinzenal,
+  periodoPagaDia5Vigente,
+  periodoPagaDia20Vigente,
+  periodoMesAnterior,
+  quinzenaSugerida,
+} from './quinzena.js';
 
 export {
   htmlTabelaFuncionarios,
@@ -260,6 +270,7 @@ function ligarEventos() {
       nome: c.querySelector('#func-nome')?.value,
       cargo: c.querySelector('#func-cargo')?.value,
       salario_base: Number(c.querySelector('#func-salario')?.value),
+      periodicidade: c.querySelector('#func-periodicidade')?.value,
       data_admissao: c.querySelector('#func-admissao')?.value,
     };
     try {
@@ -336,6 +347,7 @@ function ligarEventos() {
       funcionario_id: c.querySelector('#ocor-funcionario')?.value,
       data: c.querySelector('#ocor-data')?.value,
       observacao: c.querySelector('#ocor-obs')?.value,
+      motivo: c.querySelector('#ocor-motivo')?.value,
       valor: valorOcorrenciaParaTipo(tipo, c.querySelector('#ocor-valor')?.value),
     };
     renderizar();
@@ -350,6 +362,7 @@ function ligarEventos() {
         tipo,
         data: c.querySelector('#ocor-data')?.value,
         valor: valorOcorrenciaParaTipo(tipo, c.querySelector('#ocor-valor')?.value),
+        motivo: c.querySelector('#ocor-motivo')?.value || undefined,
         observacao: c.querySelector('#ocor-obs')?.value || undefined,
       });
       estado.formularioOcorrencia = { tipo: 'falta', data: dataHoje(), valor: '' };
@@ -362,8 +375,81 @@ function ligarEventos() {
     }
   });
 
+  c.querySelector('#func-cargo')?.addEventListener('input', (ev) => {
+    const select = c.querySelector('#func-periodicidade');
+    if (!select) return;
+    select.value = cargoSugereQuinzena(ev.target.value) ? 'quinzenal' : 'mensal';
+  });
+
+  c.querySelector('#folha-funcionario')?.addEventListener('change', (ev) => {
+    const id = ev.target.value;
+    const func = estado.funcionarios.find((f) => String(f.id) === String(id));
+    const hoje = dataHoje();
+    if (funcionarioEhQuinzenal(func)) {
+      const sugestao = quinzenaSugerida(hoje);
+      estado.formularioFolha = {
+        funcionario_id: id,
+        periodo_inicio: sugestao.inicio,
+        periodo_fim: sugestao.fim,
+      };
+    } else if (func) {
+      const mes = periodoMesAnterior(hoje);
+      estado.formularioFolha = {
+        funcionario_id: id,
+        periodo_inicio: mes.inicio,
+        periodo_fim: mes.fim,
+      };
+    } else {
+      estado.formularioFolha = { funcionario_id: id };
+    }
+    estado.resultadoFolha = null;
+    renderizar();
+  });
+
+  for (const botao of c.querySelectorAll('[data-mes-anterior]')) {
+    botao.addEventListener('click', () => {
+      const mes = periodoMesAnterior(dataHoje());
+      estado.formularioFolha = {
+        funcionario_id: c.querySelector('#folha-funcionario')?.value,
+        periodo_inicio: mes.inicio,
+        periodo_fim: mes.fim,
+      };
+      estado.resultadoFolha = null;
+      renderizar();
+    });
+  }
+
+  for (const botao of c.querySelectorAll('[data-quinzena]')) {
+    botao.addEventListener('click', () => {
+      const hoje = dataHoje();
+      const periodo =
+        botao.getAttribute('data-quinzena') === 'dia5'
+          ? periodoPagaDia5Vigente(hoje)
+          : periodoPagaDia20Vigente(hoje);
+      estado.formularioFolha = {
+        funcionario_id: c.querySelector('#folha-funcionario')?.value,
+        periodo_inicio: periodo.inicio,
+        periodo_fim: periodo.fim,
+      };
+      estado.resultadoFolha = null;
+      renderizar();
+    });
+  }
+
   c.querySelector('#form-fechar-folha')?.addEventListener('submit', async (ev) => {
     ev.preventDefault();
+    if (estado.resultadoFolha) {
+      estado.formularioFolha = {
+        funcionario_id: c.querySelector('#folha-funcionario')?.value,
+      };
+      estado.resultadoFolha = null;
+      estado.erroFolha = '';
+      renderizar();
+      return;
+    }
+    if (estado.enviandoFolha) return;
+    estado.enviandoFolha = true;
+    c.querySelector('#form-fechar-folha button[type="submit"]')?.setAttribute('disabled', 'disabled');
     const payload = {
       funcionario_id: Number(c.querySelector('#folha-funcionario')?.value),
       periodo_inicio: c.querySelector('#folha-inicio')?.value,
@@ -377,7 +463,9 @@ function ligarEventos() {
     } catch (erro) {
       estado.erroFolha = mensagemErroFuncionarios(erro);
       estado.resultadoFolha = null;
-      renderizar();
+      await recarregar();
+    } finally {
+      estado.enviandoFolha = false;
     }
   });
 
@@ -393,4 +481,57 @@ function ligarEventos() {
       }
     });
   }
+
+  for (const botao of c.querySelectorAll('[data-imprimir-folha]')) {
+    botao.addEventListener('click', async () => {
+      const id = botao.getAttribute('data-imprimir-folha');
+      const folha = estado.folhas.find((item) => String(item.id) === String(id));
+      if (!folha) return;
+      try {
+        estado.erro = '';
+        await imprimirFolha(folha);
+      } catch (erro) {
+        estado.erro = mensagemErroFuncionarios(erro);
+        renderizar();
+      }
+    });
+  }
+}
+
+async function imprimirFolha(folha) {
+  const funcionario =
+    estado.funcionarios.find((item) => String(item.id) === String(folha.funcionario_id)) || {
+      nome: folha.funcionario_nome,
+    };
+  let ocorrencias = [];
+  let adiantamentos = [];
+  try {
+    const [ocor, adiant] = await Promise.all([
+      listarOcorrencias({
+        funcionario_id: folha.funcionario_id,
+        data_inicio: folha.periodo_inicio,
+        data_fim: folha.periodo_fim,
+        limit: 100,
+      }),
+      listarAdiantamentos({
+        funcionario_id: folha.funcionario_id,
+        data_inicio: folha.periodo_inicio,
+        data_fim: folha.periodo_fim,
+        limit: 100,
+      }),
+    ]);
+    ocorrencias = ocor.data || [];
+    adiantamentos = adiant.data || [];
+  } catch {
+    ocorrencias = [];
+    adiantamentos = [];
+  }
+  await imprimirHtml(
+    htmlHolerite({
+      folha,
+      funcionario,
+      ocorrencias,
+      adiantamentos,
+    }),
+  );
 }

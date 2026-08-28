@@ -33,7 +33,8 @@ Especificar o cadastro de funcionários, o registro de adiantamentos (vale) e oc
 | `id` | `INT` PK auto_increment | — |
 | `nome` | `VARCHAR(100)` | obrigatório |
 | `cargo` | `VARCHAR(60)` | obrigatório |
-| `salario_base` | `DECIMAL(10,2)` | obrigatório, > 0 |
+| `salario_base` | `DECIMAL(10,2)` | obrigatório, > 0 — **valor mensal** |
+| `periodicidade` | `ENUM('mensal','quinzenal')` | padrão `mensal`; padeiro/padeira/ajudante default `quinzenal` |
 | `data_admissao` | `DATE` | obrigatório |
 | `ativo` | `TINYINT(1)` | padrão `1`; `0` = desligado (soft delete) |
 | `criado_em` | `TIMESTAMP` | padrão `CURRENT_TIMESTAMP` |
@@ -54,9 +55,10 @@ Especificar o cadastro de funcionários, o registro de adiantamentos (vale) e oc
 |---|---|---|
 | `id` | `INT` PK auto_increment | — |
 | `funcionario_id` | `INT` FK `funcionarios.id` | obrigatório |
-| `tipo` | `ENUM('falta','atestado','hora_extra')` | obrigatório |
+| `tipo` | `ENUM('falta','atestado','hora_extra','nao_cumprimento')` | obrigatório |
 | `data` | `DATE` | obrigatório |
 | `valor` | `DECIMAL(10,2)` | padrão `0`, ≥ 0 — **sempre informado pelo operador no lançamento**, nunca calculado automaticamente (ver Seção 0) |
+| `motivo` | `VARCHAR(40)`, nulo | obrigatório só quando `tipo = 'nao_cumprimento'` (whitelist abaixo) |
 | `observacao` | `TEXT`, nulo | — |
 | `usuario_id` | `INT` FK `usuarios.id` | quem lançou |
 | `criado_em` | `TIMESTAMP` | padrão `CURRENT_TIMESTAMP` |
@@ -65,6 +67,7 @@ Especificar o cadastro de funcionários, o registro de adiantamentos (vale) e oc
 - `falta` → `valor` é um desconto (subtrai da folha).
 - `hora_extra` → `valor` é um acréscimo (soma na folha).
 - `atestado` → `valor` sempre `0` — atestado médico não gera desconto (ausência justificada); o registro existe só para histórico/controle de frequência, nunca afeta o cálculo da folha.
+- `nao_cumprimento` → `valor` é um desconto separado das faltas (não cumprimento do exercício de trabalho). `motivo` obrigatório na whitelist: `nao_limpou_producao`, `nao_limpou_cozinha`, `producao_incorreta`.
 
 ### 2.4 Tabela `folhas_pagamento`
 | Coluna | Tipo | Regras |
@@ -77,7 +80,8 @@ Especificar o cadastro de funcionários, o registro de adiantamentos (vale) e oc
 | `total_adiantamentos` | `DECIMAL(10,2)` | soma dos adiantamentos do funcionário no período |
 | `total_faltas` | `DECIMAL(10,2)` | soma das ocorrências `falta` do período |
 | `total_horas_extras` | `DECIMAL(10,2)` | soma das ocorrências `hora_extra` do período |
-| `valor_liquido` | `DECIMAL(10,2)` | `salario_base + total_horas_extras − total_faltas − total_adiantamentos` |
+| `total_nao_cumprimento` | `DECIMAL(10,2)` | soma das ocorrências `nao_cumprimento` do período |
+| `valor_liquido` | `DECIMAL(10,2)` | `salario_base + total_horas_extras − total_faltas − total_nao_cumprimento − total_adiantamentos` |
 | `status` | `ENUM('pendente','paga')` | padrão `pendente` |
 | `pago_em` | `DATETIME`, nulo | preenchido ao marcar como paga |
 | `usuario_id` | `INT` FK `usuarios.id` | quem fechou a folha |
@@ -90,18 +94,20 @@ Especificar o cadastro de funcionários, o registro de adiantamentos (vale) e oc
 ## 3. Camada de domínio
 
 ### 3.1 Entidade `Funcionario`
-**Invariantes:** `nome`, `cargo` não vazios; `salarioBase > 0`; `dataAdmissao` obrigatória.
+**Invariantes:** `nome`, `cargo` não vazios; `salarioBase > 0`; `dataAdmissao` obrigatória; `periodicidade` é `mensal` ou `quinzenal`. Se a periodicidade não vier no cadastro, padeiro/padeira/ajudante viram `quinzenal` e os demais `mensal`.
+
+**Pagamento quinzenal (padeiro e ajudante):** o salário cadastrado é mensal. Cada folha fechada usa **metade** (`salarioDoPeriodo`). **1ª quinzena** (paga dia 5): 16–fim do mês anterior. **2ª quinzena** (paga dia 20): 1–15 do mês corrente. Depois do dia 20, a sugestão é a 1ª quinzena seguinte (16–fim do mês corrente, paga no dia 5 do mês seguinte).
 **Métodos:** `desativar()` / `reativar()` — mesmo padrão de soft delete com reativação já usado em Produtos/Clientes (não em Perdas/Encomendas, que são cancelamento final — aqui um funcionário desligado por engano deve poder ser reativado).
 
 ### 3.2 Entidade `Adiantamento`
 **Invariantes:** `valor > 0`; `funcionarioId` obrigatório.
 
 ### 3.3 Entidade `OcorrenciaFolha`
-**Invariantes:** `tipo` na whitelist (`falta`, `atestado`, `hora_extra`); se `tipo === 'atestado'`, `valor` é forçado a `0` pela própria entidade, independente do que for enviado — não é uma validação que rejeita, é uma normalização (evita erro de operador que preenche valor num atestado por engano).
+**Invariantes:** `tipo` na whitelist (`falta`, `atestado`, `hora_extra`, `nao_cumprimento`); se `tipo === 'atestado'`, `valor` é forçado a `0` pela própria entidade, independente do que for enviado — não é uma validação que rejeita, é uma normalização (evita erro de operador que preenche valor num atestado por engano). Se `tipo === 'nao_cumprimento'`, `motivo` é obrigatório na whitelist (`nao_limpou_producao`, `nao_limpou_cozinha`, `producao_incorreta`).
 
 ### 3.4 Value object `FolhaCalculada` (calculado, não persistido como entidade própria — mesmo padrão da `FechamentoCaixa`, SPEC-BE-002 §3.2)
 ```text
-valor_liquido = salario_base + total_horas_extras − total_faltas − total_adiantamentos
+valor_liquido = salario_base + total_horas_extras − total_faltas − total_nao_cumprimento − total_adiantamentos
 ```
 Função pura, testável sem banco: recebe os totais já agregados e devolve o cálculo. Nunca calcula encargos trabalhistas (INSS/FGTS) — fora de escopo (PRD backend §4.12).
 
@@ -109,6 +115,7 @@ Função pura, testável sem banco: recebe os totais já agregados e devolve o c
 - `SalarioInvalidoError` (400)
 - `ValorAdiantamentoInvalidoError` (400)
 - `TipoOcorrenciaInvalidoError` (400)
+- `MotivoOcorrenciaInvalidoError` (400)
 - `FuncionarioNaoEncontradoError` (404)
 - `FolhaJaFechadaError` (409) — tentativa de fechar a mesma folha (funcionário + período) duas vezes
 - `FolhaNaoEncontradaError` (404)
@@ -123,16 +130,16 @@ Mesmo padrão de CRUD + soft delete/reativação já usado em Clientes (SPEC-BE-
 ### 4.2 `CreateAdiantamento(funcionarioId, valor, data, observacao, executor)`
 Valida funcionário existente e ativo, `valor > 0`, persiste, audita `criar_adiantamento`.
 
-### 4.3 `CreateOcorrenciaFolha(funcionarioId, tipo, data, valor, observacao, executor)`
-Valida funcionário existente e ativo, `tipo` na whitelist. Se `tipo === 'atestado'`, força `valor = 0` (Seção 3.3). Persiste, audita `criar_ocorrencia_folha`.
+### 4.3 `CreateOcorrenciaFolha(funcionarioId, tipo, data, valor, motivo, observacao, executor)`
+Valida funcionário existente e ativo, `tipo` na whitelist. Se `tipo === 'atestado'`, força `valor = 0` (Seção 3.3). Se `tipo === 'nao_cumprimento'`, exige `motivo` na whitelist. Persiste, audita `criar_ocorrencia_folha`.
 
 ### 4.4 `FecharFolha(funcionarioId, periodoInicio, periodoFim, executor)`
 **Fluxo:**
 1. Busca o funcionário — se não existir, `FuncionarioNaoEncontradoError`.
 2. Verifica se já existe folha para `(funcionarioId, periodoInicio, periodoFim)` → `FolhaJaFechadaError`.
 3. Soma `adiantamentos` do funcionário no período.
-4. Soma `ocorrencias_folha` do funcionário no período, separando `falta` e `hora_extra` (`atestado` nunca entra na soma, por ter `valor = 0`).
-5. Calcula `valor_liquido` via `FolhaCalculada`.
+4. Soma `ocorrencias_folha` do funcionário no período, separando `falta`, `hora_extra` e `nao_cumprimento` (`atestado` nunca entra na soma, por ter `valor = 0`).
+5. Calcula `valor_liquido` via `FolhaCalculada`, usando `salarioDoPeriodo` (metade do `salario_base` mensal se `periodicidade = quinzenal`; o valor cheio se `mensal`).
 6. Persiste `folhas_pagamento` com `salario_base` snapshot e `status = 'pendente'`.
 7. Audita `fechar_folha`.
 8. Retorna a folha calculada.
@@ -163,10 +170,15 @@ Query: `?funcionario_id=3&data_inicio=2026-08-01&data_fim=2026-08-31&page=1&limi
 ```json
 { "funcionario_id": 3, "tipo": "hora_extra", "data": "2026-08-18", "valor": 45.00, "observacao": "Reforço na produção de fim de semana" }
 ```
+Não cumprimento (desconto separado das faltas):
+```json
+{ "funcionario_id": 3, "tipo": "nao_cumprimento", "data": "2026-08-18", "valor": 40.00, "motivo": "nao_limpou_producao" }
+```
 **Erro**
 | Status | Quando |
 |---|---|
 | 400 | `tipo` fora da whitelist |
+| 400 | `tipo = nao_cumprimento` sem `motivo` da whitelist |
 | 404 | funcionário não existe |
 
 ### 5.5 `GET /api/ocorrencias-folha`
@@ -181,7 +193,7 @@ Query: `?funcionario_id=3&data_inicio=2026-08-01&data_fim=2026-08-31&page=1&limi
 {
   "id": 9, "funcionario_id": 3, "periodo_inicio": "2026-08-01", "periodo_fim": "2026-08-15",
   "salario_base": 1800.00, "total_adiantamentos": 150.00, "total_faltas": 0, "total_horas_extras": 45.00,
-  "valor_liquido": 1695.00, "status": "pendente"
+  "total_nao_cumprimento": 0, "valor_liquido": 1695.00, "status": "pendente"
 }
 ```
 **Erro**
@@ -211,7 +223,9 @@ Query: `?funcionario_id=3&status=pendente&page=1&limit=20`
 
 1. Fechar a mesma folha (funcionário + período) duas vezes retorna 409 na segunda tentativa — nenhum dado é duplicado.
 2. `atestado` sempre persiste com `valor = 0`, mesmo que o operador envie um valor diferente de zero.
-3. `valor_liquido` da folha é sempre `salario_base + total_horas_extras − total_faltas − total_adiantamentos`, testável por unidade sem banco.
+3. `valor_liquido` da folha é sempre `salario_base + total_horas_extras − total_faltas − total_nao_cumprimento − total_adiantamentos`, testável por unidade sem banco.
 4. Marcar uma folha já paga como paga novamente não lança erro — é idempotente.
 5. `salario_base` da folha fechada nunca muda, mesmo que o salário do funcionário seja alterado depois.
 6. Todo endpoint deste módulo retorna 403 para qualquer usuário que não seja `admin`, mesmo com outras permissões concedidas.
+7. Funcionário com cargo padeiro/padeira/ajudante (sem periodicidade explícita) fecha folha com snapshot igual à metade do salário mensal.
+8. `nao_cumprimento` sem `motivo` da whitelist retorna 400; com motivo válido, o valor entra em `total_nao_cumprimento` e subtrai do líquido, separado de `total_faltas`.

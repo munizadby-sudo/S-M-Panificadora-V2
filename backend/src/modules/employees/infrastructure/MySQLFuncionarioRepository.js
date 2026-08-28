@@ -42,12 +42,13 @@ export class MySQLFuncionarioRepository extends FuncionarioRepository {
 
   async salvar(funcionario) {
     const [resultado] = await this.pool.query(
-      `INSERT INTO funcionarios (nome, cargo, salario_base, data_admissao, ativo)
-       VALUES (?, ?, ?, ?, ?)`,
+      `INSERT INTO funcionarios (nome, cargo, salario_base, periodicidade, data_admissao, ativo)
+       VALUES (?, ?, ?, ?, ?, ?)`,
       [
         funcionario.nome,
         funcionario.cargo,
         funcionario.salarioBase,
+        funcionario.periodicidade,
         funcionario.dataAdmissao,
         funcionario.ativo ? 1 : 0,
       ],
@@ -58,12 +59,13 @@ export class MySQLFuncionarioRepository extends FuncionarioRepository {
   async atualizar(funcionario) {
     await this.pool.query(
       `UPDATE funcionarios
-          SET nome = ?, cargo = ?, salario_base = ?, data_admissao = ?, ativo = ?
+          SET nome = ?, cargo = ?, salario_base = ?, periodicidade = ?, data_admissao = ?, ativo = ?
         WHERE id = ?`,
       [
         funcionario.nome,
         funcionario.cargo,
         funcionario.salarioBase,
+        funcionario.periodicidade,
         funcionario.dataAdmissao,
         funcionario.ativo ? 1 : 0,
         funcionario.id,
@@ -79,6 +81,7 @@ function deLinha(linha) {
     nome: linha.nome,
     cargo: linha.cargo,
     salarioBase: linha.salario_base,
+    periodicidade: linha.periodicidade,
     dataAdmissao: formatarData(linha.data_admissao),
     ativo: linha.ativo,
     criadoEm: linha.criado_em,

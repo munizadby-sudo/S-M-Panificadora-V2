@@ -26,6 +26,18 @@ describe('ambiente da API', () => {
     assert.equal(obterUrlBaseDaApi({ hostname: '127.0.0.1', port: '3001' }), '/api');
   });
 
+  test('__SM_API_BASE injeta a URL da API (suíte do navegador em porta efêmera)', () => {
+    globalThis.__SM_API_BASE = 'http://127.0.0.1:5999/api/';
+    try {
+      assert.equal(
+        obterUrlBaseDaApi({ hostname: '127.0.0.1', port: '4173' }),
+        'http://127.0.0.1:5999/api',
+      );
+    } finally {
+      delete globalThis.__SM_API_BASE;
+    }
+  });
+
   test('index.html e login.html aplicam definirApiBaseUrl antes do restante', () => {
     for (const html of [indexHtml, loginHtml]) {
       assert.match(html, /src\/core\/ambiente\.js/);

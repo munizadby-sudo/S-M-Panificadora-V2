@@ -13,6 +13,7 @@ export class FolhaPagamento {
     totalAdiantamentos = 0,
     totalFaltas = 0,
     totalHorasExtras = 0,
+    totalNaoCumprimento = 0,
     valorLiquido = null,
     status = 'pendente',
     pagoEm = null,
@@ -32,12 +33,14 @@ export class FolhaPagamento {
       totalAdiantamentos,
       totalFaltas,
       totalHorasExtras,
+      totalNaoCumprimento,
     });
 
     this.salarioBase = calculo.salario_base;
     this.totalAdiantamentos = calculo.total_adiantamentos;
     this.totalFaltas = calculo.total_faltas;
     this.totalHorasExtras = calculo.total_horas_extras;
+    this.totalNaoCumprimento = calculo.total_nao_cumprimento;
     this.valorLiquido =
       valorLiquido == null ? calculo.valor_liquido : dinheiro(valorLiquido);
     this.status = status === 'paga' ? 'paga' : 'pendente';
@@ -66,6 +69,7 @@ export class FolhaPagamento {
       total_adiantamentos: this.totalAdiantamentos,
       total_faltas: this.totalFaltas,
       total_horas_extras: this.totalHorasExtras,
+      total_nao_cumprimento: this.totalNaoCumprimento,
       valor_liquido: this.valorLiquido,
       status: this.status,
       pago_em: this.pagoEm,

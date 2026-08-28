@@ -1,5 +1,6 @@
 import { normalizarData } from '../../inventory/domain/EstoqueDiario.js';
 import { FolhaPagamento } from '../domain/FolhaPagamento.js';
+import { salarioDoPeriodo } from '../domain/periodicidade.js';
 import {
   FolhaJaFechadaError,
   FuncionarioNaoEncontradoError,
@@ -64,10 +65,11 @@ export class FecharFolha {
       funcionarioId,
       periodoInicio,
       periodoFim,
-      salarioBase: funcionario.salarioBase,
+      salarioBase: salarioDoPeriodo(funcionario.salarioBase, funcionario.periodicidade),
       totalAdiantamentos,
       totalFaltas: totaisOcorrencias.faltas,
       totalHorasExtras: totaisOcorrencias.horasExtras,
+      totalNaoCumprimento: totaisOcorrencias.naoCumprimento,
       status: 'pendente',
       usuarioId: executor?.id,
     });

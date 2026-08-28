@@ -1,7 +1,7 @@
 # SPEC-FE-015 — Design System (Tokens, Componentes e Navegação)
 
-- **Status:** Em execução (onda clean full-system 2026-08-23; refinos PDV e modais de cadastro 2026-08-26)
-- **Data:** 2026-08-23 (atualizado 2026-08-26 — PDV + caixas flutuantes alinhadas ao modal de Usuários)
+- **Status:** Em execução (onda clean full-system 2026-08-23; refinos PDV e modais de cadastro 2026-08-26; layout estreito 2026-08-28)
+- **Data:** 2026-08-23 (atualizado 2026-08-28 — breakpoints de layout, PRD-016 §3.12)
 - **Módulo:** `frontend/index.html` (CSS central) + `frontend/login.html` — transversal a todos os módulos
 - **Depende de:** SPEC-FE-001 (Fundação), PRD-016 (Redesign de Interface)
 - **PRD de origem:** `PRD-016-redesign-de-interface.md`
@@ -149,6 +149,19 @@ Ajustes de componente:
 
 **Fora deste SPEC, deliberadamente:** gráficos de barra em CSS puro para Relatórios (viável tecnicamente, sem violar nenhuma restrição de build/dependência) — fica como incremento futuro, um adendo pontual à SPEC-FE-012 depois que este SPEC estiver estável, para não empilhar duas mudanças na mesma tela ao mesmo tempo.
 
+### 2.8 Breakpoints de layout (PRD-016 §3.12, 2026-08-28)
+
+CSS central em `frontend/index.html` (marcador `layout-responsivo`) e `frontend/login.html`. Não muda regra de negócio nem o fluxo de teclado do PDV.
+
+| Largura | O que muda |
+|---|---|
+| ≤ 1100px | Header (`.topo`) quebra linha; `.topo-direita` envolve |
+| ≤ 900px | `#menu-principal` rola na horizontal (sem wrap); `#conteudo` com padding menor; tabelas de listagem com `overflow-x: auto`; formulários e modais `width`/`max-height` na viewport (`100dvh`) |
+| ≤ 800px | `.pdv-painel` empilha (grade de produtos acima, carrinho abaixo) |
+| ≤ 560px | Formulários de Fluxo, formas de encomenda e KPIs em uma coluna; `font-size: 1rem` em controles (evita zoom iOS); login com padding de página |
+
+**Não faz:** POS de toque, atalhos removidos, grade do PDV redesenhada para dedo. `minmax(0, …)` no painel do PDV evita overflow mesmo acima de 800px.
+
 ---
 
 ## 3. Componentes
@@ -237,6 +250,7 @@ O roteador (`core/router.js`) não muda sua API (`registrarModulo`, `navegarPara
 7. Nenhum `button`/`input`/`select`/`textarea` do sistema renderiza com a aparência padrão do navegador (cinza claro) sobre o fundo escuro — verificar manualmente pelo menos as telas de Funcionários, PDV e um modal de cadastro (Usuários) depois da Seção 2.4 aplicada.
 8. `backdrop-filter` aparece só na regra do overlay de modal — nenhuma ocorrência em `#menu-principal`/header ou qualquer elemento `sticky`/`fixed` de rolagem contínua.
 9. Suíte de testes de `frontend/` (220+ testes na última contagem) passa integralmente depois de cada etapa do rollout — nenhuma regressão introduzida por mudança de CSS/template.
+10. `index.html` contém o bloco `layout-responsivo` com `@media (max-width: 1100px)`, `900px`, `800px` e `560px`; `login.html` contém `@media (max-width: 560px)`. Em viewport 390px (suíte `demo/specs`), o documento não gera scroll horizontal da página e `.pdv-painel` tem uma coluna.
 
 ---
 

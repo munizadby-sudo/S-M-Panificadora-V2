@@ -417,3 +417,4 @@ export function redirecionarSeAutenticado(redirecionar = (url) => window.locatio
 8. 401 com token, em qualquer chamada posterior, continua sendo só o core: um redirect, sem loop, sem segundo tratamento em `auth`.
 9. Nome/logo da tela de login não são lidos de `sessionStorage` de sessão anterior (Passo 8).
 10. Nenhum `console.log` de senha ou token no caminho feliz nem no de erro.
+11. Os passos 2–8 desta spec no Chromium: `cd demo && npm run testar` (SPEC-FE-020). Não substitui o `npm test` do frontend.

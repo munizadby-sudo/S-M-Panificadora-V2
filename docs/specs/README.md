@@ -69,6 +69,7 @@ Fundação HTTP (CORS, CSP, rate limit geral, abort sem `JWT_SECRET`) e persist�
 | [SPEC-FE-017](./SPEC-FE-017-comprovante-fechamento-termico.md) | Comprovante de fechamento em cupom térmico 80 mm — layout do papel; fluxo `sem_impressao` inalterado (ver PRD-004) |
 | [SPEC-FE-018](./SPEC-FE-018-categorias-flutuante.md) | Categorias em caixa flutuante na tela de Produtos (botão ao lado de Novo produto) |
 | [SPEC-FE-019](./SPEC-FE-019-sinal-paga-depois-e-troco.md) | Sinal sugerido (metade), “paga depois”, forma/troco na encomenda (PRD-018; depende SPEC-BE-015 no Passo 4) |
+| [SPEC-FE-020](./SPEC-FE-020-specs-no-navegador.md) | SPECs no navegador — Chromium da demo **confere** login, caixa e venda (`cd demo && npm run testar`) |
 
 **Ainda não especificado:** Configurações (tela admin), Ponto por celular.
 

@@ -29,7 +29,7 @@ export function validarAdiantamento({ funcionario_id, valor, data } = {}) {
   return { ok: Object.keys(erros).length === 0, erros, valores };
 }
 
-export function validarOcorrencia({ funcionario_id, tipo, valor, data } = {}) {
+export function validarOcorrencia({ funcionario_id, tipo, valor, data, motivo } = {}) {
   const erros = {};
   const tipoNormalizado = String(tipo ?? '').trim().toLowerCase();
   const valores = {
@@ -37,10 +37,14 @@ export function validarOcorrencia({ funcionario_id, tipo, valor, data } = {}) {
     tipo: tipoNormalizado,
     valor: tipoNormalizado === 'atestado' ? 0 : Number(valor),
     data: String(data ?? '').trim(),
+    motivo: tipoNormalizado === 'nao_cumprimento' ? String(motivo ?? '').trim() : undefined,
   };
   if (!valores.funcionario_id) erros.funcionario_id = 'Selecione o funcionário.';
-  if (!['falta', 'atestado', 'hora_extra'].includes(valores.tipo)) {
+  if (!['falta', 'atestado', 'hora_extra', 'nao_cumprimento'].includes(valores.tipo)) {
     erros.tipo = 'Tipo inválido.';
+  }
+  if (valores.tipo === 'nao_cumprimento' && !valores.motivo) {
+    erros.motivo = 'Selecione o motivo do não cumprimento.';
   }
   if (valores.tipo !== 'atestado' && (!(valores.valor >= 0) || Number.isNaN(valores.valor))) {
     erros.valor = 'Valor inválido.';
