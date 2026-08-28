@@ -138,6 +138,7 @@ A ferramenta é Playwright independentemente destas duas escolhas, que a equipe 
 - `ADR-004-seguranca-e-testabilidade-do-backend.md` — testabilidade de domínio sem infraestrutura real; o E2E é a camada complementar, que exercita a integração real que aquela deliberadamente não cobre.
 - `docs/issues/ISSUE-001`, `ISSUE-006`, `ISSUE-007`, `ISSUE-008` — bugs de renderização/foco/impressão que motivam a adoção de teste de navegador real.
 - `docs/issues/ISSUE-009-implementar-suite-e2e-playwright.md` — implementação desta ADR.
+- `docs/specs/SPEC-FE-020-specs-no-navegador.md` — suíte de navegador em `demo/specs/` (Chromium do Playwright, em memória) implementada em 2026-08-27; andar 1 informal que a ISSUE-009 formaliza e expande para os três motores.
 - `demo/gravar.mjs` — uso pré-existente de Playwright no repositório.
 
 ---

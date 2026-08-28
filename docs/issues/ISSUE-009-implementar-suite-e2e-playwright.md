@@ -4,7 +4,7 @@
 - **Data:** 2026-08-27
 - **Módulo:** novo diretório de testes E2E (`e2e/` na raiz ou `frontend/e2e/`); `frontend/servir.mjs`; `backend` (banco/seed de teste)
 - **Severidade:** N/A — trabalho de infraestrutura de teste, não é bug
-- **Relacionado:** `docs/adr/ADR-006-testes-e2e-de-navegador-playwright.md` (esta issue é a implementação dele); `ISSUE-001`, `ISSUE-006`, `ISSUE-007`, `ISSUE-008` (classes de bug que a suíte deve passar a cobrir); `demo/gravar.mjs` (uso pré-existente de Playwright)
+- **Relacionado:** `docs/adr/ADR-006-testes-e2e-de-navegador-playwright.md` (esta issue é a implementação dele); `docs/specs/SPEC-FE-020-specs-no-navegador.md` (suíte de navegador já existente em `demo/specs/` — ponto de partida, ver Seção 2.1); `ISSUE-001`, `ISSUE-006`, `ISSUE-007`, `ISSUE-008` (classes de bug que a suíte deve passar a cobrir); `demo/gravar.mjs` (uso pré-existente de Playwright)
 
 ---
 
@@ -20,6 +20,16 @@ ADR-006 foi aceita em 2026-08-27 — implementação liberada.
 
 - Andar 1 (mínimo viável): infraestrutura + **uma** jornada de prova de conceito.
 - As decisões de **escopo da suíte** (poucos fluxos × cobertura ampla × substituir `frontend/tests/`) e de **CI** (GitHub Actions × só local) ficam na ADR-006 §5 e **não** são resolvidas aqui — esta issue entrega o mínimo e para para a equipe decidir o resto.
+
+### 2.1 Ponto de partida já existente (`SPEC-FE-020`)
+
+Em 2026-08-27 foi implementada `SPEC-FE-020` — uma suíte de navegador em `demo/specs/` que usa o Chromium do Playwright (já baixado para o vídeo demo) para conferir os passos "Como testar (navegador)" de SPEC-FE-002/003/007. É um andar 1 informal: 12 casos, só Chromium, API e banco em memória, rodando por `npm run testar` em `demo/`.
+
+Esta issue **formaliza e expande** esse começo, não recomeça do zero:
+- migrar/reaproveitar os casos do `demo/specs/navegador.test.js` e o `harness.mjs`;
+- promover para `@playwright/test` com config dos três motores (Chromium + Firefox + WebKit), conforme ADR-006 §2;
+- decidir se a suíte fica em `demo/` ou muda para `e2e/` na raiz;
+- trocar (ou manter, se a equipe preferir) o backend em memória por backend real via `webServer`.
 
 ---
 
