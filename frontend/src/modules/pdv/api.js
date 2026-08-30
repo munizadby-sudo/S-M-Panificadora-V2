@@ -1,7 +1,25 @@
-import { apiPost, ApiError } from '../../core/api.js';
+import { apiDelete, apiGet, apiPost, ApiError } from '../../core/api.js';
 
 export async function criarVenda({ forma_pagamento, itens }) {
   return apiPost('/vendas', { forma_pagamento, itens });
+}
+
+export async function listarVendas({ turno_id, status, page, limit } = {}) {
+  return apiGet('/vendas', { turno_id, status, page, limit });
+}
+
+export async function estornarVenda(id, motivo) {
+  return apiDelete(`/vendas/${id}`, { motivo });
+}
+
+export function mensagemErroEstorno(erro) {
+  if (erro instanceof ApiError && erro.status === 403) {
+    return 'Só o administrador pode estornar venda.';
+  }
+  if (erro instanceof ApiError) {
+    return erro.mensagem || 'Não foi possível estornar a venda.';
+  }
+  return erro?.mensagem || erro?.message || 'Não foi possível estornar a venda.';
 }
 
 export function extrairProdutoIdDoErro(mensagem) {

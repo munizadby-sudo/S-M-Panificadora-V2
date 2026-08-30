@@ -279,6 +279,63 @@ describe('HTTP /api/vendas', () => {
     });
   });
 
+  test('DELETE na mesma venda cancelada é idempotente e não lança segundo estorno', async () => {
+    const ctx = montarAppMemoria();
+    const dia = dataHoje();
+
+    await comServidor(ctx.app, async (porta) => {
+      const { token } = await tokenAdmin(porta, ctx);
+      const origem = `http://127.0.0.1:${porta}`;
+      const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+      const { produto } = await criarProduto(origem, headers, 'Pão Estorno Duplo');
+
+      await ctx.estoqueRepository.salvar(
+        new EstoqueDiario({ produtoId: produto.id, data: dia, inicial: 10 }),
+      );
+      await abrirCaixa(origem, headers);
+
+      const venda = await json(
+        await fetch(`${origem}/api/vendas`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            forma_pagamento: 'dinheiro',
+            itens: [{ produto_id: produto.id, quantidade: 3 }],
+          }),
+        }),
+      );
+
+      const primeiro = await fetch(`${origem}/api/vendas/${venda.id}`, {
+        method: 'DELETE',
+        headers,
+        body: JSON.stringify({ motivo: 'Cliquei duas vezes' }),
+      });
+      assert.equal(primeiro.status, 200);
+
+      const segundo = await fetch(`${origem}/api/vendas/${venda.id}`, {
+        method: 'DELETE',
+        headers,
+        body: JSON.stringify({ motivo: 'Cliquei duas vezes' }),
+      });
+      const corpo = await json(segundo);
+
+      assert.equal(segundo.status, 200);
+      assert.deepEqual(corpo, {
+        status: 'cancelada',
+        tipo: 'cancelamento_direto',
+        idempotente: true,
+      });
+
+      const estoque = await ctx.estoqueRepository.buscarPorProdutoEData(produto.id, dia);
+      assert.equal(estoque.vendido, 0);
+
+      const estornos = ctx.fluxoCaixaRepository.lancamentos.filter(
+        (item) => item.categoria === 'estorno' && item.vendaId === venda.id,
+      );
+      assert.equal(estornos.length, 1);
+    });
+  });
+
   test('DELETE com turno fechado cria correcao_pendente; resolver ajusta turno atual', async () => {
     const ctx = montarAppMemoria();
     const dia = dataHoje();

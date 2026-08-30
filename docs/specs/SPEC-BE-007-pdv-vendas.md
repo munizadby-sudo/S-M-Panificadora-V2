@@ -1,7 +1,7 @@
 # SPEC-BE-007 — PDV / Vendas
 
-- **Status:** Rascunho para revisão
-- **Data:** 2026-08-17
+- **Status:** Implementada (cancelamento direto + correção pendente + DELETE idempotente)
+- **Data:** 2026-08-17 (atualizada 2026-08-30 — segundo DELETE idempotente)
 - **Módulo:** `src/modules/sales`
 - **Depende de:** ADR-001, ADR-002 (Decisões 1 e 2), SPEC-BE-001 (executor/RBAC), SPEC-BE-002 (Caixa por Turno — turno aberto, `CorrecaoPendente`, `fluxo_caixa`), SPEC-BE-004 (produto), SPEC-BE-005 (`DebitarEstoque`/`ReverterDebito`)
 - **PRD de origem:** `PRD-backend-S-M-Panificadora-V2.md`, Seção 4.6
@@ -108,7 +108,7 @@ Geração atômica via `INSERT ... ON DUPLICATE KEY UPDATE valor = LAST_INSERT_I
 Restrito a `admin`.
 
 **Fluxo:**
-1. Busca a venda — se não existir, `VendaNaoEncontradaError`.
+1. Busca a venda — se não existir, `VendaNaoEncontradaError`. Se já estiver `cancelada`, retorna `{ status: 'cancelada', tipo: 'cancelamento_direto', idempotente: true }` **sem** novo estoque nem novo `fluxo_caixa`.
 2. Busca o turno dessa venda (`venda.turno_id`).
 3. **Se o turno ainda está `aberto`:**
    - Transação única: `ReverterDebito` (estoque, data original da venda), lança estorno em `fluxo_caixa` (`categoria='estorno'`, mesmo `turno_id`, `valor=total`), marca `venda.status='cancelada'`, `motivo_cancelamento`, `cancelado_por`, `cancelado_em`.
@@ -180,6 +180,11 @@ Requer token + `admin`.
 **Response 200 (turno aberto — cancelamento direto)**
 ```json
 { "status": "cancelada", "tipo": "cancelamento_direto" }
+```
+
+**Response 200 (já cancelada — segundo clique, idempotente)**
+```json
+{ "status": "cancelada", "tipo": "cancelamento_direto", "idempotente": true }
 ```
 
 **Response 200 (turno fechado — correção pendente criada)**

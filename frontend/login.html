@@ -44,18 +44,22 @@
 
     #logo-loja {
       display: block;
-      max-height: 3.5rem;
+      height: 4.4rem;
+      width: auto;
       max-width: 100%;
-      margin: 0 auto 0.85rem;
+      margin: 0 auto 1.15rem;
     }
 
-    h1 {
-      margin: 0 0 0.35rem;
-      font-size: 1.35rem;
-      font-weight: 700;
-      text-align: center;
-      color: var(--destaque-escuro);
-      letter-spacing: 0.02em;
+    #nome-loja {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
     }
 
     .login-slogan {
@@ -160,7 +164,7 @@
   </script>
 
   <main>
-    <img id="logo-loja" alt="Logotipo da loja" hidden>
+    <img id="logo-loja" src="assets/logo-horizontal-tela.svg" alt="S&amp;M Panificadora">
     <h1 id="nome-loja">S&amp;M Panificadora</h1>
     <p class="login-slogan">Entre com seu usuário para acessar o sistema.</p>
     <form id="form-login" method="post" action="#">
@@ -189,7 +193,6 @@
       aplicarIdentidadeVisual({
         titulo: document.getElementById('nome-loja'),
         slogan: document.querySelector('.login-slogan'),
-        logo: document.getElementById('logo-loja'),
       });
     }
   </script>

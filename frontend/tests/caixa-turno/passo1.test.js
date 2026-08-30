@@ -235,6 +235,165 @@ describe('Passo 1 — estado e banner de caixa', () => {
     assert.doesNotMatch(painelReaberto?.innerHTML || '', /btn-confirmar-fechamento/);
     fecharModalCaixa();
   });
+
+  test('depois de confirmar a abertura o modal fecha em vez de mostrar Fechar caixa', async () => {
+    instalarDocumentoModal();
+    let turnoAberto = false;
+    globalThis.fetch = async (url) => {
+      const href = String(url);
+      if (href.includes('/abrir')) {
+        turnoAberto = true;
+        return {
+          status: 200,
+          ok: true,
+          async text() {
+            return JSON.stringify({
+              id: 12,
+              status: 'aberto',
+              periodo: 'tarde',
+              correcoes_pendentes: [],
+            });
+          },
+        };
+      }
+      if (href.includes('configuracoes')) {
+        return {
+          status: 200,
+          ok: true,
+          async text() {
+            return JSON.stringify({ fundo_troco_especie: 40, fundo_troco_moedas: 10 });
+          },
+        };
+      }
+      return {
+        status: 200,
+        ok: true,
+        async text() {
+          return JSON.stringify(
+            turnoAberto
+              ? { aberto: true, turno: { id: 12, periodo: 'tarde', status: 'aberto' } }
+              : { aberto: false, turno: null },
+          );
+        },
+      };
+    };
+
+    await abrirModalCaixa();
+    assert.equal(modalCaixaEstaAberto(), true);
+    const painel = globalThis.document.body
+      .querySelector('#caixa-turno-conteudo-modal')
+      ?.querySelector('#caixa-turno-painel');
+    const form = painel.querySelector('#form-abrir-caixa');
+    assert.ok(form);
+    assert.match(painel.innerHTML || '', /form-abrir-caixa/);
+
+    await form.listeners.submit[0]({ preventDefault() {} });
+    assert.equal(modalCaixaEstaAberto(), false);
+    assert.equal(globalThis.document.getElementById('modal-caixa-turno').hidden, true);
+    assert.doesNotMatch(painel.innerHTML || '', /btn-fechar-caixa/);
+  });
+
+  test('fecha o caixa e a próxima abertura fecha o modal em vez de Fechar caixa', async () => {
+    instalarDocumentoModal();
+    let turnoAberto = true;
+    globalThis.open = () => ({
+      document: { open() {}, write() {}, close() {} },
+      focus() {},
+      print() {},
+    });
+    globalThis.fetch = async (url) => {
+      const href = String(url);
+      if (href.includes('preview-fechamento')) {
+        return {
+          status: 200,
+          ok: true,
+          async text() {
+            return JSON.stringify({
+              turno_id: 12,
+              periodo: 'tarde',
+              esperado: { dinheiro: 50, pix: 0, cartao: 0, moedas: 0 },
+            });
+          },
+        };
+      }
+      if (href.includes('/fechar')) {
+        turnoAberto = false;
+        return {
+          status: 200,
+          ok: true,
+          async text() {
+            return JSON.stringify({
+              id: 12,
+              status: 'fechado',
+              status_resumo: 'bateu certo',
+              diferenca: { dinheiro: 0, pix: 0, cartao: 0, total: 0 },
+            });
+          },
+        };
+      }
+      if (href.includes('/abrir')) {
+        turnoAberto = true;
+        return {
+          status: 200,
+          ok: true,
+          async text() {
+            return JSON.stringify({ id: 13, status: 'aberto', periodo: 'tarde', correcoes_pendentes: [] });
+          },
+        };
+      }
+      if (href.includes('configuracoes')) {
+        return {
+          status: 200,
+          ok: true,
+          async text() {
+            return JSON.stringify({ fundo_troco_especie: 40, fundo_troco_moedas: 10 });
+          },
+        };
+      }
+      return {
+        status: 200,
+        ok: true,
+        async text() {
+          return JSON.stringify(
+            turnoAberto
+              ? { aberto: true, turno: { id: 12, periodo: 'tarde', status: 'aberto' } }
+              : { aberto: false, turno: null },
+          );
+        },
+      };
+    };
+
+    await abrirModalCaixa();
+    const painel = globalThis.document.body
+      .querySelector('#caixa-turno-conteudo-modal')
+      ?.querySelector('#caixa-turno-painel');
+    await painel.querySelector('#btn-fechar-caixa').listeners.click[0]();
+
+    const area = painel.querySelector('#area-fechamento');
+    for (const id of ['fechamento-dinheiro', 'fechamento-moedas', 'fechamento-pix', 'fechamento-cartao']) {
+      area.querySelector(`#${id}`).value = '10';
+      area.querySelector(`#${id}`).listeners.input?.forEach((fn) => fn({ target: area.querySelector(`#${id}`) }));
+    }
+    area.querySelector('#form-contagem-caixa').listeners.submit[0]({ preventDefault() {} });
+    await area.querySelector('#btn-imprimir-comprovante').listeners.click[0]();
+    await area.querySelector('#btn-confirmar-fechamento').listeners.click[0]();
+    const painelResumo = globalThis.document.body
+      .querySelector('#caixa-turno-conteudo-modal')
+      ?.querySelector('#caixa-turno-painel');
+    assert.match(painelResumo?.innerHTML || '', /Turno fechado/);
+    assert.equal(modalCaixaEstaAberto(), true);
+
+    fecharModalCaixa();
+    await abrirModalCaixa();
+    const painelAbertura = globalThis.document.body
+      .querySelector('#caixa-turno-conteudo-modal')
+      ?.querySelector('#caixa-turno-painel');
+    const form = painelAbertura.querySelector('#form-abrir-caixa');
+    assert.ok(form);
+    await form.listeners.submit[0]({ preventDefault() {} });
+    assert.equal(modalCaixaEstaAberto(), false);
+    assert.doesNotMatch(painelAbertura.innerHTML || '', /btn-fechar-caixa/);
+  });
 });
 
 function instalarDocumentoModal() {
@@ -324,8 +483,38 @@ function instalarDocumentoModal() {
       },
       appendChild(filho) {
         el._filhos.push(filho);
+        filho.parentNode = el;
+      },
+      removeChild(filho) {
+        el._filhos = el._filhos.filter((item) => item !== filho);
+        if (filho.parentNode === el) {
+          filho.parentNode = null;
+        }
       },
     };
+    if (String(tag).toLowerCase() === 'iframe') {
+      const iframeListeners = {};
+      el.style = { cssText: '' };
+      el.contentDocument = {
+        open() {},
+        write() {},
+        close() {},
+      };
+      el.contentWindow = {
+        document: el.contentDocument,
+        focus() {},
+        print() {
+          (iframeListeners.afterprint || []).forEach((fn) => fn());
+        },
+        addEventListener(evento, fn) {
+          iframeListeners[evento] = iframeListeners[evento] || [];
+          iframeListeners[evento].push(fn);
+        },
+        removeEventListener(evento, fn) {
+          iframeListeners[evento] = (iframeListeners[evento] || []).filter((item) => item !== fn);
+        },
+      };
+    }
     return el;
   }
 

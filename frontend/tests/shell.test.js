@@ -93,6 +93,14 @@ describe('shell e guarda de rota', () => {
     assert.match(readFileSync(join(frontend, 'src', 'core', 'api.js'), 'utf8'), /\bfetch\s*\(/);
   });
 
+  test('topo e login mostram a logo, sem o nome em texto', () => {
+    assert.match(indexHtml, /assets\/logo-horizontal-tela\.svg/);
+    assert.match(indexHtml, /class="marca"><img /);
+    assert.doesNotMatch(indexHtml, /<span class="marca">S&amp;M Panificadora<\/span>/);
+    assert.match(loginHtml, /id="logo-loja"[^>]*src="assets\/logo-horizontal-tela\.svg"/);
+    assert.doesNotMatch(loginHtml, /id="logo-loja"[^>]*hidden/);
+  });
+
   test('router só é carregado depois da guarda de sessão no shell', () => {
     const trechoModulo = indexHtml.split('protegerShell()')[1];
     assert.ok(trechoModulo);

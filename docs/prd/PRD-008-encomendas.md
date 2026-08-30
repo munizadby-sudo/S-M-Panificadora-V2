@@ -1,7 +1,7 @@
 # PRD-008 — Encomendas (Frontend)
 
 - **Status:** Rascunho para revisão
-- **Data:** 2026-08-11
+- **Data:** 2026-08-11 (atualizada 2026-08-30 — comprovante em 2 vias)
 - **Módulo:** Cadastro e acompanhamento de pedidos de clientes
 - **Referência/legado:** `S-M-Panificadora` (V1) — `tela-encomendas` em `index.html` (`enc-grid`, `modal-enc`, `enc-cliente`, `enc-fone`, `enc-data`, `enc-sinal`, `enc-obs`, `enc-itens-modal`, `setFiltroEnc`), funções `abrirModalEnc`, `abrirEditEnc`, `renderEncomendas`, `addLinhaEnc`, `selecionarProdEnc` em `app.js`
 - **Depende de:** PRD-001, PRD-002, PRD-005 (produto), PRD-011 (Clientes — vínculo opcional)
@@ -48,6 +48,7 @@ Permitir registrar pedidos de clientes com itens, acompanhar status (pendente/pr
 
 - **Exclusão de encomenda passa a ser soft delete** na UI (era exclusão física e definitiva no V1) — a ação na tela deve ser rotulada como "cancelar", não "excluir", e a encomenda cancelada deve continuar consultável no histórico.
 - Entregar encomenda **não** vira venda do PDV nem mexe em estoque (ADR-002). O dinheiro do saldo entra no turno via `fluxo_caixa` (`categoria: 'encomenda'`), e o fechamento do caixa conta esse valor no esperado da gaveta junto com `vendas` e `estorno`.
+- Ao cadastrar, imprimir comprovante térmico em **duas vias no mesmo papel**: VIA CLIENTE e VIA ESTABELECIMENTO. Na lista, **Imprimir** reabre (ativa ou entregue). Cancelada não imprime.
 
 ---
 
@@ -66,3 +67,4 @@ Permitir registrar pedidos de clientes com itens, acompanhar status (pendente/pr
 4. Edição de itens substitui corretamente a lista anterior, sem duplicar itens.
 5. Entregar com saldo > 0 exige caixa aberto e forma; o valor entra no esperado da gaveta (junto com vendas/estorno).
 6. Linha Entregue fica travada; só admin reabre.
+7. Cadastro oferece comprovante em 2 vias; **Imprimir** na lista reabre o mesmo papel.

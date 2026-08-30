@@ -163,12 +163,14 @@ describe('SPEC-FE-017 — comprovante térmico (passos 1–4)', () => {
 });
 
 describe('Passo 3 — impressão sem about:blank vazio (ISSUE-001)', () => {
-  test('imprimirHtml abre janela sem noopener e escreve o HTML', async () => {
-    const chamadasOpen = [];
+  test('imprimirHtml escreve no iframe oculto e dispara print', async () => {
     const docs = [];
-    globalThis.open = (url, target, features) => {
-      chamadasOpen.push({ url, target, features });
-      const doc = {
+    const iframeListeners = {};
+    const iframe = {
+      style: { cssText: '' },
+      parentNode: null,
+      setAttribute() {},
+      contentDocument: {
         open() {
           docs.push('open');
         },
@@ -178,25 +180,48 @@ describe('Passo 3 — impressão sem about:blank vazio (ISSUE-001)', () => {
         close() {
           docs.push('close');
         },
-      };
-      return {
-        document: doc,
-        focus() {},
-        print() {
-          docs.push('print');
-        },
-      };
+      },
+    };
+    iframe.contentWindow = {
+      document: iframe.contentDocument,
+      focus() {},
+      print() {
+        docs.push('print');
+        (iframeListeners.afterprint || []).forEach((fn) => fn());
+      },
+      addEventListener(evento, fn) {
+        iframeListeners[evento] = iframeListeners[evento] || [];
+        iframeListeners[evento].push(fn);
+      },
+      removeEventListener(evento, fn) {
+        iframeListeners[evento] = (iframeListeners[evento] || []).filter((item) => item !== fn);
+      },
+    };
+    const corpo = {
+      appendChild(el) {
+        el.parentNode = corpo;
+        docs.push('append');
+      },
+      removeChild(el) {
+        el.parentNode = null;
+        docs.push('remove');
+      },
+    };
+    globalThis.document = {
+      body: corpo,
+      createElement(tag) {
+        assert.equal(tag, 'iframe');
+        return iframe;
+      },
     };
 
     await imprimirHtml('<h1>Comprovante</h1>');
 
-    assert.equal(chamadasOpen.length, 1);
-    assert.equal(chamadasOpen[0].url, '');
-    assert.equal(chamadasOpen[0].target, '_blank');
-    assert.equal(chamadasOpen[0].features, undefined);
-    assert.ok(!String(chamadasOpen[0].features || '').includes('noopener'));
+    assert.ok(docs.includes('open'));
     assert.ok(docs.includes('<h1>Comprovante</h1>'));
     assert.ok(docs.includes('print'));
+    assert.ok(docs.includes('remove'));
+    assert.equal(iframe.parentNode, null);
   });
 });
 

@@ -21,6 +21,18 @@ export async function comPagina(browser, fn, opcoes = {}) {
   await context.addInitScript((url) => {
     globalThis.__SM_API_BASE = url;
     window.print = () => {};
+    const abrir = window.open.bind(window);
+    window.open = (...args) => {
+      const janela = abrir(...args);
+      if (janela) {
+        try {
+          janela.print = () => {};
+        } catch {
+          /* popup pode recusar atribuição */
+        }
+      }
+      return janela;
+    };
   }, api);
   const page = await context.newPage();
   try {
@@ -68,7 +80,40 @@ export async function abrirTurnoSeFechado(page) {
   await banner.click();
   await page.locator('#form-abrir-caixa').waitFor({ timeout: 10000 });
   await page.getByRole('button', { name: 'Confirmar abertura' }).click();
+  await page.locator('#modal-caixa-turno').waitFor({ state: 'hidden', timeout: 10000 });
   await page.getByRole('button', { name: /Caixa aberto/i }).waitFor({ timeout: 10000 });
+}
+
+export async function fecharTurnoSeAberto(page) {
+  const banner = page.locator('#caixa-turno-banner');
+  await esperarBannerCaixa(page);
+  if (((await banner.innerText()) || '').includes('fechado')) {
+    return;
+  }
+  await banner.click();
+  await page.locator('#btn-fechar-caixa').waitFor({ timeout: 10000 });
+  await page.locator('#btn-fechar-caixa').click();
+  await page.locator('#form-contagem-caixa').waitFor({ timeout: 10000 });
+  await page.locator('#fechamento-dinheiro').fill('40');
+  await page.locator('#fechamento-moedas').fill('10');
+  await page.locator('#fechamento-pix').fill('0');
+  await page.locator('#fechamento-cartao').fill('0');
+  await page.getByRole('button', { name: 'Revisar fechamento' }).click();
+  await page.locator('#btn-imprimir-comprovante').waitFor({ timeout: 10000 });
+  await page.locator('#btn-imprimir-comprovante').click();
+  await page.waitForFunction(
+    () => {
+      const botao = document.getElementById('btn-confirmar-fechamento');
+      return Boolean(botao && !botao.disabled);
+    },
+    null,
+    { timeout: 10000 },
+  );
+  await page.locator('#btn-confirmar-fechamento').click();
+  await page.getByText(/Turno fechado/i).waitFor({ timeout: 10000 });
+  await page.getByRole('button', { name: /Caixa fechado/i }).waitFor({ timeout: 10000 });
+  await page.locator('#btn-fechar-modal-caixa').click();
+  await page.locator('#modal-caixa-turno').waitFor({ state: 'hidden', timeout: 8000 });
 }
 
 export async function sessao(page) {

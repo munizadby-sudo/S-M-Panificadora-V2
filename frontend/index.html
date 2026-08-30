@@ -111,9 +111,16 @@
     }
 
     .marca {
-      font-weight: 700;
-      letter-spacing: 0.02em;
-      color: var(--destaque-escuro);
+      display: flex;
+      align-items: center;
+      line-height: 0;
+    }
+
+    .marca img {
+      display: block;
+      height: 2.4rem;
+      width: auto;
+      max-width: min(14rem, 42vw);
     }
 
     .topo-direita {
@@ -1642,6 +1649,87 @@
       margin: 0.25rem 0;
     }
 
+    .pdv-vendas-turno {
+      margin-top: 1.1rem;
+      padding-top: 0.85rem;
+      border-top: 1px solid var(--linha);
+    }
+
+    .pdv-vendas-turno h2 {
+      margin: 0 0 0.45rem;
+      font-size: 0.92rem;
+    }
+
+    .pdv-vendas-turno ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      max-height: 13rem;
+      overflow: auto;
+    }
+
+    .pdv-venda-turno-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.4rem 0;
+      border-bottom: 1px solid var(--linha);
+      font-size: 0.85rem;
+    }
+
+    .pdv-venda-turno-dados {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem 0.65rem;
+      min-width: 0;
+    }
+
+    .pdv-venda-turno-item.is-cancelada {
+      color: var(--muted);
+    }
+
+    .pdv-venda-estornada {
+      color: var(--aviso);
+      font-weight: 700;
+    }
+
+    .pdv-venda-turno-vazia {
+      color: var(--muted);
+      padding: 0.35rem 0;
+    }
+
+    .pdv-btn-estornar {
+      flex: 0 0 auto;
+      padding: 0.28rem 0.55rem;
+      font: inherit;
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #3a1208;
+      background: color-mix(in srgb, var(--aviso) 82%, #fff);
+      border: 1px solid color-mix(in srgb, var(--aviso) 50%, var(--linha));
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .pdv-btn-estornar:hover {
+      filter: brightness(1.06);
+    }
+
+    #modal-estorno-venda textarea {
+      width: 100%;
+      min-height: 4.5rem;
+      margin: 0.35rem 0 0.6rem;
+      font: inherit;
+      resize: vertical;
+    }
+
+    .pdv-estorno-acoes {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
     .pdv-filtros input,
     .pdv-filtros select,
     .pdv-aviso-fechado button,
@@ -2168,6 +2256,46 @@
     .pdv-modal-pagamento .caixa-turno-modal-caixa,
     .pdv-modal-pagamento-caixa {
       width: min(28rem, calc(100% - 2rem));
+    }
+
+    .pdv-modal-impressao-caixa {
+      width: min(26rem, calc(100% - 2rem));
+    }
+
+    .pdv-impressao-previa {
+      display: block;
+      width: 100%;
+      height: min(28rem, 55vh);
+      border: 1px solid var(--linha);
+      border-radius: 10px;
+      background: #fff;
+    }
+
+    .pdv-impressao-acoes {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.55rem;
+      margin-top: 1rem;
+    }
+
+    .pdv-impressao-acoes button {
+      font: inherit;
+      font-weight: 650;
+      padding: 0.65rem 1rem;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+
+    #btn-imprimir-cupom {
+      border: 0;
+      background: linear-gradient(135deg, var(--destaque), var(--destaque-escuro));
+      color: #1a1410;
+    }
+
+    #btn-fechar-impressao {
+      border: 1px solid var(--linha);
+      background: transparent;
+      color: var(--muted);
     }
 
     .pdv-modal-titulo {
@@ -3521,8 +3649,8 @@
         padding: 0.75rem;
       }
 
-      .marca {
-        font-size: 0.95rem;
+      .marca img {
+        height: 2rem;
       }
 
       #usuario-logado {
@@ -3670,7 +3798,7 @@
 
   <div id="app-shell" hidden>
     <header class="topo">
-      <span class="marca">S&amp;M Panificadora</span>
+      <span class="marca"><img src="assets/logo-horizontal-tela.svg" alt="S&amp;M Panificadora"></span>
       <div class="topo-direita">
         <button type="button" id="caixa-turno-banner" class="caixa-turno-banner" data-aberto="false"><span class="caixa-turno-banner-bola" aria-hidden="true"></span><span>Carregando caixa…</span></button>
         <span id="usuario-logado"></span>

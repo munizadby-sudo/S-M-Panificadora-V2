@@ -1,9 +1,12 @@
 import { debounce } from '../../core/utils.js';
-import { getTurnoAtual, onMudancaDeTurno, turnoEstaAberto } from '../caixa-turno/estado.js';
+import { ehAdmin } from '../../core/session.js';
+import { getTurnoAtual, obterTurnoId, onMudancaDeTurno, turnoEstaAberto } from '../caixa-turno/estado.js';
 import { listarCategorias, listarProdutos, mensagemErroProduto } from '../produtos/api.js';
 import { montarSeletorCategoria } from '../produtos/categorias.js';
 import { htmlAvisoCaixaFechado } from './aviso.js';
 import { htmlGradeProdutos, htmlLegendaAtalhos } from './grade.js';
+import { htmlListaVendasTurno } from './lista-turno.js';
+import { htmlModalEstornoVenda } from './modal-estorno-venda.js';
 import { ligarNavegacaoGrade } from './navegacao-grade.js';
 import {
   deveRoubarTeclaDeEdicao,
@@ -31,8 +34,9 @@ import {
   fecharModalPagamento,
   modalPagamentoEstaAberto,
 } from './modal-pagamento.js';
+import { fecharModalImpressao } from './modal-impressao.js';
 import { htmlConfirmacaoVenda } from './confirmacao.js';
-import { criarVenda, mensagemErroVenda } from './api.js';
+import { criarVenda, estornarVenda, listarVendas, mensagemErroEstorno, mensagemErroVenda } from './api.js';
 
 let containerAtual;
 let estado;
@@ -62,14 +66,24 @@ export default {
       estado.aberto = aberto;
       if (!aberto) {
         fecharModalPagamento();
+        fecharModalEstorno();
+        estado.vendasTurno = [];
+        renderizar().catch(() => {});
+        return;
       }
-      renderizar().catch(() => {});
+      carregarVendasTurno()
+        .then(() => renderizar())
+        .catch(() => {});
     });
     listenerAtalhos = (evento) => {
       tratarAtalhoPdv(evento);
     };
     globalThis.document?.addEventListener?.('keydown', listenerAtalhos);
     await renderizar();
+    if (estado.aberto) {
+      await carregarVendasTurno();
+      await renderizar();
+    }
   },
   desmontar() {
     cancelarTurno?.();
@@ -81,6 +95,7 @@ export default {
     navegacaoGrade?.desligar?.();
     navegacaoGrade = undefined;
     fecharModalPagamento();
+    fecharModalImpressao();
     buscarDebounced = undefined;
     containerAtual = undefined;
     estado = undefined;
@@ -102,6 +117,12 @@ function estadoInicial() {
     avisoFinalizar: '',
     ultimaVenda: null,
     confirmando: false,
+    vendasTurno: [],
+    erroVendas: '',
+    vendaEstorno: null,
+    motivoEstorno: '',
+    erroEstorno: '',
+    estornando: false,
   };
 }
 
@@ -156,8 +177,19 @@ async function renderizar(opcoes = {}) {
           <button type="button" id="btn-finalizar-venda"${carrinhoVazio ? ' disabled' : ''}>
             Finalizar Venda <span class="atalho">F10</span>
           </button>
+          ${htmlListaVendasTurno({
+            vendas: estado.vendasTurno,
+            ehAdmin: ehAdmin(),
+            erro: estado.erroVendas,
+          })}
         </div>
       </div>
+      ${htmlModalEstornoVenda({
+        venda: estado.vendaEstorno,
+        erro: estado.erroEstorno,
+        enviando: estado.estornando,
+        motivo: estado.motivoEstorno,
+      })}
     </section>
   `;
 
@@ -312,6 +344,11 @@ function ligarEventos(container, focoUi) {
     tentarAbrirPagamento();
   });
 
+  ligarEventosEstorno(container);
+  if (estado.vendaEstorno) {
+    container.querySelector('#pdv-estorno-motivo')?.focus?.();
+  }
+
   navegacaoGrade?.desligar?.();
   const cards = [...(container.querySelectorAll?.('[data-adicionar-produto]') || [])];
   let indiceInicial = 0;
@@ -380,6 +417,15 @@ function tentarLimparCarrinhoPorEsc() {
 
 function tratarAtalhoPdv(evento) {
   if (!estado?.aberto) {
+    return;
+  }
+  if (estado.vendaEstorno) {
+    if (evento.key === 'Escape') {
+      evento.preventDefault();
+      if (!estado.estornando) {
+        fecharModalEstorno();
+      }
+    }
     return;
   }
   if (modalPagamentoEstaAberto()) {
@@ -606,6 +652,7 @@ async function confirmarVenda() {
     resetarEstadoPagamento();
     estado.avisoFinalizar = '';
     fecharModalPagamento();
+    await carregarVendasTurno();
     await renderizar();
     abrirCupomNaoFiscal({ venda, itens: itensCupom, recebido: recebidoCupom }).catch(() => {});
   } catch (erro) {
@@ -629,5 +676,109 @@ async function confirmarVenda() {
     }
   } finally {
     estado.confirmando = false;
+  }
+}
+
+async function carregarVendasTurno() {
+  if (!estado) {
+    return;
+  }
+  const turnoId = obterTurnoId();
+  if (!turnoId) {
+    estado.vendasTurno = [];
+    estado.erroVendas = '';
+    return;
+  }
+  try {
+    const resultado = await listarVendas({ turno_id: turnoId, limit: 20 });
+    estado.vendasTurno = resultado?.data || [];
+    estado.erroVendas = '';
+  } catch {
+    estado.vendasTurno = [];
+    estado.erroVendas = 'Não foi possível carregar as vendas deste turno.';
+  }
+}
+
+function ligarEventosEstorno(container) {
+  for (const botao of container.querySelectorAll?.('[data-estornar-venda]') || []) {
+    botao.addEventListener('click', () => {
+      const id = Number(botao.getAttribute('data-estornar-venda'));
+      const venda = estado?.vendasTurno?.find((item) => Number(item.id) === id);
+      if (!venda || venda.status === 'cancelada' || !ehAdmin()) {
+        return;
+      }
+      estado.vendaEstorno = venda;
+      estado.motivoEstorno = '';
+      estado.erroEstorno = '';
+      estado.estornando = false;
+      renderizar();
+    });
+  }
+
+  container.querySelector('#pdv-estorno-motivo')?.addEventListener('input', (evento) => {
+    estado.motivoEstorno = evento.target?.value ?? '';
+  });
+
+  container.querySelector('#btn-cancelar-estorno-venda')?.addEventListener('click', () => {
+    if (!estado?.estornando) {
+      fecharModalEstorno();
+    }
+  });
+
+  container.querySelector('#btn-confirmar-estorno-venda')?.addEventListener('click', () => {
+    confirmarEstorno().catch(() => {});
+  });
+}
+
+function fecharModalEstorno() {
+  if (!estado) {
+    return;
+  }
+  estado.vendaEstorno = null;
+  estado.motivoEstorno = '';
+  estado.erroEstorno = '';
+  estado.estornando = false;
+  renderizar();
+}
+
+async function confirmarEstorno() {
+  if (!estado?.vendaEstorno || estado.estornando) {
+    return;
+  }
+  const motivo = String(estado.motivoEstorno || '').trim();
+  if (!motivo) {
+    estado.erroEstorno = 'Informe o motivo do estorno.';
+    await renderizar();
+    return;
+  }
+
+  const vendaId = estado.vendaEstorno.id;
+  estado.estornando = true;
+  estado.erroEstorno = '';
+  await renderizar();
+
+  try {
+    const resultado = await estornarVenda(vendaId, motivo);
+    if (resultado?.tipo === 'correcao_pendente') {
+      estado.estornando = false;
+      estado.erroEstorno =
+        'Esta venda é de um turno já fechado. O estorno ficou como correção pendente.';
+      await renderizar();
+      return;
+    }
+    if (estado.ultimaVenda && Number(estado.ultimaVenda.id) === Number(vendaId)) {
+      estado.ultimaVenda = null;
+    }
+    estado.vendaEstorno = null;
+    estado.motivoEstorno = '';
+    estado.erroEstorno = '';
+    estado.estornando = false;
+    await carregarCatalogo();
+    await carregarVendasTurno();
+    await renderizar();
+  } catch (erro) {
+    estado.estornando = false;
+    estado.erroEstorno = mensagemErroEstorno(erro);
+    await renderizar();
   }
 }

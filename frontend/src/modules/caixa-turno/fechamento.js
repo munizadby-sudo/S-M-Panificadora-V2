@@ -1,4 +1,5 @@
 import { apiGet, apiPost, ApiError } from '../../core/api.js';
+import { imprimirHtmlEmIframe } from '../../core/impressao.js';
 import { getTurnoAtual, obterTurnoId } from './estado.js';
 
 export {
@@ -120,29 +121,10 @@ export function mensagemErroFechamento(erro) {
 }
 
 /**
- * Abre o comprovante e dispara o print.
- * Não usa noopener/noreferrer — com esses flags o Chrome devolve janela sem
- * document acessível e a aba fica em about:blank vazia (ISSUE-001).
+ * Imprime o comprovante no iframe oculto — sem aba nova do Chrome.
  */
 export async function imprimirHtml(html) {
-  if (typeof globalThis.open !== 'function') {
-    throw new Error('Impressão indisponível');
-  }
-
-  const janela = globalThis.open('', '_blank');
-  if (!janela?.document) {
-    throw new Error('Não foi possível abrir a janela de impressão');
-  }
-
-  janela.document.open();
-  janela.document.write(String(html ?? ''));
-  janela.document.close();
-  janela.focus();
-
-  if (typeof janela.print !== 'function') {
-    throw new Error('Impressão indisponível');
-  }
-  janela.print();
+  await imprimirHtmlEmIframe(html);
 }
 
 function statusPorTotal(total) {

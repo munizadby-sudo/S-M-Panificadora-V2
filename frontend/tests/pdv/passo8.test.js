@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { beforeEach, describe, test } from 'node:test';
+import { afterEach, beforeEach, describe, test } from 'node:test';
 import { instalarAmbienteDeTeste } from '../helpers/ambiente.js';
 import {
   enterAdicionaDaBusca,
@@ -12,12 +12,21 @@ import {
   MAPA_TECLAS_CATEGORIA,
 } from '../../src/modules/pdv/atalhos.js';
 import { htmlCupomNaoFiscal, imprimirCupomHtml } from '../../src/modules/pdv/cupom.js';
+import {
+  abrirModalImpressaoCupom,
+  fecharModalImpressao,
+  modalImpressaoEstaAberto,
+} from '../../src/modules/pdv/modal-impressao.js';
 import { htmlLegendaAtalhos } from '../../src/modules/pdv/grade.js';
 
 const frontend = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 beforeEach(() => {
   instalarAmbienteDeTeste();
+});
+
+afterEach(() => {
+  fecharModalImpressao();
 });
 
 describe('Passo 8 — atalhos de balcão (V1)', () => {
@@ -95,6 +104,9 @@ describe('Passo 8 — cupom não fiscal', () => {
     assert.match(html, /Maria/);
     assert.match(html, /Pix/);
     assert.match(html, /Este ticket não é documento fiscal/);
+    assert.match(html, /data:image\/png;base64,/);
+    assert.match(html, /alt="S&amp;M Panificadora"/);
+    assert.doesNotMatch(html, /class="[^"]*nome-loja/);
     assert.doesNotMatch(html, /Recebido/);
   });
 
@@ -108,28 +120,136 @@ describe('Passo 8 — cupom não fiscal', () => {
     assert.match(html, /Troco/);
   });
 
-  test('imprimirCupomHtml escreve na janela sem noopener', async () => {
-    const docs = [];
-    const janela = {
-      document: {
-        open() {},
-        write(html) {
-          docs.push(html);
-        },
-        close() {},
+  test('venda abre box flutuante e só imprime no botão Imprimir', async () => {
+    const impressoes = [];
+    instalarDocumentoImpressao();
+    abrirModalImpressaoCupom({
+      html: '<p>cupom</p>',
+      imprimir: async (html) => {
+        impressoes.push(html);
       },
-      focus() {},
-      print() {
-        docs.push('print');
-      },
-    };
-    let argsAbertura;
-    await imprimirCupomHtml('<p>ok</p>', (...args) => {
-      argsAbertura = args;
-      return janela;
     });
-    assert.deepEqual(argsAbertura, ['', '_blank']);
+    assert.equal(modalImpressaoEstaAberto(), true);
+    const overlay = globalThis.document.getElementById('modal-pdv-impressao');
+    assert.equal(overlay.hidden, false);
+    assert.equal(overlay.querySelector('#pdv-impressao-previa').srcdoc, '<p>cupom</p>');
+    assert.equal(impressoes.length, 0);
+
+    await overlay.listeners.click[0]({
+      target: overlay.querySelector('#btn-imprimir-cupom'),
+      preventDefault() {},
+      stopPropagation() {},
+    });
+    assert.deepEqual(impressoes, ['<p>cupom</p>']);
+    assert.equal(modalImpressaoEstaAberto(), false);
+
+    fecharModalImpressao();
+    assert.equal(modalImpressaoEstaAberto(), false);
+  });
+
+  test('imprimirCupomHtml imprime no iframe sem abrir aba', async () => {
+    const docs = [];
+    await imprimirCupomHtml('<p>ok</p>', async (html) => {
+      docs.push(html);
+      docs.push('print');
+    });
     assert.equal(docs[0], '<p>ok</p>');
     assert.ok(docs.includes('print'));
+    const fonte = readFileSync(join(frontend, 'src', 'modules', 'pdv', 'cupom.js'), 'utf8');
+    assert.match(fonte, /imprimirHtmlEmIframe/);
+    assert.match(fonte, /abrirModalImpressaoCupom/);
+    assert.doesNotMatch(fonte, /window\.open|abrirJanela|_blank/);
   });
 });
+
+function instalarDocumentoImpressao() {
+  function criarElemento(tag) {
+    const el = {
+      tagName: String(tag).toUpperCase(),
+      id: '',
+      hidden: false,
+      className: '',
+      textContent: '',
+      srcdoc: '',
+      _html: '',
+      _filhos: [],
+      listeners: {},
+      parentNode: null,
+      get innerHTML() {
+        return el._html;
+      },
+      set innerHTML(valor) {
+        el._html = String(valor || '');
+        el._filhos = [];
+        for (const match of el._html.matchAll(/\bid="([^"]+)"/g)) {
+          const filho = criarElemento('div');
+          filho.id = match[1];
+          el._filhos.push(filho);
+        }
+      },
+      querySelector(sel) {
+        if (!sel?.startsWith('#')) {
+          return null;
+        }
+        const id = sel.slice(1);
+        const fila = [...el._filhos];
+        while (fila.length) {
+          const atual = fila.shift();
+          if (atual.id === id) {
+            return atual;
+          }
+          fila.push(...(atual._filhos || []));
+        }
+        return null;
+      },
+      closest(sel) {
+        const ids = String(sel)
+          .split(',')
+          .map((parte) => parte.trim().replace(/^#/, ''));
+        return ids.includes(el.id) ? el : null;
+      },
+      setAttribute(nome, valor) {
+        if (nome === 'id') {
+          el.id = String(valor);
+        }
+      },
+      addEventListener(evento, fn) {
+        el.listeners[evento] = el.listeners[evento] || [];
+        el.listeners[evento].push(fn);
+      },
+      removeEventListener(evento, fn) {
+        el.listeners[evento] = (el.listeners[evento] || []).filter((item) => item !== fn);
+      },
+      appendChild(filho) {
+        el._filhos.push(filho);
+        filho.parentNode = el;
+      },
+    };
+    return el;
+  }
+
+  const body = criarElemento('body');
+  const docListeners = {};
+  globalThis.document = {
+    body,
+    createElement: criarElemento,
+    getElementById(id) {
+      const fila = [...body._filhos];
+      while (fila.length) {
+        const atual = fila.shift();
+        if (atual.id === id) {
+          return atual;
+        }
+        fila.push(...(atual._filhos || []));
+      }
+      return null;
+    },
+    addEventListener(evento, fn) {
+      docListeners[evento] = docListeners[evento] || [];
+      docListeners[evento].push(fn);
+    },
+    removeEventListener(evento, fn) {
+      docListeners[evento] = (docListeners[evento] || []).filter((item) => item !== fn);
+    },
+  };
+}

@@ -56,7 +56,8 @@ Nenhum outro módulo deve chamar `GET /api/caixa-turno/status` diretamente — s
 - Modal de abertura com campos pré-preenchidos e editáveis (PRD-004, Seção 3).
 - Submeter para `POST /api/caixa-turno/abrir` (SPEC-BE-002, Seção 6.2).
 - Exibir os `correcoes_pendentes` retornados como aviso destacado, não bloqueante (ADR-002, Decisão 2).
-- **Testável:** abrir um turno de verdade, ver o banner mudar para "aberto", confirmar que valores pré-preenchidos aparecem e são editáveis antes de confirmar.
+- **Depois do POST `/abrir` com sucesso:** fechar o modal (`fecharModalCaixa`). Não trocar o painel para **Fechar caixa** (ISSUE-009). O banner no header passa a “Caixa aberto”. Encerrar o turno só no próximo clique no banner.
+- **Testável:** abrir um turno de verdade, ver o banner mudar para "aberto" e o modal sumir; valores pré-preenchidos aparecem e são editáveis antes de confirmar.
 
 ### Passo 3 — Contagem + esperado na mesma tela (sem impressão ainda)
 - Botão **"Fechar caixa"** abre a tela de fechamento (não um modal intermediário só de prévia).

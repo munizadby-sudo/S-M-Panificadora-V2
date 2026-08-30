@@ -3,7 +3,7 @@
 - **Status:** Aprovada e implementada (2026-08-27)
 - **Data:** 2026-08-27
 - **Módulo:** `demo/` (`testar-specs.mjs`, `specs/navegador.test.js`)
-- **Depende de:** SPEC-FE-002, SPEC-FE-003, SPEC-FE-007 (os passos “Como testar (navegador)” dessas specs); reusa o Chromium do Playwright já baixado para o vídeo demo
+- **Depende de:** SPEC-FE-002, SPEC-FE-003, SPEC-FE-007 (os passos “Como testar (navegador)” dessas specs); reusa o Chromium do Playwright já baixado para o vídeo demo. Ferramenta e teto desta fase: ADR-006. Expansão (Firefox/WebKit, pasta `e2e/`): ISSUE-014, não priorizada.
 - **PRD de origem:** nenhum — pedido do operador: o Chrome da demo deve **conferir** as specs, não só gravar o tour
 - **Não muda:** regras de negócio, telas, API, `npm test` do frontend/backend, `npm run gravar`
 
@@ -33,7 +33,7 @@ npm run testar
 
 Equivale a `node testar-specs.mjs`. Precisa do Playwright em `demo/node_modules` e do Chromium em `demo/pw-browsers/` (já gitignorado; se faltar: `npx playwright install chromium` com `PLAYWRIGHT_BROWSERS_PATH` apontando para `demo/pw-browsers`).
 
-Verde = os 12 casos da Seção 4 passaram. Vermelho = alguma tela da spec coberta quebrou.
+Verde = os 15 casos da Seção 4 passaram. Vermelho = alguma tela da spec coberta quebrou.
 
 O tour em vídeo continua separado: `npm run gravar`.
 
@@ -63,8 +63,9 @@ Ordem fixa (o caixa aberto no meio da suíte é o mesmo processo em memória):
 | SPEC-FE-007 | 1 (caixa fechado) | Tela Vendas com `#aviso-caixa-fechado`, sem `.pdv-produto` |
 | SPEC-FE-003 | 1, 2 | Banner `Caixa fechado` → abrir turno → `Caixa aberto` |
 | SPEC-FE-007 | 2, 3 | Grade, item no carrinho, dinheiro, `Venda confirmada` |
+| SPEC-FE-003 | 3–4 | Fecha o turno (contagem → revisão → impressão stub → confirmar); o banner volta a “Caixa fechado” e o modal de abertura reaparece |
 
-Fora deste corte (continuam só no `npm test` de cada módulo, ou no clique na loja): encomendas, estoque, perdas, produção, fluxo, relatórios, funcionários, fechamento completo do caixa, atalhos F1–F10, cupom impresso.
+Fora deste corte (continuam só no `npm test` de cada módulo, ou no clique na loja): encomendas, estoque, perdas, produção, fluxo, relatórios, funcionários, atalhos F1–F10, cupom impresso.
 
 ---
 
@@ -74,6 +75,7 @@ Fora deste corte (continuam só no `npm test` de cada módulo, ou no clique na l
 2. Não misturar `testar` e `gravar` no mesmo script — um afirma, o outro filma.
 3. Ampliar cobertura = novo `test()` em `navegador.test.js` mapeado a um passo de spec já existente, não um terceiro runner.
 4. `pw-browsers/` e `node_modules/` da `demo/` não entram no Git.
+5. Não criar um segundo runner (`e2e/`, Cypress, `@playwright/test` com três motores) sem priorizar a ISSUE-014.
 
 ---
 

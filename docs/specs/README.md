@@ -1,7 +1,7 @@
 # Specs do Backend e Frontend — S-M-Panificadora-V2
 
 - **Fonte:** `docs/prd/PRD-001-backend-S-M-Panificadora-V2.md` (backend) e `docs/prd/PRD-0XX-*.md` (frontend, um por módulo)
-- **Arquitetura:** `docs/adr/ADR-001-clean-code-solid.md`, `docs/adr/ADR-004-seguranca-e-testabilidade-do-backend.md`
+- **Arquitetura:** `docs/adr/ADR-001-clean-code-solid.md`, `docs/adr/ADR-004-seguranca-e-testabilidade-do-backend.md`, `docs/adr/ADR-006-testes-e2e-de-navegador-playwright.md` (Playwright em `demo/`; Cypress não)
 - **Convenção de nome:** `SPEC-BE-XXX-slug.md` (backend) e `SPEC-FE-XXX-slug.md` (frontend). Números de BE e FE **não precisam bater** — cada trilha numera na ordem em que foi implementada.
 - **Regra de execução:** implementar **na ordem numérica dentro de cada trilha** (BE ou FE). Uma spec só começa quando a anterior está no Definition of Done.
 
@@ -56,11 +56,11 @@ Fundação HTTP (CORS, CSP, rate limit geral, abort sem `JWT_SECRET`) e persist�
 | [SPEC-FE-004](./SPEC-FE-004-produtos-e-categorias.md) | Produtos e Categorias |
 | [SPEC-FE-005](./SPEC-FE-005-estoque.md) | Estoque |
 | [SPEC-FE-006](./SPEC-FE-006-perdas.md) | Perdas |
-| [SPEC-FE-007](./SPEC-FE-007-pdv-vendas.md) | PDV — Vendas |
+| [SPEC-FE-007](./SPEC-FE-007-pdv-vendas.md) | PDV — Vendas (inclui estorno do turno aberto, alternativa C) |
 | [SPEC-FE-008](./SPEC-FE-008-fluxo-de-caixa.md) | Fluxo de Caixa |
 | [SPEC-FE-009](./SPEC-FE-009-clientes.md) | Clientes |
 | [SPEC-FE-010](./SPEC-FE-010-producao.md) | Produção |
-| [SPEC-FE-011](./SPEC-FE-011-encomendas.md) | Encomendas |
+| [SPEC-FE-011](./SPEC-FE-011-encomendas.md) | Encomendas (inclui comprovante térmico em 2 vias) |
 | [SPEC-FE-012](./SPEC-FE-012-relatorios.md) | Relatórios |
 | [SPEC-FE-013](./SPEC-FE-013-funcionarios-e-folha.md) | Funcionários e Folha |
 | [SPEC-FE-014](./SPEC-FE-014-usuarios-e-permissoes.md) | Usuários e Permissões — tela admin (backend já existia via SPEC-BE-001) |

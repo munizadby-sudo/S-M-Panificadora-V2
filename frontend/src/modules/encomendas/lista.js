@@ -43,11 +43,16 @@ export function htmlTabelaEncomendas(itens, { admin = false } = {}) {
           </span>`
         : htmlSemaforoStatus(item, { admin });
 
-      const acoes =
-        cancelada || entregue
-          ? '<td></td>'
+      const imprimir = cancelada
+        ? ''
+        : `<button type="button" data-imprimir-encomenda="${escapar(item.id)}">Imprimir</button>`;
+      const acoes = cancelada
+        ? '<td></td>'
+        : entregue
+          ? `<td class="encomendas-acoes">${imprimir}</td>`
           : `<td class="encomendas-acoes">
             <button type="button" data-editar-encomenda="${escapar(item.id)}">Editar</button>
+            ${imprimir}
             <button type="button" data-cancelar-encomenda="${escapar(item.id)}">Cancelar</button>
           </td>`;
 

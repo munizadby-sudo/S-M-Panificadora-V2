@@ -1,7 +1,10 @@
 import { apiGet } from '../../core/api.js';
+import { imprimirHtmlEmIframe } from '../../core/impressao.js';
 import { getUsuario } from '../../core/session.js';
+import { abrirModalImpressaoCupom } from './modal-impressao.js';
 import { formatarMoeda } from '../../core/utils.js';
 import { CAMINHO_IDENTIDADE_PUBLICA, NOME_LOJA_PADRAO } from '../auth/identidade-visual.js';
+import { LOGO_CUPOM_DATA_URI } from '../caixa-turno/logo-cupom-data-uri.js';
 import { calcularTroco, rotuloFormaPagamento } from './pagamento.js';
 
 function escapar(valor) {
@@ -63,7 +66,8 @@ export function htmlCupomNaoFiscal({
     .cupom { width: 72mm; margin: 0 auto; padding: 4mm 0; }
     .center { text-align: center; }
     .bold { font-weight: 700; }
-    .nome-loja { font-size: 17px; }
+    .logo { margin: 0 0 4px; }
+    .logo img { width: 100%; height: auto; display: block; }
     .micro { font-size: 12px; }
     .small { font-size: 13px; }
     .line { border-top: 1px dashed #111; margin: 6px 0; }
@@ -76,7 +80,7 @@ export function htmlCupomNaoFiscal({
 </head>
 <body>
   <div class="cupom">
-    <div class="center bold nome-loja">${escapar(nomeLoja)}</div>
+    <div class="logo"><img alt="${escapar(nomeLoja)}" src="${LOGO_CUPOM_DATA_URI}"></div>
     ${slogan ? `<div class="center micro">${escapar(slogan)}</div>` : ''}
     <div class="center micro">CUPOM NÃO FISCAL</div>
     <div class="line"></div>
@@ -111,25 +115,14 @@ export function htmlCupomNaoFiscal({
 }
 
 /**
- * Abre o cupom e dispara o print.
- * Sem noopener/noreferrer — Chrome devolve janela sem document (ISSUE-001).
+ * Imprime o cupom no iframe oculto — sem aba nova do Chrome.
  * Falha de impressão não desfaz a venda.
  */
-export async function imprimirCupomHtml(html, abrirJanela = (...args) => globalThis.open(...args)) {
-  if (typeof abrirJanela !== 'function') {
+export async function imprimirCupomHtml(html, imprimir = imprimirHtmlEmIframe) {
+  if (typeof imprimir !== 'function') {
     throw new Error('Impressão indisponível');
   }
-  const janela = abrirJanela('', '_blank');
-  if (!janela?.document) {
-    throw new Error('Não foi possível abrir a janela de impressão');
-  }
-  janela.document.open();
-  janela.document.write(String(html ?? ''));
-  janela.document.close();
-  janela.focus();
-  if (typeof janela.print === 'function') {
-    janela.print();
-  }
+  await imprimir(html);
 }
 
 export async function abrirCupomNaoFiscal({ venda, itens, recebido } = {}, imprimir = imprimirCupomHtml) {
@@ -154,5 +147,5 @@ export async function abrirCupomNaoFiscal({ venda, itens, recebido } = {}, impri
     operador: getUsuario()?.nome || '',
     dataHora: new Date().toLocaleString('pt-BR'),
   });
-  await imprimir(html);
+  abrirModalImpressaoCupom({ html, imprimir });
 }

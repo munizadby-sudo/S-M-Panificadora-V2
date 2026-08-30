@@ -1,7 +1,7 @@
 # SPEC-FE-007 — PDV / Vendas (Frontend)
 
-- **Status:** Implementada (Passos 1–8 + refinos de balcão 2026-08-26)
-- **Data:** 2026-08-17 (atualizada 2026-08-26 — atalhos de balcão, cupom, modal de pagamento, navegação da grade)
+- **Status:** Implementada (Passos 1–9 + refinos de balcão 2026-08-26)
+- **Data:** 2026-08-17 (atualizada 2026-08-30 — estorno do turno aberto, alternativa C)
 - **Módulo:** `frontend/src/modules/pdv`
 - **Depende de:** SPEC-FE-001 (Fundação), SPEC-FE-003 (`estado.js` do Caixa por Turno — consumido, nunca reimplementado), SPEC-FE-004/005 (produto/estoque, referência de padrão), SPEC-FE-015 §3.4–3.5 (legenda de atalhos e navegação na grade), SPEC-BE-007 (contrato de API), SPEC-BE-003 (identidade pública da loja no cupom)
 - **PRD de origem:** `PRD-003-pdv-vendas.md`
@@ -47,13 +47,15 @@ export default {
 | `confirmacao.js` | Faixa “Venda confirmada” com número/total do backend |
 | `cupom.js` | HTML do cupom não fiscal + abertura da janela de impressão |
 | `atalhos.js` | Mapa `F2`–`F8` e regras de “não roubar tecla de campo” |
-| `api.js` | `POST /api/vendas` e tradução de erro |
+| `api.js` | `POST /api/vendas`, `GET /api/vendas`, `DELETE /api/vendas/:id` e tradução de erro |
+| `lista-turno.js` | Lista compacta das vendas do turno aberto |
+| `modal-estorno-venda.js` | Confirmação de estorno com motivo (só admin) |
 
 ---
 
 ## 3. Passos de implementação (incrementais, cada um testável isoladamente)
 
-Testes: `frontend/tests/pdv/passo1.test.js` … `passo5-7.test.js`, `passo8.test.js`, `navegacao-grade.test.js`.
+Testes: `frontend/tests/pdv/passo1.test.js` … `passo5-7.test.js`, `passo8.test.js`, `passo9-estorno.test.js`, `navegacao-grade.test.js`.
 
 ### Passo 1 — Banner de status + bloqueio quando caixa fechado
 
@@ -125,6 +127,17 @@ Depois de `POST /api/vendas` com sucesso — ver Seção 5.
 
 - **Testável:** `F1` foca a busca; `Delete` reduz o carrinho; `F10` → `2` → `Enter`; cupom contém “CUPOM NÃO FISCAL” e o número da venda (`passo8.test.js`).
 
+### Passo 9 — Estorno do turno aberto (alternativa C)
+
+Lista as vendas **deste turno aberto** abaixo do carrinho (número, hora, total, forma). O operador vê a lista. Só `admin` vê **Estornar**.
+
+- Confirmação com motivo obrigatório. Aviso: não dá para desfazer.
+- Chama o `DELETE /api/vendas/:id` já existente (`soAdmin`). Turno aberto: estorno total, estoque de volta, `fluxo_caixa` `categoria: 'estorno'` no mesmo `turno_id`.
+- Segundo clique na mesma venda: o backend devolve `{ idempotente: true }` sem novo lançamento nem novo estoque.
+- Não lista venda de turno fechado. Resolução de `correcao_pendente` continua fora desta tela (Seção 9).
+- Sem gateway, sem tabela `Refunds`, sem estorno parcial de item.
+- **Testável:** lista + botão só no admin; operador sem Estornar; `GET /vendas?turno_id=` via `obterTurnoId()` (`passo9-estorno.test.js`). HTTP do segundo DELETE: `backend/tests/sales/vendas.http.test.js`.
+
 ---
 
 ## 4. Mapa de atalhos (balcão)
@@ -133,7 +146,7 @@ A legenda na UI é uma barra sempre visível (`ul.pdv-atalhos`, `htmlLegendaAtal
 
 ### 4.1 Modal de pagamento fechado
 
-Handler: `tratarAtalhoPdv` em `index.js`. Se o modal estiver aberto, este handler **não** roda (o painel de pagamento trata `1`/`2`/`3`/`4`/`Enter`/`Esc`).
+Handler: `tratarAtalhoPdv` em `index.js`. Se o modal de pagamento ou o de estorno estiver aberto, este handler **não** roda os atalhos da grade (o painel de pagamento trata `1`/`2`/`3`/`4`/`Enter`/`Esc`; o de estorno trata só `Esc`).
 
 | Tecla | Ação |
 |---|---|
@@ -145,7 +158,7 @@ Handler: `tratarAtalhoPdv` em `index.js`. Se o modal estiver aberto, este handle
 | `Enter` na grade | Adiciona o produto focado e **mantém** o foco no mesmo card |
 | `Enter` em `#pdv-busca` | Aplica a busca e adiciona o **primeiro** produto da grade (leitor / busca rápida) |
 | `Delete` | Remove o último item (igual a “Remover último”). **Não** dispara em campo digitável |
-| `Esc` | Se o carrinho tem item: confirma e limpa. Carrinho vazio: no-op |
+| `Esc` | Com modal de estorno: fecha o modal. Senão, se o carrinho tem item: confirma e limpa. Carrinho vazio: no-op |
 | `Tab` | Sai da grade (não é interceptado) |
 
 ### 4.2 Modal de pagamento **aberto**
@@ -162,11 +175,11 @@ Handler: `tratarAtalhoPdv` em `index.js`. Se o modal estiver aberto, este handle
 
 Não é cupom fiscal (fora de escopo). É o ticket de balcão do V1, reimplementado em `cupom.js`.
 
-**Quando:** imediatamente após venda **confirmada** (carrinho já limpo, faixa de sucesso já na tela).
+**Quando:** imediatamente após venda **confirmada** (carrinho já limpo, faixa de sucesso já na tela) abre o box flutuante **Imprimir cupom** com a prévia. A impressão só sai ao clicar **Imprimir** (ou Enter).
 
 **Conteúdo:**
 
-- Nome da loja e slogan via `GET /configuracoes/publico` (fallback: `S&M Panificadora`)
+- Logo da loja (PNG 1-bit em data URI) no cabeçalho, no lugar do nome em texto; slogan via `GET /configuracoes/publico`
 - Título **CUPOM NÃO FISCAL**
 - Número do pedido (`numero`, 4 dígitos), data/hora, operador (`getUsuario().nome`)
 - Itens: nome, quantidade, unitário, subtotal (snapshot do carrinho local no momento do POST)
@@ -174,7 +187,9 @@ Não é cupom fiscal (fora de escopo). É o ticket de balcão do V1, reimplement
 - Se `dinheiro`: recebido e troco
 - Rodapé: “Este ticket não é documento fiscal”
 
-**Impressão:** `window.open('', '_blank')` **sem** `noopener`/`noreferrer` (ISSUE-001). Falha de pop-up ou de print **não** desfaz a venda, **não** restaura o carrinho e **não** apaga a confirmação na tela.
+**Impressão:** box flutuante no PDV (`modal-impressao.js`) com prévia do cupom (logo 1-bit, ISSUE-011). **Imprimir** usa iframe oculto (`core/impressao.js`, ISSUE-010) — **não** abre aba do Chrome. Fechar / Esc descarta só o box. Falha de print **não** desfaz a venda, **não** restaura o carrinho e **não** apaga a confirmação na tela.
+
+**Chrome da loja:** o diálogo nativo **Imprimir** do navegador só some se o PDV abrir por `abrir-pdv.bat` (`--kiosk-printing`, perfil separado) e a EPSON TM-T20X for a impressora padrão do Windows. A aba comum do Chrome continua mostrando esse diálogo — limitação do navegador, não do PDV.
 
 ---
 
@@ -216,7 +231,7 @@ Não é cupom fiscal (fora de escopo). É o ticket de balcão do V1, reimplement
 | Quarta forma (crédito) | Variou entre versões do legado | Tecla `4` no botão e no handler |
 | Visual do modal | Lista vertical, total verde, forma selecionada verde, recebido só em dinheiro | Mesmo desenho (referência visual, sem copiar código) |
 | Legenda de atalhos | Faixa no rodapé do caixa | Barra acima de **Vendas**; sem `1`/`2`/`3`/`4` |
-| Cupom não fiscal | `abrirCupomNaoFiscal` após sucesso | `cupom.js`; mesma regra de janela da ISSUE-001 |
+| Cupom não fiscal | `abrirCupomNaoFiscal` após sucesso | `cupom.js` + `modal-impressao.js`; iframe oculto; logo data URI |
 | Checagem de caixa | Misturada na tela | Só via `estado.js` |
 | Estoque insuficiente | Erro técnico / 500 no legado backend | Mensagem de negócio, item identificado |
 | Recebido insuficiente em dinheiro | Podia confirmar | Botão desabilitado (Passo 5) |
@@ -244,13 +259,14 @@ Não é cupom fiscal (fora de escopo). É o ticket de balcão do V1, reimplement
 7. `F1`, `F2`–`F8`, `Delete` e `Esc` (limpar carrinho) funcionam com o PDV montado e o modal fechado; `Delete` não remove item enquanto o operador digita num campo.
 8. `F10` / Finalizar Venda só abrem o modal com item e total &gt; 0; `Esc` no modal não limpa o carrinho.
 9. Após venda confirmada, o cupom não fiscal é emitido; falha de impressão não apaga a confirmação nem restaura o carrinho.
-10. Suíte `frontend/` (`passo1`–`passo8` e navegação da grade) passa 100%.
+10. Suíte `frontend/` (`passo1`–`passo9` e navegação da grade) passa 100%.
 11. Setas na grade avançam **um** card por tecla; numa linha só, `↑`/`↓` não pulam para a ponta (Seção 11.2).
 12. Depois de `Enter` na grade, o mesmo produto permanece focado. Depois da busca com debounce, o cursor permanece em `#pdv-busca`. `F2`–`F8` e mudança no select de categoria devolvem o foco à grade para as setas funcionarem.
 13. `#pdv-recebido-wrap` tem `hidden` (e CSS `display: none !important`) em qualquer forma que não seja `dinheiro`.
 14. A barra `ul.pdv-atalhos` **não** contém “Forma de pagto” / `1/2/3/4`.
 15. `#btn-finalizar-venda` usa `--sucesso` + pulso só quando habilitado; desabilitado fica mudo.
 16. Passos 1–3 no Chromium (aviso com caixa fechado; grade + venda em dinheiro com caixa aberto): `cd demo && npm run testar` (SPEC-FE-020). Atalhos e cupom continuam no `npm test` do frontend.
+17. Lista de vendas do turno aberto no PDV; **Estornar** só para `admin`; segundo DELETE não gera segundo estorno.
 
 ---
 

@@ -180,7 +180,7 @@ async function renderizarAbertura(painel) {
         fundo_moedas: moedas.value,
       });
       correcoesPendentes = resposta.correcoes_pendentes || [];
-      await renderizarTela();
+      fecharModalCaixa();
     } catch (erro) {
       erroEl.textContent = mensagemErroAbertura(erro);
     }

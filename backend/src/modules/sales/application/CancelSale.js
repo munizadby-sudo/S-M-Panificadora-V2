@@ -24,8 +24,11 @@ export class CancelSale {
     }
 
     const venda = await this.vendaRepository.buscarPorId(Number(id));
-    if (!venda || venda.status === 'cancelada') {
+    if (!venda) {
       throw new VendaNaoEncontradaError();
+    }
+    if (venda.status === 'cancelada') {
+      return { status: 'cancelada', tipo: 'cancelamento_direto', idempotente: true };
     }
 
     const turno = await this.caixaTurnoRepository.buscarPorId(venda.turnoId);
@@ -34,9 +37,16 @@ export class CancelSale {
     }
 
     if (turno.status === 'aberto') {
+      let pulouPorJaCancelada = false;
       await this.vendaRepository.comTransacao(async (conexao) => {
-        const itens = await this.vendaRepository.buscarItensPorVendaId(venda.id, conexao);
-        const dataOriginal = venda.dataOperacao();
+        const atual = await this.vendaRepository.buscarPorId(venda.id, conexao);
+        if (!atual || atual.status === 'cancelada') {
+          pulouPorJaCancelada = true;
+          return;
+        }
+
+        const itens = await this.vendaRepository.buscarItensPorVendaId(atual.id, conexao);
+        const dataOriginal = atual.dataOperacao();
 
         for (const item of itens) {
           await this.reverterDebito.executar(
@@ -50,22 +60,26 @@ export class CancelSale {
         await this.fluxoCaixaRepository.registrar(
           {
             usuarioId: executor?.id,
-            turnoId: venda.turnoId,
+            turnoId: atual.turnoId,
             tipo: 'saida',
-            descricao: `Estorno venda #${venda.numero}`,
+            descricao: `Estorno venda #${atual.numero}`,
             categoria: 'estorno',
-            forma: venda.formaPagamento,
-            valor: venda.total,
+            forma: atual.formaPagamento,
+            valor: atual.total,
             data: dataOriginal,
             geradoAuto: true,
-            vendaId: venda.id,
+            vendaId: atual.id,
           },
           conexao,
         );
 
-        venda.cancelar(motivoNormalizado, executor?.id);
-        await this.vendaRepository.atualizar(venda, conexao);
+        atual.cancelar(motivoNormalizado, executor?.id);
+        await this.vendaRepository.atualizar(atual, conexao);
       });
+
+      if (pulouPorJaCancelada) {
+        return { status: 'cancelada', tipo: 'cancelamento_direto', idempotente: true };
+      }
 
       if (this.auditor) {
         await this.auditor.registrar({

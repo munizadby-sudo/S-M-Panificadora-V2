@@ -17,10 +17,10 @@ Já existe impressão no projeto. **Não** entra biblioteca ESC/POS (`node-therm
 
 | Onde | Mecanismo |
 |---|---|
-| Fechamento de caixa | `fechamento.js` → `imprimirHtml` → `window.open('', '_blank')` **sem** `noopener` + `document.write` + `print()` (ISSUE-001) |
+| Fechamento de caixa | `fechamento.js` → `imprimirHtml` → iframe oculto (`core/impressao.js`) + `print()` |
 | Cupom de venda | `pdv/cupom.js` → `imprimirCupomHtml`, HTML com `.cupom { width: 72mm }`, fonte monoespaçada, linhas tracejadas |
 
-O comprovante de fechamento **reusa `imprimirHtml`**. O que muda é o HTML/CSS gerado por `htmlComprovanteRevisao`. A janela de print continua `about:blank`; por isso a logo **não** pode ser um `src` relativo (some na aba de impressão). A PNG 1-bit entra como **data URI** no HTML.
+O comprovante de fechamento **reusa `imprimirHtml`** → `imprimirHtmlEmIframe` (ISSUE-010). O que muda é o HTML/CSS gerado por `htmlComprovanteRevisao`. A logo **não** pode ser um `src` relativo (some no iframe/`about:blank`). A PNG 1-bit entra como **data URI** no HTML. O cupom de venda usa o mesmo data URI no cabeçalho (ISSUE-011).
 
 ### 0.2 Largura do papel
 

@@ -1,7 +1,7 @@
 # PRD-003 — PDV / Vendas (Frontend)
 
 - **Status:** Rascunho para revisão
-- **Data:** 2026-08-11
+- **Data:** 2026-08-11 (atualizada 2026-08-30 — estorno do turno aberto)
 - **Módulo:** Tela de venda no balcão (carrinho, formas de pagamento)
 - **Referência/legado:** `S-M-Panificadora` (V1) — `tela-caixa` em `index.html`, funções `renderGrid`, `addItem`, `delItem`, `removerUltimoItem`, `limpar`, `setPgto`, `cicloPagamento`, `atualizarTroco`, `renderItens`, `abrirCupomNaoFiscal` em `app.js`
 - **Depende de:** PRD-001, PRD-002, PRD-004 (Caixa por Turno — venda exige turno aberto)
@@ -33,6 +33,7 @@ Permitir que o operador registre uma venda no balcão de forma rápida: selecion
 - Confirmar venda só é permitido com: carrinho não vazio, total maior que zero, e turno de caixa aberto — se não houver turno aberto, a tela deve bloquear a confirmação com mensagem clara, não deixar o operador tentar e receber erro do backend sem contexto.
 - Exibir, de forma visível durante toda a tela, o status do turno atual (aberto/fechado, período).
 - Ao confirmar a venda com sucesso, limpar o carrinho e emitir o cupom não fiscal.
+- Lista das vendas **deste turno aberto** na lateral (número, hora, total, forma). Só `admin` vê **Estornar**, com motivo e confirmação. Segundo estorno da mesma venda não lança de novo (SPEC-BE-007, `idempotente`). Venda de turno já fechado não entra nessa lista.
 - Item cuja disponibilidade em estoque for insuficiente deve ser sinalizado antes da tentativa de confirmação, quando possível (feedback antecipado), sem impedir totalmente a tentativa (a validação definitiva é sempre do backend).
 
 ---
@@ -58,6 +59,8 @@ Permitir que o operador registre uma venda no balcão de forma rápida: selecion
 - Pagamento via TEF integrado (depende do contrato de integração TEF do backend, ainda não implementado concretamente).
 - Emissão de cupom fiscal (depende da integração fiscal do backend).
 - Venda com desconto/promoção — não existe no V1 e não está confirmado como necessidade atual.
+- Segunda via do cupom de venda — combinada para o lado do Estornar (não no Fluxo); ainda não implementada (ISSUE-012 §5).
+- Tela de resolução de correção pendente de turno fechado (aviso na abertura do caixa: SPEC-FE-003).
 
 ---
 
@@ -68,3 +71,4 @@ Permitir que o operador registre uma venda no balcão de forma rápida: selecion
 3. Erros de estoque retornados pelo backend aparecem como mensagem de negócio compreensível.
 4. Carrinho limpa corretamente após venda confirmada.
 5. Atalhos de teclado essenciais do V1 continuam funcionando (adicionar item, remover último, limpar, confirmar).
+6. Admin estorna venda do turno aberto pela lista do PDV; operador vê a lista e não vê Estornar.

@@ -8,6 +8,7 @@ import {
   abrirLogin,
   abrirShell,
   abrirTurnoSeFechado,
+  fecharTurnoSeAberto,
   comPagina,
   entrar,
   esperarFormularioLogin,
@@ -80,7 +81,9 @@ describe('SPEC-FE-002 — autenticação no navegador', () => {
       const resposta = await publico;
       assert.ok(resposta.ok());
       assert.equal(resposta.request().headers().authorization, undefined);
-      assert.match(await page.locator('#nome-loja').innerText(), /S&M Panificadora/);
+      assert.ok(await page.locator('#logo-loja').isVisible());
+      assert.match(await page.locator('#logo-loja').getAttribute('src') || '', /logo-horizontal-tela/);
+      assert.match(await page.locator('#nome-loja').evaluate((el) => el.textContent || ''), /S&M Panificadora/);
     });
   });
 
@@ -232,5 +235,27 @@ describe('SPEC-FE-015 — layout estreito', () => {
       );
       assert.equal(colunas, 1);
     }, celular);
+  });
+});
+
+describe('SPEC-FE-003 — fechar o caixa', () => {
+  test('passos 3–4: fecha o turno e o próximo clique no banner volta à abertura', async () => {
+    await comPagina(browser, async (page) => {
+      await entrar(page, ADMIN);
+      await abrirTurnoSeFechado(page);
+      await fecharTurnoSeAberto(page);
+      assert.equal(await page.locator('#caixa-turno-banner').getAttribute('data-aberto'), 'false');
+
+      await page.locator('#caixa-turno-banner').click();
+      await page.locator('#form-abrir-caixa').waitFor({ timeout: 10000 });
+      assert.equal(await page.locator('#btn-fechar-caixa').count(), 0);
+      await page.getByRole('button', { name: 'Confirmar abertura' }).click();
+      await page.locator('#abertura-erro').waitFor({ timeout: 8000 });
+      assert.match(
+        await page.locator('#abertura-erro').innerText(),
+        /turno registrado para este período/i,
+      );
+      await page.locator('#modal-caixa-turno').waitFor({ state: 'visible', timeout: 3000 });
+    });
   });
 });

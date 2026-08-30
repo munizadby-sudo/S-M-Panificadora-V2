@@ -20,6 +20,8 @@ import { htmlModalFinalizarEncomenda, saldoAReceber, formaPeloAtalho } from './m
 import { adicionarItem, removerItem, totalLocalItens } from './itens.js';
 import { validarFormularioEncomenda } from './validacao.js';
 import { aplicarSinalDoFormulario, podeConfirmarPagamento, textoTroco } from './sinal.js';
+import { abrirCupomEncomenda } from './cupom.js';
+import { fecharModalImpressao } from '../pdv/modal-impressao.js';
 
 export { htmlTabelaEncomendas, htmlFiltrosEncomendas } from './lista.js';
 export { htmlFormularioEncomenda } from './formulario.js';
@@ -56,6 +58,7 @@ export default {
     }
     seletorCliente?.destruir();
     seletorCliente = undefined;
+    fecharModalImpressao();
     containerAtual = undefined;
     estado = undefined;
   },
@@ -420,6 +423,12 @@ function ligarEventos(container) {
     });
   }
 
+  for (const botao of container.querySelectorAll?.('[data-imprimir-encomenda]') || []) {
+    botao.addEventListener('click', async () => {
+      await imprimirSegundaVia(Number(botao.getAttribute('data-imprimir-encomenda')));
+    });
+  }
+
   for (const botao of container.querySelectorAll?.('[data-avancar-status]') || []) {
     botao.addEventListener('click', async () => {
       await alterarStatus(Number(botao.getAttribute('data-avancar-status')), 'pronto');
@@ -604,6 +613,20 @@ async function abrirEdicao(id) {
   }
 }
 
+async function imprimirSegundaVia(id) {
+  try {
+    const detalhe = await buscarEncomenda(id);
+    await abrirCupomEncomenda({
+      encomenda: detalhe,
+      itens: detalhe.itens,
+      produtos: estado.produtos,
+    });
+  } catch (erro) {
+    estado.erro = mensagemErroEncomenda(erro);
+    renderizar();
+  }
+}
+
 async function salvarEncomenda() {
   const validacao = validarFormularioEncomenda({
     clienteNome: estado.formulario.clienteNome,
@@ -644,16 +667,28 @@ async function salvarEncomenda() {
   try {
     estado.erroFormulario = '';
     estado.errosCampos = {};
+    const itensCupom = estado.formulario.itens.map((item) => ({ ...item }));
+    const recebidoSinal = estado.formulario.recebido;
+    const formaSinal = estado.formulario.forma;
+    const ehNova = estado.edicaoId == null;
+    let salva = null;
     if (estado.edicaoId != null) {
-      await atualizarEncomenda(estado.edicaoId, entrada);
+      salva = await atualizarEncomenda(estado.edicaoId, entrada);
     } else {
-      await criarEncomenda(entrada);
+      salva = await criarEncomenda(entrada);
     }
     estado.mostrarFormulario = false;
     estado.edicaoId = null;
     estado.formulario = formularioVazio();
     await carregarEncomendas();
     renderizar();
+    if (salva && ehNova) {
+      abrirCupomEncomenda({
+        encomenda: { ...salva, forma_sinal: formaSinal },
+        itens: itensCupom,
+        recebidoSinal,
+      }).catch(() => {});
+    }
   } catch (erro) {
     estado.erroFormulario = mensagemErroEncomenda(erro);
     renderizar();

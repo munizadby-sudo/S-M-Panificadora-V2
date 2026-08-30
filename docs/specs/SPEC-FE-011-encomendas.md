@@ -1,7 +1,7 @@
 # SPEC-FE-011 — Encomendas (Frontend)
 
-- **Status:** Rascunho para revisão
-- **Data:** 2026-08-22
+- **Status:** Implementada (Passos 1–7)
+- **Data:** 2026-08-22 (atualizada 2026-08-30 — comprovante em 2 vias)
 - **Módulo:** `frontend/src/modules/encomendas`
 - **Depende de:** SPEC-FE-001 (Fundação), `montarSeletorCliente` (SPEC-FE-009/módulo `clientes`, reaproveitado como componente completo, não só HTML), SPEC-BE-011 (contrato de API)
 - **PRD de origem:** `PRD-008-encomendas.md`
@@ -66,6 +66,18 @@ export default {
 - Submeter via `DELETE /api/encomendas/:id`.
 - **Testável:** cancelar uma encomenda e confirmar que ela sai da listagem padrão (ou aparece marcada, dependendo do filtro), continuando consultável com o filtro de inativas.
 
+### Passo 7 — Comprovante térmico em duas vias
+
+Depois de **cadastrar** a encomenda, abre o mesmo box de impressão do PDV, com o título **Imprimir encomenda (2 vias)**. Um único papel: **VIA CLIENTE** (o cliente leva) e **VIA ESTABELECIMENTO** (fica na loja), com corte no meio.
+
+Cada via traz número, cliente, telefone, data de entrega, itens, total, sinal, saldo a pagar e observação. Não é cupom fiscal.
+
+Na lista, **Imprimir** reabre o mesmo comprovante (encomenda ativa ou já entregue). Cancelada não imprime.
+
+Usa `imprimirHtmlEmIframe` — sem aba nova do Chrome.
+
+- **Testável:** `frontend/tests/encomendas/passo-impressao.test.js`.
+
 ---
 
 ## 4. Componentes de UI
@@ -78,6 +90,7 @@ export default {
 | `ItensEncomenda` | Lista de itens ao estilo carrinho, adaptada de `modules/pdv/carrinho.js` para quantidade livre por item |
 | `htmlSemaforoStatus` | Bolinha + cor; clique avança Pendente ou abre o receber em Pronto |
 | `htmlModalFinalizarEncomenda` | Caixa flutuante para receber o saldo e confirmar entrega |
+| `cupom.js` | Comprovante térmico de 2 vias (cliente + loja) |
 
 ---
 
@@ -112,3 +125,4 @@ export default {
 6. Cada um dos 6 passos da Seção 3 é individualmente testável no navegador, na ordem descrita.
 7. Não existe `<select>` de status na linha; Pendente/Pronto/Entregue aparecem como semáforo.
 8. Finalizar entrega nunca cria venda do PDV: o modal chama só `POST /encomendas/:id/finalizar`.
+9. Cadastro de encomenda oferece comprovante em 2 vias no mesmo papel; **Imprimir** na lista reabre; impressão no iframe, sem aba nova.
