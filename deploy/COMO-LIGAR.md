@@ -89,7 +89,9 @@ Rodar na mão se precisar:
 powershell -ExecutionPolicy Bypass -File deploy\backup.ps1 -SenhaMysql "SUA_SENHA"
 ```
 
-**Pendente:** ainda falta um restore de prova (`deploy\restaurar.ps1`, banco `sm_panificadora_scratch`, não mexe no banco real) e uma segunda cópia fora deste PC (pendrive, HD externo ou nuvem) — hoje o backup só existe em `C:\PDV-backups`, no mesmo disco.
+Restore de prova feito em 2026-09-12 (`sm_20260912_1132.sql` → `sm_panificadora_scratch`): 21 tabelas, 389 vendas conferidas.
+
+**Risco aceito em 2026-09-12:** por decisão consciente, o backup por enquanto só existe em `C:\PDV-backups`, no mesmo disco C: da loja. Se o disco falhar, os backups falham junto. Sem pendrive/HD externo conectado nem OneDrive logado nesta máquina no momento; retomar quando houver mídia externa ou conta de nuvem disponível — `backup.ps1 -DestinoSecundario "<caminho>"` já suporta copiar pra um segundo lugar assim que existir um.
 
 ---
 
