@@ -22,7 +22,7 @@ Especificar a transação mais crítica do sistema: confirmar uma venda debita e
 | `chave` | `VARCHAR(30)` PK | ex.: `venda` |
 | `valor` | `INT` | último número emitido |
 
-Geração atômica via `INSERT ... ON DUPLICATE KEY UPDATE valor = LAST_INSERT_ID(valor + 1)` — padrão MySQL para sequência sem condição de corrida, sem precisar de lock explícito de linha.
+Geração atômica **dentro da transação da venda**: garante a linha (`INSERT ... valor = 0` / no-op se já existe), depois `UPDATE sequencias SET valor = valor + 1` e lê `valor`. Não usa `LAST_INSERT_ID()` — no mysql2 esse valor vaza entre queries na mesma conexão do pool e, com vendas seguidas, duas confirmações pegavam o mesmo `numero` (`ER_DUP_ENTRY` / “Erro interno.” no PDV; ISSUE-016).
 
 ### 2.2 Tabela `vendas`
 | Coluna | Tipo | Regras |

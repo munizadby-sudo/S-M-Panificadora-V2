@@ -601,6 +601,9 @@ function tratarAtalhoPagamento(evento, container) {
   const noRecebido = evento.target?.id === 'pdv-recebido';
 
   if (evento.key === 'Enter') {
+    if (evento.repeat) {
+      return;
+    }
     const botao = container.querySelector('#btn-confirmar-venda');
     if (botao && !botao.disabled) {
       evento.preventDefault();

@@ -166,7 +166,7 @@ describe('concorrência vendas — numero sequencial único', { skip: !mysqlPron
     }
   });
 
-  test('duas vendas simultâneas recebem numeros distintos', async () => {
+  test('oito vendas simultâneas recebem numeros distintos', async () => {
     const jwt = String(tokenService.emitir(admin) || '');
     const dia = dataHoje();
 
@@ -211,29 +211,28 @@ describe('concorrência vendas — numero sequencial único', { skip: !mysqlPron
         itens: [{ produto_id: produto.id, quantidade: 1 }],
       };
 
-      const [r1, r2] = await Promise.all([
+      const disparos = Array.from({ length: 8 }, () =>
         fetch(`${origem}/api/vendas`, {
           method: 'POST',
           headers,
           body: JSON.stringify(corpoVenda),
         }),
-        fetch(`${origem}/api/vendas`, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify(corpoVenda),
-        }),
-      ]);
-      const [v1, v2] = await Promise.all([json(r1), json(r2)]);
-
-      assert.equal(r1.status, 200, JSON.stringify(v1));
-      assert.equal(r2.status, 200, JSON.stringify(v2));
-      assert.notEqual(v1.numero, v2.numero);
-
-      const [[contagem]] = await pool.query(
-        'SELECT COUNT(*) AS total FROM vendas WHERE id IN (?, ?)',
-        [v1.id, v2.id],
       );
-      assert.equal(Number(contagem.total), 2);
+      const respostas = await Promise.all(disparos);
+      const corpos = await Promise.all(respostas.map((r) => json(r)));
+
+      for (let i = 0; i < respostas.length; i += 1) {
+        assert.equal(respostas[i].status, 200, JSON.stringify(corpos[i]));
+      }
+      const numeros = corpos.map((v) => v.numero);
+      assert.equal(new Set(numeros).size, 8, JSON.stringify(numeros));
+
+      const ids = corpos.map((v) => v.id);
+      const [[{ total }]] = await pool.query(
+        `SELECT COUNT(*) AS total FROM vendas WHERE id IN (${ids.map(() => '?').join(',')})`,
+        ids,
+      );
+      assert.equal(Number(total), 8);
     });
   });
 });

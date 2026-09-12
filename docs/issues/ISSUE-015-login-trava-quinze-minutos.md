@@ -1,6 +1,6 @@
 # ISSUE-015 — Login trava 15 minutos e não zera quando a senha acerta
 
-- **Status:** Aberta — depois do período de teste (2026-08-30)
+- **Status:** Aberta — depois do piloto (14 dias: 2026-08-30 a 2026-09-13)
 - **Data:** 2026-08-30
 - **Módulo:** `backend/src/app.js` (`criarLimitadorLogin`)
 - **Severidade:** Média no balcão — um digitou errado e o caixa pode ficar sem vender um quarto de hora; neste PC o IP é um só
@@ -24,7 +24,7 @@
 
 ## 3. Correção proposta
 
-Não implementar agora. Congelado até o fim do período de teste da V2 neste PC.
+Não implementar agora. Congelado até o fim do piloto não fiscal (2026-09-13). Ver `docs/depois-do-teste.md`.
 
 Quando priorizar, o corte combinado na conversa:
 
@@ -44,7 +44,7 @@ Ainda não há caso que afirme a janela de 2 minutos nem o reset no sucesso. Qua
 
 ## 5. Critério de aceite para fechar esta issue
 
-- [ ] Período de teste da V2 na loja encerrado e o produto priorizou.
+- [ ] Piloto de 14 dias encerrado (a partir de 2026-09-13) e o produto priorizou.
 - [ ] 5 erros / 2 min / reset no login ok, no código e nas specs.
 - [ ] Canário permanente com log bruto.
 
