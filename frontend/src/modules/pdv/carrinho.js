@@ -29,6 +29,24 @@ export function adicionarAoCarrinho(itens, produto) {
   return lista;
 }
 
+/** Quantidade manual no item (item 8, docs/depois-do-teste.md) — substitui clicar N vezes. */
+export function definirQuantidadeNoCarrinho(itens, produtoId, quantidade) {
+  const lista = clonarItens(itens);
+  const id = Number(produtoId);
+  const indice = lista.findIndex((item) => item.produtoId === id);
+  if (indice < 0) {
+    return lista;
+  }
+  const valor = quantidadePdv(quantidade);
+  if (!(valor > 0)) {
+    lista.splice(indice, 1);
+    return lista;
+  }
+  lista[indice].quantidade = valor;
+  lista[indice].subtotal = dinheiroPdv(valor * lista[indice].precoUnitario);
+  return lista;
+}
+
 export function removerDoCarrinho(itens, produtoId) {
   return clonarItens(itens).filter((item) => item.produtoId !== Number(produtoId));
 }
@@ -69,7 +87,21 @@ export function htmlCarrinho(itens) {
   const linhas = lista
     .map(
       (item) => `<li>
-        <span>${escapar(item.nome)} × ${escapar(item.quantidade)} — ${formatarMoeda(item.subtotal)}</span>
+        <span class="pdv-carrinho-nome">${escapar(item.nome)}</span>
+        <span class="pdv-carrinho-qtd">
+          ×
+          <input
+            type="number"
+            class="pdv-carrinho-quantidade"
+            data-quantidade-item="${escapar(item.produtoId)}"
+            value="${escapar(item.quantidade)}"
+            min="0"
+            step="1"
+            inputmode="decimal"
+            aria-label="Quantidade de ${escapar(item.nome)}"
+          >
+        </span>
+        <span>— ${formatarMoeda(item.subtotal)}</span>
         <button type="button" data-remover-item="${escapar(item.produtoId)}">Remover</button>
       </li>`,
     )

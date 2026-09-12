@@ -20,13 +20,20 @@ export async function comPagina(browser, fn, opcoes = {}) {
   });
   await context.addInitScript((url) => {
     globalThis.__SM_API_BASE = url;
-    window.print = () => {};
+    // core/impressao.js espera o evento 'afterprint' (real em qualquer print() de verdade)
+    // para resolver a promessa de impressão — um no-op puro trava esse fluxo para sempre.
+    const stubPrint = (janela) => {
+      janela.print = () => {
+        setTimeout(() => janela.dispatchEvent(new Event('afterprint')), 0);
+      };
+    };
+    stubPrint(window);
     const abrir = window.open.bind(window);
     window.open = (...args) => {
       const janela = abrir(...args);
       if (janela) {
         try {
-          janela.print = () => {};
+          stubPrint(janela);
         } catch {
           /* popup pode recusar atribuição */
         }

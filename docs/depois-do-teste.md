@@ -16,7 +16,7 @@ Congelado de propósito. Não implementar da lista abaixo enquanto o piloto esti
 | ~~5~~ | ~~**CI/CD da V2**~~ — feito 2026-09-12: `.github/workflows/ci.yml` roda `npm test` (backend + frontend) e `cd demo && npm run testar` a cada push/PR na main. Não publica nada sozinho (o caixa continua atalho + PM2) | ADR-006 §5.2 |
 | 6 | Balança: leitor na etiqueta → item na venda. Digitação se falhar. Estoque em kg ou unidade; tipo do produto dá para trocar. **Balança não fica presa na Filizola** (Prix ou outra) | Filizola agora; Prix/outra depois — ver abaixo |
 | 7 | Cielo **L300 V4** na venda: PIX e cartão pela máquina, valor sai do PDV. Só depois de falar com a Cielo | PRD-001 §4.16; máquina da loja — ver abaixo |
-| 8 | Venda: quantidade manual no item (hoje o PDV incrementa 1 a 1) | SPEC-FE-007 / PDV |
+| ~~8~~ | ~~Venda: quantidade manual no item~~ — feito 2026-09-12 | SPEC-FE-007 / PDV; ISSUE-018 |
 | ~~9~~ | ~~Pagamento com **duas formas** na mesma venda~~ — feito 2026-09-12 | SPEC-BE-007 / PDV; ISSUE-017 |
 
 **Fora desta lista (não entra no “vamos pra cima” do piloto):** Electron, Edge, Cypress, fiscal, pasta `e2e/` com três motores. TEF genérico de outra bandeira não entra — só a L300, no item 7, depois da balança.

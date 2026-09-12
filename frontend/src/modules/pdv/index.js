@@ -17,6 +17,7 @@ import {
 import { abrirCupomNaoFiscal } from './cupom.js';
 import {
   adicionarAoCarrinho,
+  definirQuantidadeNoCarrinho,
   htmlCarrinho,
   limparCarrinho,
   removerDoCarrinho,
@@ -335,6 +336,23 @@ function ligarEventos(container, focoUi) {
     botao.addEventListener('click', () => {
       estado.carrinho = removerDoCarrinho(estado.carrinho, botao.getAttribute('data-remover-item'));
       renderizar();
+    });
+  }
+
+  for (const campo of container.querySelectorAll?.('[data-quantidade-item]') || []) {
+    campo.addEventListener('change', () => {
+      estado.carrinho = definirQuantidadeNoCarrinho(
+        estado.carrinho,
+        campo.getAttribute('data-quantidade-item'),
+        campo.value,
+      );
+      renderizar();
+    });
+    campo.addEventListener('keydown', (evento) => {
+      if (evento.key === 'Enter') {
+        evento.preventDefault();
+        campo.blur();
+      }
     });
   }
 

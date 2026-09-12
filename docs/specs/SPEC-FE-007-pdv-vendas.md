@@ -1,7 +1,7 @@
 # SPEC-FE-007 — PDV / Vendas (Frontend)
 
-- **Status:** Implementada (Passos 1–9 + refinos de balcão 2026-08-26 + pagamento dividido 2026-09-12)
-- **Data:** 2026-08-17 (atualizada 2026-09-12 — pagamento dividido em duas formas, item 9 de `docs/depois-do-teste.md`)
+- **Status:** Implementada (Passos 1–9 + refinos de balcão 2026-08-26 + pagamento dividido e quantidade manual 2026-09-12)
+- **Data:** 2026-08-17 (atualizada 2026-09-12 — quantidade manual no item (8) e pagamento dividido em duas formas (9), `docs/depois-do-teste.md`)
 - **Módulo:** `frontend/src/modules/pdv`
 - **Depende de:** SPEC-FE-001 (Fundação), SPEC-FE-003 (`estado.js` do Caixa por Turno — consumido, nunca reimplementado), SPEC-FE-004/005 (produto/estoque, referência de padrão), SPEC-FE-015 §3.4–3.5 (legenda de atalhos e navegação na grade), SPEC-BE-007 (contrato de API), SPEC-BE-003 (identidade pública da loja no cupom)
 - **PRD de origem:** `PRD-003-pdv-vendas.md`
@@ -41,7 +41,7 @@ export default {
 | `aviso.js` | Tela de bloqueio com caixa fechado |
 | `grade.js` | Grade, filtros, `htmlLegendaAtalhos` (lista sempre visível) |
 | `navegacao-grade.js` | Roving tabindex e setas na grade |
-| `carrinho.js` | Estado local do pedido (add/remove/limpar/total de exibição) |
+| `carrinho.js` | Estado local do pedido (add/remove/limpar/editar quantidade/total de exibição) |
 | `pagamento.js` | Formas, troco, `podeConfirmarVenda`, atalhos `1`/`2`/`3`/`4`, HTML do modal, divisão em duas formas (§11.4) |
 | `modal-pagamento.js` | Overlay de checkout; `Esc` fecha sem limpar o carrinho |
 | `confirmacao.js` | Faixa “Venda confirmada” com número/total do backend |
@@ -66,9 +66,11 @@ Testes: `frontend/tests/pdv/passo1.test.js` … `passo5-7.test.js`, `passo8.test
 ### Passo 2 — Grade de produtos e carrinho
 
 - Grade de produtos ativos (`GET /api/produtos` + categorias), busca rápida e filtro.
-- Carrinho local (não persiste até confirmar): adicionar, remover item, remover último, limpar.
+- Carrinho local (não persiste até confirmar): adicionar, remover item, remover último, limpar, **editar quantidade direto** (item 8, docs/depois-do-teste.md — 2026-09-12).
 - Total local **só para exibição** — o valor que conta é o do backend na confirmação (SPEC-BE-007 §4.1).
 - **Testável:** vários itens, total local certo, remoção recalcula.
+
+**Quantidade manual (item 8):** cada linha do carrinho tem um `<input type="number" data-quantidade-item>` em vez de só mostrar `× quantidade` — o operador digita a quantidade certa em vez de clicar/apertar Enter várias vezes na grade. `definirQuantidadeNoCarrinho(itens, produtoId, quantidade)` (`carrinho.js`) substitui a quantidade da linha e recalcula o subtotal; quantidade zero, vazia ou negativa **remove** a linha (mesma regra de `removerUltimoDoCarrinho` chegando a zero). Evento `change` (não `input`) — só recalcula ao sair do campo ou apertar Enter (que só dá blur, `evento.preventDefault()` evita qualquer submit), sem re-renderizar a cada tecla. O campo é um `<input>` normal, então `deveRoubarTeclaDeEdicao` (`atalhos.js`) já garante que `Delete`/setas da grade não disparam enquanto o operador digita ali — nenhuma mudança nesse guard foi necessária.
 
 ### Passo 3 — Seleção de forma de pagamento e confirmação
 

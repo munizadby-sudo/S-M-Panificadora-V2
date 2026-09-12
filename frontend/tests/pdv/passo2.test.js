@@ -43,7 +43,8 @@ describe('Passo 2 — grade de produtos e carrinho local', () => {
     assert.equal(totalLocal(carrinho), 5.5);
 
     const html = htmlCarrinho(carrinho);
-    assert.match(html, /Pão Francês × 2/);
+    assert.match(html, /Pão Francês/);
+    assert.match(html, /data-quantidade-item="12"[^>]*value="2"/);
     assert.match(html, /Total: R\$ 5,50/);
   });
 
