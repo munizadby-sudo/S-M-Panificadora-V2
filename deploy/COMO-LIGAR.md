@@ -64,7 +64,7 @@ A tela **tem** que ser `127.0.0.1:4173`. Em outra porta o front não acha a API.
 | `ecosystem.config.js` | PM2: `pdv-api` = `backend/src/server.js`, `pdv-web` = `frontend/servir.mjs` |
 | `deploy/garantir-servicos.ps1` | Sobe XAMPP + PM2 se a porta estiver morta |
 | `deploy/ligar-mysql-xampp.vbs` | Cópia também em `shell:startup` |
-| `deploy/backup.ps1` | Dump do banco (ainda sem tarefa agendada) |
+| `deploy/backup.ps1` | Dump do banco (tarefa agendada `PDV Backup Diario`, todo dia 23:30) |
 | `deploy/restaurar.ps1` | Restore de prova em `sm_panificadora_scratch` |
 
 PM2 neste PC: `C:\npm-global\pm2.cmd`.
@@ -79,13 +79,17 @@ PM2 neste PC: `C:\npm-global\pm2.cmd`.
 
 ---
 
-## Backup (ainda não agendado)
+## Backup (agendado desde 2026-09-12)
+
+Tarefa do Windows **`PDV Backup Diario`** roda `deploy\backup.ps1` toda noite às 23:30 (usuário logado), grava em `C:\PDV-backups` (retém 30 dias) e usa a senha do MySQL root via `MYSQL_PWD` — não fica em texto solto no script.
+
+Rodar na mão se precisar:
 
 ```
 powershell -ExecutionPolicy Bypass -File deploy\backup.ps1 -SenhaMysql "SUA_SENHA"
 ```
 
-O `mysqldump` padrão é o do XAMPP. Agendar no Task Scheduler com a loja fechada, **depois** de um restore de prova (`deploy\restaurar.ps1`). Um backup só conta quando já foi restaurado uma vez.
+**Pendente:** ainda falta um restore de prova (`deploy\restaurar.ps1`, banco `sm_panificadora_scratch`, não mexe no banco real) e uma segunda cópia fora deste PC (pendrive, HD externo ou nuvem) — hoje o backup só existe em `C:\PDV-backups`, no mesmo disco.
 
 ---
 
