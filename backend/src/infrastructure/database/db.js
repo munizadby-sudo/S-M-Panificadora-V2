@@ -268,6 +268,17 @@ export async function aplicarSchemaVendas(pool) {
     )
   `);
   await pool.query(`
+    CREATE TABLE IF NOT EXISTS venda_pagamentos (
+      id INT NOT NULL AUTO_INCREMENT,
+      venda_id INT NOT NULL,
+      forma_pagamento ENUM('dinheiro','pix','cartao','credito') NOT NULL,
+      valor DECIMAL(10,2) NOT NULL,
+      PRIMARY KEY (id),
+      KEY venda_pagamentos_venda_id (venda_id),
+      CONSTRAINT venda_pagamentos_venda_id_fk FOREIGN KEY (venda_id) REFERENCES vendas(id)
+    )
+  `);
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS correcoes_pendentes (
       id INT NOT NULL AUTO_INCREMENT,
       venda_id INT NOT NULL,

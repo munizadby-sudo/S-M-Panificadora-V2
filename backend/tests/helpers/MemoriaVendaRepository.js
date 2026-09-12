@@ -51,6 +51,7 @@ export class MemoriaVendaRepository extends VendaRepository {
       turnoId: venda.turnoId,
       usuarioId: venda.usuarioId,
       formaPagamento: venda.formaPagamento,
+      pagamentos: venda.pagamentos.map((p) => ({ ...p })),
       itens,
       total: venda.total,
       status: venda.status,
@@ -112,6 +113,31 @@ export class MemoriaVendaRepository extends VendaRepository {
     const pagina = filtradas.slice(offset, offset + limit);
 
     return { data: pagina.map(clonarVenda), total };
+  }
+
+  async listarPagamentosConfirmadosNoPeriodo(dataInicio, dataFim) {
+    const pagamentos = [];
+    for (const venda of this.vendas) {
+      if (venda.status !== 'confirmada') {
+        continue;
+      }
+      const dataOperacao = venda.dataOperacao();
+      if (dataOperacao < dataInicio || dataOperacao > dataFim) {
+        continue;
+      }
+      // Fixtures de teste às vezes empurram objetos crus sem passar pelo construtor de Venda
+      // (sem `.pagamentos`) — cai para uma única linha derivada da forma/total da venda.
+      const linhas = venda.pagamentos || [
+        {
+          formaPagamento: venda.formaPagamento,
+          valor: venda.total ?? venda.itens.reduce((acc, item) => acc + Number(item.subtotal || 0), 0),
+        },
+      ];
+      for (const pagamento of linhas) {
+        pagamentos.push({ formaPagamento: pagamento.formaPagamento, valor: pagamento.valor });
+      }
+    }
+    return pagamentos;
   }
 
   async listarItensConfirmadosNoPeriodo(dataInicio, dataFim) {
@@ -212,6 +238,7 @@ function clonarVenda(venda) {
     turnoId: venda.turnoId,
     usuarioId: venda.usuarioId,
     formaPagamento: venda.formaPagamento,
+    pagamentos: venda.pagamentos.map((p) => ({ ...p })),
     itens: venda.itens.map(clonarItem),
     total: venda.total,
     status: venda.status,

@@ -1,7 +1,7 @@
 import { apiDelete, apiGet, apiPost, ApiError } from '../../core/api.js';
 
-export async function criarVenda({ forma_pagamento, itens }) {
-  return apiPost('/vendas', { forma_pagamento, itens });
+export async function criarVenda({ forma_pagamento, pagamentos, itens }) {
+  return apiPost('/vendas', pagamentos ? { pagamentos, itens } : { forma_pagamento, itens });
 }
 
 export async function listarVendas({ turno_id, status, page, limit } = {}) {

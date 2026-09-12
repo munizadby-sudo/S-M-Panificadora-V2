@@ -10,6 +10,10 @@ export class RelatorioVendas {
   async executar({ data_inicio, data_fim } = {}) {
     const { dataInicio, dataFim } = validarPeriodo({ data_inicio, data_fim });
     const itens = await this.vendaRepository.listarItensConfirmadosNoPeriodo(dataInicio, dataFim);
+    const pagamentos = await this.vendaRepository.listarPagamentosConfirmadosNoPeriodo(
+      dataInicio,
+      dataFim,
+    );
 
     let totalGeral = 0;
     let quantidadeItens = 0;
@@ -23,8 +27,12 @@ export class RelatorioVendas {
       if (item.vendaId != null) {
         vendasDistintas.add(item.vendaId);
       }
-      const forma = String(item.formaPagamento || item.forma_pagamento || '').trim() || 'desconhecida';
-      porForma.set(forma, dinheiro((porForma.get(forma) || 0) + subtotal));
+    }
+
+    for (const pagamento of pagamentos) {
+      const valor = dinheiro(pagamento.valor);
+      const forma = String(pagamento.formaPagamento || pagamento.forma_pagamento || '').trim() || 'desconhecida';
+      porForma.set(forma, dinheiro((porForma.get(forma) || 0) + valor));
     }
 
     const numeroVendas = vendasDistintas.size;

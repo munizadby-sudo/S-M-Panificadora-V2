@@ -2437,6 +2437,42 @@
       font-size: 0.85rem;
     }
 
+    .pdv-dividir-toggle {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.85rem;
+      color: var(--muted);
+      cursor: pointer;
+    }
+
+    .pdv-dividir-toggle input {
+      width: auto;
+    }
+
+    .pdv-formas-secundarias {
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.4rem;
+    }
+
+    .pdv-formas-secundarias .pdv-forma {
+      flex-direction: column;
+      gap: 0.3rem;
+      padding: 0.55rem 0.4rem;
+      font-size: 0.78rem;
+      text-align: center;
+    }
+
+    #pdv-restante-forma2 {
+      margin: 0;
+      font-weight: 700;
+      color: var(--sucesso);
+    }
+
+    #pdv-restante-forma2[hidden] {
+      display: none !important;
+    }
+
     .pdv-pagamento-acoes {
       display: flex;
       gap: 0.65rem;

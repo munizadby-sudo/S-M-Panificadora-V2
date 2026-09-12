@@ -40,6 +40,15 @@ export class VendaRepository {
   async listarItensConfirmadosNoPeriodo(_dataInicio, _dataFim) {
     throw new Error('VendaRepository.listarItensConfirmadosNoPeriodo não implementado');
   }
+
+  /**
+   * Linhas de venda_pagamentos de vendas confirmadas no período — fonte do "por forma de
+   * pagamento" nos relatórios (item 9, docs/depois-do-teste.md: venda dividida em duas formas).
+   * @returns {Promise<Array<{ formaPagamento: string, valor: number }>>}
+   */
+  async listarPagamentosConfirmadosNoPeriodo(_dataInicio, _dataFim) {
+    throw new Error('VendaRepository.listarPagamentosConfirmadosNoPeriodo não implementado');
+  }
 }
 
 export class SequenciaRepository {

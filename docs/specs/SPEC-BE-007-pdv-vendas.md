@@ -31,13 +31,23 @@ Geração atômica **dentro da transação da venda**: garante a linha (`INSERT 
 | `numero` | `INT` | sequencial, único, gerado via `sequencias` |
 | `turno_id` | `INT` FK `caixa_turnos.id` | obrigatório — venda sempre pertence a um turno |
 | `usuario_id` | `INT` FK `usuarios.id` | obrigatório |
-| `forma_pagamento` | `ENUM('dinheiro','pix','cartao','credito')` | obrigatório |
+| `forma_pagamento` | `ENUM('dinheiro','pix','cartao','credito')` | valor legado/informativo — 1ª linha de `venda_pagamentos`. Fonte da verdade é `venda_pagamentos` (§2.3.1); em memória, `Venda.formaPagamento` é `'misto'` quando há duas linhas |
 | `total` | `DECIMAL(10,2)` | obrigatório, > 0, **sempre recalculado no backend a partir dos itens**, nunca aceito do cliente |
 | `status` | `ENUM('confirmada','cancelada')` | padrão `confirmada` |
 | `motivo_cancelamento` | `TEXT`, nulo | preenchido no cancelamento |
 | `cancelado_por` | `INT` FK `usuarios.id`, nulo | — |
 | `cancelado_em` | `DATETIME`, nulo | — |
 | `criado_em` | `TIMESTAMP` | padrão `CURRENT_TIMESTAMP` |
+
+### 2.2.1 Tabela `venda_pagamentos` *(item 9, docs/depois-do-teste.md — pagamento dividido)*
+| Coluna | Tipo | Regras |
+|---|---|---|
+| `id` | `INT` PK auto_increment | — |
+| `venda_id` | `INT` FK `vendas.id` | obrigatório |
+| `forma_pagamento` | `ENUM('dinheiro','pix','cartao','credito')` | obrigatório — sem `'misto'` aqui, cada linha é uma forma real |
+| `valor` | `DECIMAL(10,2)` | obrigatório, > 0 |
+
+Uma venda tem **1 ou 2** linhas. Soma das linhas = `vendas.total`, sempre — a entidade `Venda` valida isso (`PagamentosInvalidosError`) e nunca persiste sem bater. Duas linhas não podem ter a mesma forma. `CreateSale` lança **um `fluxo_caixa` por linha** (não um lançamento único com o total) — assim o fechamento de turno, que agrupa `fluxo_caixa` por `forma` (SPEC-BE-002), soma cada forma certo sem precisar saber o que é "misto". `CancelSale`/`ResolverCorrecaoPendente` estornam/ajustam do mesmo jeito, uma linha por forma.
 
 ### 2.3 Tabela `venda_itens`
 | Coluna | Tipo | Regras |
@@ -97,7 +107,7 @@ Geração atômica **dentro da transação da venda**: garante a linha (`INSERT 
 7. Para cada item, **na mesma transação**: `DebitarEstoque(conexao, produtoId, hoje, quantidade)` (SPEC-BE-005, Seção 4.4). Se qualquer item falhar por `EstoqueInsuficienteError`, a transação inteira é revertida — nenhuma venda parcial, nenhum item debitado sozinho.
 8. Calcula `total = Σ subtotal`.
 9. Persiste `venda` + `venda_itens`.
-10. Lança automaticamente em `fluxo_caixa` (SPEC-BE-002, Seção 2.2): `categoria='vendas'`, `gerado_auto=true`, `turno_id=turno.id`, `forma=formaPagamento`, `valor=total`, `data=hoje`.
+10. Lança automaticamente em `fluxo_caixa` (SPEC-BE-002, Seção 2.2) **uma vez por linha de `venda_pagamentos`**: `categoria='vendas'`, `gerado_auto=true`, `turno_id=turno.id`, `forma=<forma da linha>`, `valor=<valor da linha>`, `data=hoje`. Forma única → 1 lançamento igual a sempre foi; dividida → 2 lançamentos que somam o total.
 11. Commit.
 12. Audita `criar_venda`.
 13. Retorna a venda criada com `numero`.
@@ -144,7 +154,7 @@ Restrito a `admin`. Chamado quando há um turno aberto (normalmente o primeiro t
 ### 5.1 `POST /api/vendas`
 Requer token + permissão `caixa`.
 
-**Request**
+**Request — forma única (compatível com sempre existiu)**
 ```json
 {
   "forma_pagamento": "dinheiro",
@@ -152,9 +162,26 @@ Requer token + permissão `caixa`.
 }
 ```
 
-**Response 200**
+**Request — dividida em duas formas (item 9, docs/depois-do-teste.md)**
 ```json
-{ "id": 481, "numero": 1024, "total": 12.75, "forma_pagamento": "dinheiro", "status": "confirmada" }
+{
+  "pagamentos": [
+    { "forma_pagamento": "dinheiro", "valor": 6 },
+    { "forma_pagamento": "cartao", "valor": 4 }
+  ],
+  "itens": [ { "produto_id": 12, "quantidade": 3 }, { "produto_id": 15, "quantidade": 1 } ]
+}
+```
+`pagamentos`, quando enviado, substitui `forma_pagamento` por completo — 1 ou 2 linhas, formas diferentes entre si, soma exatamente igual ao total calculado dos itens (nunca aceita do cliente, igual ao `total`).
+
+**Response 200 (forma única)**
+```json
+{ "id": 481, "numero": 1024, "total": 12.75, "forma_pagamento": "dinheiro", "pagamentos": [{ "forma_pagamento": "dinheiro", "valor": 12.75 }], "status": "confirmada" }
+```
+
+**Response 200 (dividida)**
+```json
+{ "id": 482, "numero": 1025, "total": 10, "forma_pagamento": "misto", "pagamentos": [{ "forma_pagamento": "dinheiro", "valor": 6 }, { "forma_pagamento": "cartao", "valor": 4 }], "status": "confirmada" }
 ```
 
 **Erros**
@@ -163,6 +190,7 @@ Requer token + permissão `caixa`.
 | 403 | `CAIXA_FECHADO` | sem turno aberto |
 | 400 | — | carrinho vazio |
 | 400 | — | estoque insuficiente (identifica o `produto_id`) |
+| 400 | `PAGAMENTOS_INVALIDOS` | mais de 2 formas, formas repetidas, valor ≤ 0, ou soma ≠ total |
 
 ### 5.2 `GET /api/vendas`
 Requer token + permissão `caixa`. Paginado, obrigatoriamente.
@@ -226,3 +254,6 @@ Requer token + `admin`.
 6. Resolver uma correção pendente lança o ajuste sempre no turno atualmente aberto, nunca no turno antigo da venda original.
 7. `GET /api/vendas` sem parâmetros de paginação ainda assim aplica um limite padrão — nunca retorna a tabela inteira de uma vez.
 8. Venda nunca aceita `minimo` de estoque como bloqueio — só a disponibilidade real.
+9. `pagamentos` com soma diferente do total, mais de 2 linhas, ou duas linhas com a mesma forma retorna 400 `PAGAMENTOS_INVALIDOS` e não escreve nada.
+10. Venda dividida lança um `fluxo_caixa` por forma; cancelar ou resolver correção estorna/ajusta cada forma separadamente — o fechamento de turno (que agrupa por `forma`) bate sem precisar saber o que é "misto".
+11. Relatório de vendas por forma de pagamento (`RelatorioVendas`) soma cada forma real de uma venda dividida — nunca cria um balde "misto".

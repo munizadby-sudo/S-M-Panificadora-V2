@@ -25,7 +25,9 @@ import {
 } from './carrinho.js';
 import {
   ATALHOS_FORMA_PAGAMENTO,
+  atualizarRestanteNoDom,
   atualizarTrocoNoDom,
+  calcularValorRestante,
   htmlSeletorFormaPagamento,
   podeConfirmarVenda,
 } from './pagamento.js';
@@ -113,6 +115,9 @@ function estadoInicial() {
     carrinho: [],
     formaPagamento: '',
     recebido: '',
+    dividirPagamento: false,
+    formaPagamento2: '',
+    valorPagamento1: '',
     erroVenda: '',
     avisoFinalizar: '',
     ultimaVenda: null,
@@ -132,6 +137,9 @@ function resetarEstadoPagamento() {
   }
   estado.formaPagamento = '';
   estado.recebido = '';
+  estado.dividirPagamento = false;
+  estado.formaPagamento2 = '';
+  estado.valorPagamento1 = '';
   estado.erroVenda = '';
 }
 
@@ -534,9 +542,12 @@ function preencherConteudoPagamento(conteudo) {
     recebido: estado.recebido,
     itens: estado.carrinho,
     erro: estado.erroVenda,
+    dividir: estado.dividirPagamento,
+    formaPagamento2: estado.formaPagamento2,
+    valorPagamento1: estado.valorPagamento1,
   });
   ligarEventosPagamento(conteudo);
-  if (estado.formaPagamento === 'dinheiro') {
+  if (estado.formaPagamento === 'dinheiro' && !estado.dividirPagamento) {
     conteudo.querySelector('#pdv-recebido')?.focus?.();
   } else {
     conteudo.querySelector('#pdv-pagamento')?.focus?.();
@@ -567,6 +578,41 @@ function ligarEventosPagamento(container) {
     }
   });
 
+  for (const botao of container.querySelectorAll?.('[data-forma2]') || []) {
+    botao.addEventListener('click', () => {
+      selecionarForma2(botao.getAttribute('data-forma2'));
+    });
+  }
+
+  container.querySelector('#pdv-dividir-pagamento')?.addEventListener('change', (evento) => {
+    estado.dividirPagamento = Boolean(evento.target?.checked);
+    estado.recebido = '';
+    estado.formaPagamento2 = '';
+    estado.valorPagamento1 = '';
+    estado.erroVenda = '';
+    reabrirConteudoPagamento();
+  });
+
+  container.querySelector('#pdv-valor-forma1')?.addEventListener('input', (evento) => {
+    estado.valorPagamento1 = evento.target?.value ?? '';
+    atualizarRestanteNoDom(container, {
+      total: totalLocal(estado.carrinho),
+      formaPagamento2: estado.formaPagamento2,
+      valorPagamento1: estado.valorPagamento1,
+    });
+    const botao = container.querySelector('#btn-confirmar-venda');
+    if (botao) {
+      botao.disabled = !podeConfirmarVenda({
+        itens: estado.carrinho,
+        formaPagamento: estado.formaPagamento,
+        recebido: estado.recebido,
+        dividir: estado.dividirPagamento,
+        formaPagamento2: estado.formaPagamento2,
+        valorPagamento1: estado.valorPagamento1,
+      });
+    }
+  });
+
   container.querySelector('#btn-cancelar-pagamento')?.addEventListener('click', () => {
     fecharModalPagamento();
   });
@@ -588,17 +634,34 @@ function selecionarForma(forma) {
   if (forma !== 'dinheiro') {
     estado.recebido = '';
   }
+  if (forma === estado.formaPagamento2) {
+    estado.formaPagamento2 = '';
+  }
   estado.erroVenda = '';
-  if (modalPagamentoEstaAberto()) {
-    const conteudo = globalThis.document?.getElementById?.('pdv-pagamento-conteudo-modal');
-    if (conteudo) {
-      preencherConteudoPagamento(conteudo);
-    }
+  reabrirConteudoPagamento();
+}
+
+function selecionarForma2(forma) {
+  if (!forma || !estado) {
+    return;
+  }
+  estado.formaPagamento2 = forma;
+  estado.erroVenda = '';
+  reabrirConteudoPagamento();
+}
+
+function reabrirConteudoPagamento() {
+  if (!modalPagamentoEstaAberto()) {
+    return;
+  }
+  const conteudo = globalThis.document?.getElementById?.('pdv-pagamento-conteudo-modal');
+  if (conteudo) {
+    preencherConteudoPagamento(conteudo);
   }
 }
 
 function tratarAtalhoPagamento(evento, container) {
-  const noRecebido = evento.target?.id === 'pdv-recebido';
+  const noRecebido = evento.target?.id === 'pdv-recebido' || evento.target?.id === 'pdv-valor-forma1';
 
   if (evento.key === 'Enter') {
     if (evento.repeat) {
@@ -633,6 +696,9 @@ async function confirmarVenda() {
       itens: estado.carrinho,
       formaPagamento: estado.formaPagamento,
       recebido: estado.recebido,
+      dividir: estado.dividirPagamento,
+      formaPagamento2: estado.formaPagamento2,
+      valorPagamento1: estado.valorPagamento1,
     })
   ) {
     return;
@@ -643,8 +709,18 @@ async function confirmarVenda() {
   try {
     const itensCupom = estado.carrinho.map((item) => ({ ...item }));
     const recebidoCupom = estado.recebido;
+    const pagamentosCupom = estado.dividirPagamento
+      ? [
+          { forma_pagamento: estado.formaPagamento, valor: Number(estado.valorPagamento1) },
+          {
+            forma_pagamento: estado.formaPagamento2,
+            valor: calcularValorRestante(totalLocal(estado.carrinho), estado.valorPagamento1),
+          },
+        ]
+      : null;
     const venda = await criarVenda({
       forma_pagamento: estado.formaPagamento,
+      pagamentos: pagamentosCupom,
       itens: estado.carrinho.map((item) => ({
         produto_id: item.produtoId,
         quantidade: item.quantidade,
@@ -657,7 +733,12 @@ async function confirmarVenda() {
     fecharModalPagamento();
     await carregarVendasTurno();
     await renderizar();
-    abrirCupomNaoFiscal({ venda, itens: itensCupom, recebido: recebidoCupom }).catch(() => {});
+    abrirCupomNaoFiscal({
+      venda,
+      itens: itensCupom,
+      recebido: recebidoCupom,
+      pagamentos: pagamentosCupom,
+    }).catch(() => {});
   } catch (erro) {
     estado.erroVenda = mensagemErroVenda(erro, estado.carrinho);
     if (erro?.codigo === 'CAIXA_FECHADO' || erro?.status === 403) {

@@ -25,6 +25,15 @@ export class FormaPagamentoInvalidaError extends Error {
   }
 }
 
+export class PagamentosInvalidosError extends Error {
+  constructor(mensagem = 'Pagamentos inválidos.') {
+    super(mensagem);
+    this.name = 'PagamentosInvalidosError';
+    this.status = 400;
+    this.codigo = 'PAGAMENTOS_INVALIDOS';
+  }
+}
+
 export class TotalExternoError extends Error {
   constructor() {
     super('total é derivado dos itens e não pode ser informado externamente.');

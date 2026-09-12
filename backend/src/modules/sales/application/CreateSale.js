@@ -36,6 +36,7 @@ export class CreateSale {
 
     const dia = dataHoje();
     const formaPagamento = entrada.forma_pagamento ?? entrada.formaPagamento;
+    const pagamentos = entrada.pagamentos;
 
     const salva = await this.vendaRepository.comTransacao(async (conexao) => {
       const numero = await this.sequenciaRepository.proximoNumero('venda', conexao);
@@ -77,26 +78,29 @@ export class CreateSale {
         turnoId: turno.id,
         usuarioId: executor?.id,
         formaPagamento,
+        pagamentos,
         itens: itensMontados,
       });
 
       const persistida = await this.vendaRepository.salvar(venda, conexao);
 
-      await this.fluxoCaixaRepository.registrar(
-        {
-          usuarioId: executor?.id,
-          turnoId: turno.id,
-          tipo: 'entrada',
-          descricao: `Venda #${numero}`,
-          categoria: 'vendas',
-          forma: persistida.formaPagamento,
-          valor: persistida.total,
-          data: dia,
-          geradoAuto: true,
-          vendaId: persistida.id,
-        },
-        conexao,
-      );
+      for (const pagamento of persistida.pagamentos) {
+        await this.fluxoCaixaRepository.registrar(
+          {
+            usuarioId: executor?.id,
+            turnoId: turno.id,
+            tipo: 'entrada',
+            descricao: `Venda #${numero}`,
+            categoria: 'vendas',
+            forma: pagamento.formaPagamento,
+            valor: pagamento.valor,
+            data: dia,
+            geradoAuto: true,
+            vendaId: persistida.id,
+          },
+          conexao,
+        );
+      }
 
       return persistida;
     });

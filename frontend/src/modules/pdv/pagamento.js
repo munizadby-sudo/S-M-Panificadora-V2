@@ -13,6 +13,9 @@ export const FORMAS_PAGAMENTO = Object.freeze([
 ]);
 
 export function rotuloFormaPagamento(forma) {
+  if (forma === 'misto') {
+    return 'Misto';
+  }
   return FORMAS_PAGAMENTO.find((item) => item.id === forma)?.label || String(forma || '');
 }
 
@@ -66,12 +69,60 @@ export function atualizarTrocoNoDom(
   trocoEl.textContent = `Troco: ${formatarMoeda(troco)}`;
 }
 
-export function podeConfirmarVenda({ itens, formaPagamento, recebido = '' } = {}) {
+/** Segunda forma de um pagamento dividido (Passo 10) — total menos o valor já atribuído à 1ª forma. */
+export function calcularValorRestante(total, valor1) {
+  return dinheiroPdv(Number(total) - Number(valor1));
+}
+
+/** Atualiza só o texto do restante e a dica de valor inválido, sem re-renderizar o painel (mantém o foco do input). */
+export function atualizarRestanteNoDom(container, { total, formaPagamento2 = '', valorPagamento1 = '' } = {}) {
+  if (!container) {
+    return;
+  }
+  const valor1 = Number(valorPagamento1);
+  const valor1Ok = valorPagamento1 !== '' && Number.isFinite(valor1) && valor1 > 0 && valor1 < Number(total);
+  const restante = valor1Ok ? calcularValorRestante(total, valor1) : null;
+
+  const dicaEl = container.querySelector('.pdv-divisao-pagamento .pdv-recebido-dica');
+  if (dicaEl) {
+    dicaEl.hidden = valorPagamento1 === '' || valor1Ok;
+  }
+
+  const restanteEl = container.querySelector('#pdv-restante-forma2');
+  if (restanteEl) {
+    const mostrar = restante != null && formaPagamento2;
+    restanteEl.hidden = !mostrar;
+    restanteEl.textContent = mostrar
+      ? `Restante em ${rotuloFormaPagamento(formaPagamento2)}: ${formatarMoeda(restante)}`
+      : '';
+  }
+}
+
+export function podeConfirmarVenda({
+  itens,
+  formaPagamento,
+  recebido = '',
+  dividir = false,
+  formaPagamento2 = '',
+  valorPagamento1 = '',
+} = {}) {
   if (!Array.isArray(itens) || itens.length === 0 || !formaPagamento) {
     return false;
   }
+  const total = totalLocal(itens);
+
+  if (dividir) {
+    if (!formaPagamento2 || formaPagamento2 === formaPagamento) {
+      return false;
+    }
+    const valor1 = Number(valorPagamento1);
+    if (!Number.isFinite(valor1) || valor1 <= 0 || valor1 >= total) {
+      return false;
+    }
+    return true;
+  }
+
   if (formaPagamento === 'dinheiro') {
-    const total = totalLocal(itens);
     const valor = Number(recebido);
     if (!Number.isFinite(valor) || valor < total) {
       return false;
@@ -85,6 +136,9 @@ export function htmlSeletorFormaPagamento({
   recebido = '',
   itens = [],
   erro = '',
+  dividir = false,
+  formaPagamento2 = '',
+  valorPagamento1 = '',
 } = {}) {
   const total = totalLocal(itens);
   const botoes = FORMAS_PAGAMENTO.map((forma, indice) => {
@@ -97,7 +151,7 @@ export function htmlSeletorFormaPagamento({
     </button>`;
   }).join('');
 
-  const dinheiro = formaPagamento === 'dinheiro';
+  const dinheiro = !dividir && formaPagamento === 'dinheiro';
   const totalNum = total;
   const valorRecebido = Number(recebido);
   const recebidoOk = recebido !== '' && Number.isFinite(valorRecebido) && valorRecebido >= totalNum;
@@ -107,7 +161,16 @@ export function htmlSeletorFormaPagamento({
     : recebido === '' || !Number.isFinite(valorRecebido)
       ? 'Informe o valor recebido'
       : 'Valor insuficiente';
-  const confirmarDesabilitado = podeConfirmarVenda({ itens, formaPagamento, recebido }) ? '' : ' disabled';
+  const confirmarDesabilitado = podeConfirmarVenda({
+    itens,
+    formaPagamento,
+    recebido,
+    dividir,
+    formaPagamento2,
+    valorPagamento1,
+  })
+    ? ''
+    : ' disabled';
 
   return `<section class="pdv-pagamento" id="pdv-pagamento" tabindex="-1">
     <div class="pdv-pagamento-total">
@@ -121,10 +184,51 @@ export function htmlSeletorFormaPagamento({
       <p id="pdv-troco"${troco == null ? ' hidden' : ''}>${troco == null ? '' : `Troco: ${formatarMoeda(troco)}`}</p>
       <p id="pdv-recebido-dica" class="pdv-recebido-dica"${dicaRecebido ? '' : ' hidden'}>${escapar(dicaRecebido)}</p>
     </div>
+    <label class="pdv-dividir-toggle">
+      <input type="checkbox" id="pdv-dividir-pagamento"${dividir ? ' checked' : ''}>
+      Dividir em duas formas
+    </label>
+    ${htmlDivisaoPagamento({ dividir, formaPagamento, formaPagamento2, valorPagamento1, total: totalNum })}
     <p id="pdv-erro-venda" class="pdv-erro" role="alert">${escapar(erro)}</p>
     <div class="pdv-pagamento-acoes">
       <button type="button" id="btn-cancelar-pagamento">Cancelar <span class="atalho">Esc</span></button>
       <button type="button" id="btn-confirmar-venda"${confirmarDesabilitado}>Confirmar venda <span class="atalho">Enter</span></button>
     </div>
   </section>`;
+}
+
+function htmlDivisaoPagamento({ dividir, formaPagamento, formaPagamento2, valorPagamento1, total }) {
+  if (!dividir) {
+    return '';
+  }
+  if (!formaPagamento) {
+    return '<p class="pdv-recebido-dica">Escolha a 1ª forma acima.</p>';
+  }
+
+  const valor1 = Number(valorPagamento1);
+  const valor1Ok = valorPagamento1 !== '' && Number.isFinite(valor1) && valor1 > 0 && valor1 < total;
+  const restante = valor1Ok ? calcularValorRestante(total, valor1) : null;
+
+  const botoesForma2 = FORMAS_PAGAMENTO.filter((forma) => forma.id !== formaPagamento)
+    .map((forma) => {
+      const ativo = forma.id === formaPagamento2;
+      const classe = ativo ? 'pdv-forma ativo' : 'pdv-forma';
+      return `<button type="button" data-forma2="${forma.id}" class="${classe}" aria-pressed="${ativo}">
+        <span class="pdv-forma-icone" aria-hidden="true">${forma.icone}</span>
+        ${forma.label}
+      </button>`;
+    })
+    .join('');
+
+  return `<div class="pdv-recebido-painel pdv-divisao-pagamento">
+    <label for="pdv-valor-forma1">Valor em ${escapar(rotuloFormaPagamento(formaPagamento))} (R$)</label>
+    <input type="number" min="0" step="0.01" id="pdv-valor-forma1" value="${escapar(valorPagamento1)}" inputmode="decimal" placeholder="0,00">
+    <p class="pdv-recebido-dica"${valorPagamento1 === '' || valor1Ok ? ' hidden' : ''}>Valor inválido</p>
+    <div class="pdv-formas pdv-formas-secundarias" role="group" aria-label="2ª forma de pagamento">${botoesForma2}</div>
+    <p id="pdv-restante-forma2"${restante == null || !formaPagamento2 ? ' hidden' : ''}>${
+      restante == null || !formaPagamento2
+        ? ''
+        : `Restante em ${escapar(rotuloFormaPagamento(formaPagamento2))}: ${formatarMoeda(restante)}`
+    }</p>
+  </div>`;
 }

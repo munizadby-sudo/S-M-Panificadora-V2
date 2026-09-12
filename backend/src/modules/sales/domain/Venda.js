@@ -3,12 +3,15 @@ import { dinheiro } from '../../products/domain/Produto.js';
 import {
   CarrinhoVazioError,
   FormaPagamentoInvalidaError,
+  PagamentosInvalidosError,
   QuantidadeItemInvalidaError,
   TotalExternoError,
   TurnoObrigatorioError,
 } from './erros.js';
 
 export const FORMAS_PAGAMENTO = Object.freeze(['dinheiro', 'pix', 'cartao', 'credito']);
+/** Valor calculado de `formaPagamento` quando a venda tem duas linhas em `pagamentos` (item 8, docs/depois-do-teste.md). */
+export const FORMA_PAGAMENTO_MISTA = 'misto';
 
 export function quantidadeVenda(valor) {
   return Math.round((Number(valor) || 0) * 1000) / 1000;
@@ -44,6 +47,7 @@ export class Venda {
     turnoId,
     usuarioId,
     formaPagamento,
+    pagamentos,
     itens,
     total,
     status,
@@ -57,9 +61,13 @@ export class Venda {
     venda.numero = Number(numero);
     venda.turnoId = Number(turnoId);
     venda.usuarioId = Number(usuarioId);
-    venda.formaPagamento = formaPagamento;
-    venda.itens = (itens || []).map((item) => VendaItem.reconstituir(item));
     venda.total = dinheiro(total);
+    venda.pagamentos =
+      Array.isArray(pagamentos) && pagamentos.length > 0
+        ? pagamentos.map((p) => ({ formaPagamento: p.formaPagamento, valor: dinheiro(p.valor) }))
+        : [{ formaPagamento, valor: venda.total }];
+    venda.formaPagamento = derivarFormaPagamento(venda.pagamentos);
+    venda.itens = (itens || []).map((item) => VendaItem.reconstituir(item));
     venda.status = status;
     venda.motivoCancelamento = motivoCancelamento;
     venda.canceladoPor = canceladoPor;
@@ -74,6 +82,7 @@ export class Venda {
     turnoId,
     usuarioId,
     formaPagamento,
+    pagamentos,
     itens,
     status = 'confirmada',
     motivoCancelamento = null,
@@ -96,9 +105,10 @@ export class Venda {
     if (!Number.isInteger(this.usuarioId) || this.usuarioId <= 0) {
       throw new TurnoObrigatorioError('Usuário executor é obrigatório.');
     }
-    this.formaPagamento = validarFormaPagamento(formaPagamento);
     this.itens = montarItens(itens);
     this.total = calcularTotal(this.itens);
+    this.pagamentos = montarPagamentos({ formaPagamento, pagamentos, total: this.total });
+    this.formaPagamento = derivarFormaPagamento(this.pagamentos);
     this.status = status === 'cancelada' ? 'cancelada' : 'confirmada';
     this.motivoCancelamento = motivoCancelamento;
     this.canceladoPor = canceladoPor;
@@ -140,6 +150,7 @@ export class Venda {
       numero: this.numero,
       total: this.total,
       forma_pagamento: this.formaPagamento,
+      pagamentos: this.pagamentos.map((p) => ({ forma_pagamento: p.formaPagamento, valor: p.valor })),
       status: this.status,
     };
   }
@@ -151,6 +162,7 @@ export class Venda {
       turno_id: this.turnoId,
       total: this.total,
       forma_pagamento: this.formaPagamento,
+      pagamentos: this.pagamentos.map((p) => ({ forma_pagamento: p.formaPagamento, valor: p.valor })),
       status: this.status,
       criado_em: this.criadoEm,
     };
@@ -195,6 +207,40 @@ function validarFormaPagamento(forma) {
     throw new FormaPagamentoInvalidaError();
   }
   return valor;
+}
+
+/** No máximo duas linhas (item 8, docs/depois-do-teste.md) — soma sempre igual ao total dos itens. */
+function montarPagamentos({ formaPagamento, pagamentos, total }) {
+  if (!Array.isArray(pagamentos) || pagamentos.length === 0) {
+    return [{ formaPagamento: validarFormaPagamento(formaPagamento), valor: total }];
+  }
+
+  if (pagamentos.length > 2) {
+    throw new PagamentosInvalidosError('No máximo duas formas de pagamento por venda.');
+  }
+
+  const linhas = pagamentos.map((p) => {
+    const valor = dinheiro(p.valor ?? p.Valor);
+    if (!(valor > 0)) {
+      throw new PagamentosInvalidosError('O valor de cada forma de pagamento deve ser maior que zero.');
+    }
+    return { formaPagamento: validarFormaPagamento(p.formaPagamento ?? p.forma_pagamento), valor };
+  });
+
+  if (linhas.length === 2 && linhas[0].formaPagamento === linhas[1].formaPagamento) {
+    throw new PagamentosInvalidosError('As duas formas de pagamento devem ser diferentes.');
+  }
+
+  const soma = dinheiro(linhas.reduce((acc, linha) => acc + linha.valor, 0));
+  if (soma !== total) {
+    throw new PagamentosInvalidosError('A soma dos pagamentos deve ser igual ao total da venda.');
+  }
+
+  return linhas;
+}
+
+function derivarFormaPagamento(pagamentos) {
+  return pagamentos.length === 1 ? pagamentos[0].formaPagamento : FORMA_PAGAMENTO_MISTA;
 }
 
 function formatarData(valor) {

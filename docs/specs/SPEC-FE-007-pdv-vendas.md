@@ -1,7 +1,7 @@
 # SPEC-FE-007 — PDV / Vendas (Frontend)
 
-- **Status:** Implementada (Passos 1–9 + refinos de balcão 2026-08-26)
-- **Data:** 2026-08-17 (atualizada 2026-08-30 — estorno do turno aberto, alternativa C)
+- **Status:** Implementada (Passos 1–9 + refinos de balcão 2026-08-26 + pagamento dividido 2026-09-12)
+- **Data:** 2026-08-17 (atualizada 2026-09-12 — pagamento dividido em duas formas, item 9 de `docs/depois-do-teste.md`)
 - **Módulo:** `frontend/src/modules/pdv`
 - **Depende de:** SPEC-FE-001 (Fundação), SPEC-FE-003 (`estado.js` do Caixa por Turno — consumido, nunca reimplementado), SPEC-FE-004/005 (produto/estoque, referência de padrão), SPEC-FE-015 §3.4–3.5 (legenda de atalhos e navegação na grade), SPEC-BE-007 (contrato de API), SPEC-BE-003 (identidade pública da loja no cupom)
 - **PRD de origem:** `PRD-003-pdv-vendas.md`
@@ -42,7 +42,7 @@ export default {
 | `grade.js` | Grade, filtros, `htmlLegendaAtalhos` (lista sempre visível) |
 | `navegacao-grade.js` | Roving tabindex e setas na grade |
 | `carrinho.js` | Estado local do pedido (add/remove/limpar/total de exibição) |
-| `pagamento.js` | Formas, troco, `podeConfirmarVenda`, atalhos `1`/`2`/`3`/`4`, HTML do modal |
+| `pagamento.js` | Formas, troco, `podeConfirmarVenda`, atalhos `1`/`2`/`3`/`4`, HTML do modal, divisão em duas formas (§11.4) |
 | `modal-pagamento.js` | Overlay de checkout; `Esc` fecha sem limpar o carrinho |
 | `confirmacao.js` | Faixa “Venda confirmada” com número/total do backend |
 | `cupom.js` | HTML do cupom não fiscal + abertura da janela de impressão |
@@ -307,7 +307,21 @@ Layout alinhado ao checkout do V1, com as **quatro** formas da V2:
 
 Testes: `passo3.test.js` (wrap `hidden` fora de dinheiro), `passo5-7.test.js` (Débito/Crédito e teclas 3/4).
 
-### 11.4 Botão Finalizar Venda
+### 11.4 Pagamento dividido em duas formas (item 9, 2026-09-12)
+
+Checkbox **Dividir em duas formas** abaixo do painel de Dinheiro/recebido, dentro do modal de pagamento (`pagamento.js` → `htmlSeletorFormaPagamento`, `htmlDivisaoPagamento`). Só mouse/Tab — sem tecla dedicada, `1`/`2`/`3`/`4` continuam escolhendo a 1ª forma.
+
+- Marcado: some o painel de recebido/troco (não existe troco em venda dividida), aparece **Valor em `<1ª forma>` (R$)** e uma segunda fileira com as **outras três** formas (nunca a já escolhida como 1ª).
+- Escolher a 2ª forma mostra **Restante em `<2ª forma>`: R$ X** — o valor da 2ª forma é sempre `total − valor da 1ª`, nunca digitado. Isso garante que a soma bate com o total sem o operador fazer conta.
+- `Confirmar venda` só habilita com: 1ª forma escolhida, 2ª forma escolhida e diferente da 1ª, valor da 1ª forma maior que zero e menor que o total.
+- Digitar o valor da 1ª forma atualiza o restante e o estado do botão **sem re-renderizar o painel** (`atualizarRestanteNoDom`) — perder foco no meio da digitação seria o mesmo bug do ISSUE-008.
+- Envia `POST /api/vendas` com `pagamentos: [{forma_pagamento, valor}, {forma_pagamento, valor}]` em vez de `forma_pagamento` (SPEC-BE-007 §5.1). Backend devolve `forma_pagamento: "misto"` — `confirmacao.js` e `lista-turno.js`/`modal-estorno-venda.js` mostram o rótulo **Misto** (`rotuloFormaPagamento`).
+- Cupom não fiscal (`cupom.js`) imprime uma linha por forma com o valor de cada uma, no lugar da linha única "Forma de pagamento".
+- Desmarcar o checkbox volta exatamente ao fluxo de sempre (Dinheiro com recebido/troco, Pix/Débito/Crédito sem recebido) — nenhum comportamento anterior muda.
+
+Testes: `frontend/tests/pdv/pagamento-dividido.test.js`; `backend/tests/sales/vendas.http.test.js` (fluxo_caixa por forma, soma errada → 400, estorno separado); `backend/tests/sales/dominio.test.js` (validação da entidade).
+
+### 11.5 Botão Finalizar Venda
 
 `#btn-finalizar-venda` na lateral do carrinho:
 

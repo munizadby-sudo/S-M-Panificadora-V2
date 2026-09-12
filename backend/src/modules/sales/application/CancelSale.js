@@ -57,21 +57,23 @@ export class CancelSale {
           );
         }
 
-        await this.fluxoCaixaRepository.registrar(
-          {
-            usuarioId: executor?.id,
-            turnoId: atual.turnoId,
-            tipo: 'saida',
-            descricao: `Estorno venda #${atual.numero}`,
-            categoria: 'estorno',
-            forma: atual.formaPagamento,
-            valor: atual.total,
-            data: dataOriginal,
-            geradoAuto: true,
-            vendaId: atual.id,
-          },
-          conexao,
-        );
+        for (const pagamento of atual.pagamentos) {
+          await this.fluxoCaixaRepository.registrar(
+            {
+              usuarioId: executor?.id,
+              turnoId: atual.turnoId,
+              tipo: 'saida',
+              descricao: `Estorno venda #${atual.numero}`,
+              categoria: 'estorno',
+              forma: pagamento.formaPagamento,
+              valor: pagamento.valor,
+              data: dataOriginal,
+              geradoAuto: true,
+              vendaId: atual.id,
+            },
+            conexao,
+          );
+        }
 
         atual.cancelar(motivoNormalizado, executor?.id);
         await this.vendaRepository.atualizar(atual, conexao);

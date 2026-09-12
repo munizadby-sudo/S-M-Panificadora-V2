@@ -74,10 +74,13 @@ describe('domínio — validarPeriodo', () => {
   });
 });
 
-function fakeVendaRepo(itens) {
+function fakeVendaRepo(itens, pagamentos) {
   return {
     async listarItensConfirmadosNoPeriodo() {
       return itens;
+    },
+    async listarPagamentosConfirmadosNoPeriodo() {
+      return pagamentos || itens.map((item) => ({ formaPagamento: item.formaPagamento, valor: item.subtotal }));
     },
   };
 }
@@ -117,6 +120,42 @@ describe('casos de uso — relatórios', () => {
     assert.equal(resultado.ticket_medio, 7.5);
     assert.equal(resultado.por_forma_pagamento.length, 2);
     assert.equal(resultado.por_produto[0].receita, 15);
+  });
+
+  test('RelatorioVendas: venda dividida soma cada forma separado, não "misto" (item 9)', async () => {
+    const resultado = await new RelatorioVendas({
+      vendaRepository: fakeVendaRepo(
+        [
+          {
+            vendaId: 1,
+            produtoId: 1,
+            produtoNome: 'Pão',
+            quantidade: 1,
+            precoUnitario: 10,
+            subtotal: 10,
+            formaPagamento: 'misto',
+            dataOperacao: '2026-08-15',
+            horaOperacao: 8,
+          },
+        ],
+        [
+          { formaPagamento: 'dinheiro', valor: 6 },
+          { formaPagamento: 'cartao', valor: 4 },
+        ],
+      ),
+    }).executar({ data_inicio: '2026-08-15', data_fim: '2026-08-15' });
+
+    assert.equal(resultado.total_geral, 10);
+    assert.equal(resultado.por_forma_pagamento.length, 2);
+    assert.equal(
+      resultado.por_forma_pagamento.find((f) => f.forma_pagamento === 'dinheiro').total,
+      6,
+    );
+    assert.equal(
+      resultado.por_forma_pagamento.find((f) => f.forma_pagamento === 'cartao').total,
+      4,
+    );
+    assert.ok(!resultado.por_forma_pagamento.some((f) => f.forma_pagamento === 'misto'));
   });
 
   test('RelatorioVendas: período vazio zera KPIs sem NaN', async () => {

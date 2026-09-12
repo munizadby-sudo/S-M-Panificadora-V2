@@ -19,6 +19,7 @@ export function htmlCupomNaoFiscal({
   venda = {},
   itens = [],
   recebido = '',
+  pagamentos = null,
   nomeLoja = NOME_LOJA_PADRAO,
   slogan = '',
   operador = '',
@@ -29,7 +30,8 @@ export function htmlCupomNaoFiscal({
   const forma = venda.forma_pagamento || '';
   const numero = String(venda.numero ?? '').padStart(4, '0');
   const totalItens = lista.reduce((acc, item) => acc + (Number(item.quantidade) || 0), 0);
-  const dinheiro = forma === 'dinheiro';
+  const dividido = Array.isArray(pagamentos) && pagamentos.length > 1;
+  const dinheiro = !dividido && forma === 'dinheiro';
   const valorRecebido = dinheiro && recebido !== '' ? Number(recebido) : total;
   const troco = dinheiro && recebido !== '' ? calcularTroco(recebido, total) : 0;
 
@@ -48,6 +50,15 @@ export function htmlCupomNaoFiscal({
     ? `<tr><td>Recebido</td><td class="right">${formatarMoeda(valorRecebido)}</td></tr>
           <tr><td>Troco</td><td class="right">${formatarMoeda(troco)}</td></tr>`
     : '';
+
+  const linhaFormaPagamento = dividido
+    ? pagamentos
+        .map(
+          (p) =>
+            `<tr><td>${escapar(rotuloFormaPagamento(p.forma_pagamento))}</td><td class="right">${formatarMoeda(p.valor)}</td></tr>`,
+        )
+        .join('')
+    : `<tr><td>Forma de pagamento</td><td class="right">${escapar(rotuloFormaPagamento(forma))}</td></tr>`;
 
   return `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -102,7 +113,7 @@ export function htmlCupomNaoFiscal({
     <div class="line"></div>
     <table>
       <tr><td class="bold">Total do pedido</td><td class="right bold">${formatarMoeda(total)}</td></tr>
-      <tr><td>Forma de pagamento</td><td class="right">${escapar(rotuloFormaPagamento(forma))}</td></tr>
+      ${linhaFormaPagamento}
       ${blocoDinheiro}
       <tr><td>Total de itens</td><td class="right">${escapar(totalItens)}</td></tr>
     </table>
@@ -125,7 +136,10 @@ export async function imprimirCupomHtml(html, imprimir = imprimirHtmlEmIframe) {
   await imprimir(html);
 }
 
-export async function abrirCupomNaoFiscal({ venda, itens, recebido } = {}, imprimir = imprimirCupomHtml) {
+export async function abrirCupomNaoFiscal(
+  { venda, itens, recebido, pagamentos } = {},
+  imprimir = imprimirCupomHtml,
+) {
   let nomeLoja = NOME_LOJA_PADRAO;
   let slogan = '';
   try {
@@ -142,6 +156,7 @@ export async function abrirCupomNaoFiscal({ venda, itens, recebido } = {}, impri
     venda,
     itens,
     recebido,
+    pagamentos,
     nomeLoja,
     slogan,
     operador: getUsuario()?.nome || '',

@@ -417,4 +417,130 @@ describe('HTTP /api/vendas', () => {
       assert.notEqual(ajuste.turnoId, turnoAntigo.id);
     });
   });
+
+  test('POST com pagamentos dividido em duas formas lança um fluxo_caixa por forma (item 9)', async () => {
+    const ctx = montarAppMemoria();
+    const dia = dataHoje();
+
+    await comServidor(ctx.app, async (porta) => {
+      const { token } = await tokenAdmin(porta, ctx);
+      const origem = `http://127.0.0.1:${porta}`;
+      const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+      const { produto } = await criarProduto(origem, headers, 'Pão Dividido', 10);
+
+      await ctx.estoqueRepository.salvar(
+        new EstoqueDiario({ produtoId: produto.id, data: dia, inicial: 10 }),
+      );
+      const turno = await abrirCaixa(origem, headers);
+
+      const resposta = await fetch(`${origem}/api/vendas`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          pagamentos: [
+            { forma_pagamento: 'dinheiro', valor: 6 },
+            { forma_pagamento: 'cartao', valor: 4 },
+          ],
+          itens: [{ produto_id: produto.id, quantidade: 1 }],
+        }),
+      });
+      const corpo = await json(resposta);
+
+      assert.equal(resposta.status, 200);
+      assert.equal(corpo.total, 10);
+      assert.equal(corpo.forma_pagamento, 'misto');
+      assert.deepEqual(corpo.pagamentos, [
+        { forma_pagamento: 'dinheiro', valor: 6 },
+        { forma_pagamento: 'cartao', valor: 4 },
+      ]);
+
+      const lancamentos = ctx.fluxoCaixaRepository.lancamentos.filter(
+        (item) => item.categoria === 'vendas' && item.vendaId === corpo.id,
+      );
+      assert.equal(lancamentos.length, 2);
+      assert.equal(lancamentos.find((l) => l.forma === 'dinheiro').valor, 6);
+      assert.equal(lancamentos.find((l) => l.forma === 'cartao').valor, 4);
+      assert.ok(lancamentos.every((l) => l.turnoId === turno.id));
+    });
+  });
+
+  test('POST com soma dos pagamentos diferente do total retorna 400 e não escreve nada', async () => {
+    const ctx = montarAppMemoria();
+    const dia = dataHoje();
+
+    await comServidor(ctx.app, async (porta) => {
+      const { token } = await tokenAdmin(porta, ctx);
+      const origem = `http://127.0.0.1:${porta}`;
+      const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+      const { produto } = await criarProduto(origem, headers, 'Pão Soma Errada', 10);
+
+      await ctx.estoqueRepository.salvar(
+        new EstoqueDiario({ produtoId: produto.id, data: dia, inicial: 10 }),
+      );
+      await abrirCaixa(origem, headers);
+
+      const resposta = await fetch(`${origem}/api/vendas`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          pagamentos: [
+            { forma_pagamento: 'dinheiro', valor: 6 },
+            { forma_pagamento: 'cartao', valor: 3 },
+          ],
+          itens: [{ produto_id: produto.id, quantidade: 1 }],
+        }),
+      });
+      const corpo = await json(resposta);
+
+      assert.equal(resposta.status, 400);
+      assert.equal(corpo.codigo, 'PAGAMENTOS_INVALIDOS');
+      assert.equal(ctx.vendaRepository.vendas.length, 0);
+      assert.equal(ctx.fluxoCaixaRepository.lancamentos.length, 0);
+    });
+  });
+
+  test('DELETE de venda dividida estorna as duas formas separadamente', async () => {
+    const ctx = montarAppMemoria();
+    const dia = dataHoje();
+
+    await comServidor(ctx.app, async (porta) => {
+      const { token } = await tokenAdmin(porta, ctx);
+      const origem = `http://127.0.0.1:${porta}`;
+      const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+      const { produto } = await criarProduto(origem, headers, 'Pão Dividido Estorno', 10);
+
+      await ctx.estoqueRepository.salvar(
+        new EstoqueDiario({ produtoId: produto.id, data: dia, inicial: 10 }),
+      );
+      await abrirCaixa(origem, headers);
+
+      const venda = await json(
+        await fetch(`${origem}/api/vendas`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            pagamentos: [
+              { forma_pagamento: 'dinheiro', valor: 7 },
+              { forma_pagamento: 'pix', valor: 3 },
+            ],
+            itens: [{ produto_id: produto.id, quantidade: 1 }],
+          }),
+        }),
+      );
+
+      const cancelamento = await fetch(`${origem}/api/vendas/${venda.id}`, {
+        method: 'DELETE',
+        headers,
+        body: JSON.stringify({ motivo: 'Cliente desistiu' }),
+      });
+      assert.equal(cancelamento.status, 200);
+
+      const estornos = ctx.fluxoCaixaRepository.lancamentos.filter(
+        (item) => item.categoria === 'estorno' && item.vendaId === venda.id,
+      );
+      assert.equal(estornos.length, 2);
+      assert.equal(estornos.find((l) => l.forma === 'dinheiro').valor, 7);
+      assert.equal(estornos.find((l) => l.forma === 'pix').valor, 3);
+    });
+  });
 });

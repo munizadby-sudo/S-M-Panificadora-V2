@@ -155,6 +155,7 @@ describe('concorrência vendas — numero sequencial único', { skip: !mysqlPron
   after(async () => {
     if (pool) {
       await pool.query('DELETE FROM correcoes_pendentes');
+      await pool.query('DELETE FROM venda_pagamentos');
       await pool.query('DELETE FROM venda_itens');
       await pool.query('DELETE FROM vendas');
       await pool.query('DELETE FROM fluxo_caixa');

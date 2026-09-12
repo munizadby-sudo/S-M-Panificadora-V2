@@ -15,10 +15,11 @@ Congelado de propósito. Não implementar da lista abaixo enquanto o piloto esti
 | 4 | E2E além do Chromium da demo | ISSUE-014 — só se doer |
 | ~~5~~ | ~~**CI/CD da V2**~~ — feito 2026-09-12: `.github/workflows/ci.yml` roda `npm test` (backend + frontend) e `cd demo && npm run testar` a cada push/PR na main. Não publica nada sozinho (o caixa continua atalho + PM2) | ADR-006 §5.2 |
 | 6 | Balança: leitor na etiqueta → item na venda. Digitação se falhar. Estoque em kg ou unidade; tipo do produto dá para trocar. **Balança não fica presa na Filizola** (Prix ou outra) | Filizola agora; Prix/outra depois — ver abaixo |
-| 7 | Venda: quantidade manual no item (hoje o PDV incrementa 1 a 1) | SPEC-FE-007 / PDV |
-| 8 | Pagamento com **duas formas** na mesma venda (dinheiro + cartão, dinheiro + PIX) | SPEC-BE-007 / PDV |
+| 7 | Cielo **L300 V4** na venda: PIX e cartão pela máquina, valor sai do PDV. Só depois de falar com a Cielo | PRD-001 §4.16; máquina da loja — ver abaixo |
+| 8 | Venda: quantidade manual no item (hoje o PDV incrementa 1 a 1) | SPEC-FE-007 / PDV |
+| ~~9~~ | ~~Pagamento com **duas formas** na mesma venda~~ — feito 2026-09-12 | SPEC-BE-007 / PDV; ISSUE-017 |
 
-**Fora desta lista (não entra no “vamos pra cima” do piloto):** Electron, Edge, Cypress, TEF, fiscal, pasta `e2e/` com três motores.
+**Fora desta lista (não entra no “vamos pra cima” do piloto):** Electron, Edge, Cypress, fiscal, pasta `e2e/` com três motores. TEF genérico de outra bandeira não entra — só a L300, no item 7, depois da balança.
 
 ### O que é o item 5 (CI/CD), em uma frase
 
@@ -59,7 +60,17 @@ Regra para quando for fazer:
 
 Antes de codar: uma etiqueta real da balança **atual** na mesa (se o código traz peso ou preço). O leitor em geral entra no PC como teclado.
 
-### Itens 7 e 8 (PDV), em uma frase cada
+### O que é o item 7 (Cielo L300), decisão 2026-09-12
 
-- **7:** no balcão, digitar a quantidade do item em vez de clicar várias vezes.
-- **8:** uma venda, dois meios — cliente paga parte em dinheiro e o resto em cartão ou PIX.
+**Antes de programar:** o dono fala com a Cielo (homologação, modo integrado, credencial). Sem isso não tem o que plugar.
+
+Máquina da loja: **Cielo L300 V4 / Positivo / POS Terminal** (Cielo Smart). Caminho que cabe neste PDV (Windows + Chrome): **integração remota** — o caixa confirma no PC, manda o valor, a L300 cobra PIX ou cartão, o resultado volta e a venda grava.
+
+Se a máquina falhar ou a Cielo não responder: **não trava o PDV**. Operador lança PIX/cartão na mão, como hoje.
+
+Não amarrar a venda a uma lib da Cielo no meio do caixa. Contrato de pagamento atrás de uma porta (PRD-001 §4.16), para um dia trocar de máquina sem reescrever a venda.
+
+### Itens 8 e 9 (PDV), em uma frase cada
+
+- **8:** no balcão, digitar a quantidade do item em vez de clicar várias vezes.
+- **9:** uma venda, dois meios — cliente paga parte em dinheiro e o resto em cartão ou PIX.

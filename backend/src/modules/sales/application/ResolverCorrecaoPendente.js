@@ -50,21 +50,23 @@ export class ResolverCorrecaoPendente {
         );
       }
 
-      await this.fluxoCaixaRepository.registrar(
-        {
-          usuarioId: executor?.id,
-          turnoId: turnoAtual.id,
-          tipo: 'saida',
-          descricao: `Correção venda #${venda.numero}`,
-          categoria: 'correcao_venda_anterior',
-          forma: venda.formaPagamento,
-          valor: venda.total,
-          data: turnoAtual.data,
-          geradoAuto: true,
-          vendaId: venda.id,
-        },
-        conexao,
-      );
+      for (const pagamento of venda.pagamentos) {
+        await this.fluxoCaixaRepository.registrar(
+          {
+            usuarioId: executor?.id,
+            turnoId: turnoAtual.id,
+            tipo: 'saida',
+            descricao: `Correção venda #${venda.numero}`,
+            categoria: 'correcao_venda_anterior',
+            forma: pagamento.formaPagamento,
+            valor: pagamento.valor,
+            data: turnoAtual.data,
+            geradoAuto: true,
+            vendaId: venda.id,
+          },
+          conexao,
+        );
+      }
 
       venda.cancelar(correcao.motivo, executor?.id);
       await this.vendaRepository.atualizar(venda, conexao);
