@@ -113,4 +113,4 @@ Suíte completa do frontend (`npm test`): **380/380** passando. Suíte `cd demo 
 
 O fluxo completo de scan-ao-vivo (abrir turno → ler etiqueta → vender → conferir cupom) fica pendente de validação manual na loja, no próximo turno disponível — não é um teste automatizado que substitua isso, é o mesmo cuidado que já foi tomado no ISSUE-017 e ISSUE-018 (venda de teste + estorno), só que não coube nesta sessão por causa do horário.
 
-A falha de `cd demo && npm run testar` ("SPEC-FE-003 — fechar o caixa: ... próximo clique no banner volta à abertura") que aparece de vez em quando **não tem relação com este item** — é a mesma investigação já registrada como tarefa separada (regra de reabertura de turno no ambiente de teste da demo, confirmada correta na aplicação real).
+A falha de `cd demo && npm run testar` ("SPEC-FE-003 — fechar o caixa: ... próximo clique no banner volta à abertura") que aparece de vez em quando **não tem relação com este item** — é o ISSUE-021 (regra de reabertura de turno no ambiente de teste da demo, confirmada correta na aplicação real).
