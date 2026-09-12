@@ -78,7 +78,7 @@ jsdom não renderiza CSS, não implementa `window.open` de verdade, foco e tecla
 | Escopo da suíte | Poucos fluxos críticos, no `demo/` (SPEC-FE-020) | Comercializar para outro SO/navegador, ou classe de bug que o Chromium da demo não pega |
 | Três motores | Só Chromium | ISSUE-014 |
 | Pasta `e2e/` + `@playwright/test` | Não | ISSUE-014 |
-| CI a cada PR | Não | Depois do piloto (2026-09-13) — item 5 de `docs/depois-do-teste.md` |
+| CI a cada PR | Sim, desde 2026-09-12 (`.github/workflows/ci.yml`) | item 5 de `docs/depois-do-teste.md` |
 | Trocar `frontend/tests/` por E2E | Não | Só se o dublê de `document` virar custo maior que a suíte lenta |
 
 ---

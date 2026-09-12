@@ -1,0 +1,103 @@
+# CI da V2 — item 5 de docs/depois-do-teste.md, ADR-006 §5.2.
+#
+# Só roda testes a cada push/PR na main. Não publica nem faz deploy
+# em lugar nenhum — o PC da loja continua atalho + PM2, atualizado
+# na mão (deploy/COMO-LIGAR.md).
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+          MYSQL_DATABASE: sm_panificadora_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Instalar dependências
+        working-directory: backend
+        run: npm ci
+
+      - name: Criar .env de teste (efêmero, só nesta execução)
+        working-directory: backend
+        run: |
+          cat <<'EOF' > .env
+          PORTA=3001
+          JWT_SECRET=ci-apenas-teste
+          JWT_EXPIRES=12h
+          MYSQL_HOST=127.0.0.1
+          MYSQL_PORT=3306
+          MYSQL_USER=root
+          MYSQL_PASSWORD=
+          MYSQL_DATABASE=sm_panificadora
+          MYSQL_DATABASE_TEST=sm_panificadora_test
+          ADMIN_SEED_USERNAME=admin
+          ADMIN_SEED_PASSWORD=admin123
+          CORS_ORIGIN=*
+          EOF
+
+      - name: npm test (backend)
+        working-directory: backend
+        run: npm test
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: npm test (frontend)
+        working-directory: frontend
+        run: npm test
+
+  demo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: demo/package-lock.json
+
+      - name: Instalar dependências
+        working-directory: demo
+        run: npm ci
+
+      - name: Instalar Chromium do Playwright
+        working-directory: demo
+        env:
+          PLAYWRIGHT_BROWSERS_PATH: ./pw-browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: cd demo && npm run testar
+        working-directory: demo
+        run: npm run testar

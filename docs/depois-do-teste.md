@@ -13,7 +13,7 @@ Congelado de propósito. Não implementar da lista abaixo enquanto o piloto esti
 | 2 | Ensaio de verdade: reiniciar o Windows e só o atalho | `deploy/COMO-LIGAR.md` |
 | 3 | Backup diário agendado + um restore de prova | `deploy/backup.ps1`, `deploy/restaurar.ps1` |
 | 4 | E2E além do Chromium da demo | ISSUE-014 — só se doer |
-| 5 | **CI/CD da V2** — GitHub Actions rodando `npm test` (backend + frontend) e `cd demo && npm run testar` a cada push/PR. **Não** publicar sozinho neste PC da loja (o caixa continua atalho + PM2) | ADR-006 §5.2; hoje **não existe** `.github/` |
+| ~~5~~ | ~~**CI/CD da V2**~~ — feito 2026-09-12: `.github/workflows/ci.yml` roda `npm test` (backend + frontend) e `cd demo && npm run testar` a cada push/PR na main. Não publica nada sozinho (o caixa continua atalho + PM2) | ADR-006 §5.2 |
 | 6 | Balança: leitor na etiqueta → item na venda. Digitação se falhar. Estoque em kg ou unidade; tipo do produto dá para trocar. **Balança não fica presa na Filizola** (Prix ou outra) | Filizola agora; Prix/outra depois — ver abaixo |
 | 7 | Venda: quantidade manual no item (hoje o PDV incrementa 1 a 1) | SPEC-FE-007 / PDV |
 | 8 | Pagamento com **duas formas** na mesma venda (dinheiro + cartão, dinheiro + PIX) | SPEC-BE-007 / PDV |
@@ -22,7 +22,7 @@ Congelado de propósito. Não implementar da lista abaixo enquanto o piloto esti
 
 ### O que é o item 5 (CI/CD), em uma frase
 
-Robô no GitHub que testa o código quando sobe. A V2 **não tem** isso ainda. Depois do piloto, entra. O PDV da padaria **não** atualiza sozinho pela nuvem.
+Robô no GitHub que testa o código quando sobe. Desde 2026-09-12 a V2 **tem** isso (`.github/workflows/ci.yml`). O PDV da padaria continua **não** atualizando sozinho pela nuvem — CI só roda teste, quem sobe código pra loja é a pessoa, na mão (`deploy/COMO-LIGAR.md`).
 
 ### O que é o item 6 (balança / leitor), decisão 2026-09-12
 
