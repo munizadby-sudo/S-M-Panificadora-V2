@@ -119,7 +119,7 @@ salvar(usuario): Usuario
 ## 6. Contratos de API
 
 ### 6.1 `POST /api/auth/login`
-Público (sem token). Sujeito a rate limiting (5 tentativas / 15min por IP).
+Público (sem token). Sujeito a rate limiting (5 tentativas / 2min por IP; acertar a senha zera o contador).
 
 **Request**
 ```json
@@ -139,7 +139,7 @@ Público (sem token). Sujeito a rate limiting (5 tentativas / 15min por IP).
 |---|---|---|
 | 400 | `Informe usuário e senha.` | campo ausente |
 | 401 | `Usuário ou senha incorretos.` | usuário inexistente, inativo, ou senha errada (mesma mensagem para os três casos) |
-| 429 | rate limit | mais de 5 tentativas em 15min no mesmo IP |
+| 429 | rate limit | mais de 5 tentativas em 2min no mesmo IP; acertar a senha zera o contador |
 
 ---
 

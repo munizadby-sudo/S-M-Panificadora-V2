@@ -1,6 +1,6 @@
 # ISSUE-015 — Login trava 15 minutos e não zera quando a senha acerta
 
-- **Status:** Aberta — depois do piloto (14 dias: 2026-08-30 a 2026-09-13)
+- **Status:** Corrigido (2026-09-12) — piloto encerrado em 2026-09-13, item 1 da lista congelada
 - **Data:** 2026-08-30
 - **Módulo:** `backend/src/app.js` (`criarLimitadorLogin`)
 - **Severidade:** Média no balcão — um digitou errado e o caixa pode ficar sem vender um quarto de hora; neste PC o IP é um só
@@ -22,34 +22,46 @@
 
 ---
 
-## 3. Correção proposta
+## 3. Correção aplicada
 
-Não implementar agora. Congelado até o fim do piloto não fiscal (2026-09-13). Ver `docs/depois-do-teste.md`.
-
-Quando priorizar, o corte combinado na conversa:
-
-- Continuar **5 tentativas**
-- Janela de **2 minutos** (não 15)
-- **Acertar a senha zera** o contador
-
-Atualizar SPEC-BE-001, SPEC-FE-002 e a menção na ADR-004 / PRD no mesmo PR.
+- Continua **5 tentativas**.
+- Janela de **2 minutos** (era 15) — `windowMs: 2 * 60 * 1000` em `criarLimitadorLogin`.
+- `keyGenerator` explícito (`req.ip`) para poder reproduzir a mesma chave no reset.
+- **Acertar a senha zera o contador**: a rota `/api/auth/login` escuta `res.on('finish')` e, se a resposta for sucesso (`statusCode < 400`), chama `limitadorLogin.resetKey(req.ip)` — reset completo, não só "não contar" o sucesso.
+- SPEC-BE-001 e SPEC-FE-002 atualizadas com os números novos e a regra de reset.
 
 ---
 
 ## 4. Teste permanente (canário)
 
-Ainda não há caso que afirme a janela de 2 minutos nem o reset no sucesso. Quando fechar esta issue: teste HTTP em `backend/tests/users/` cobrindo 5 falhas → 429, sucesso no meio da janela → contador limpo, e o log bruto do `npm test`.
+`backend/tests/users/login.http.test.js`, describe `rate limit do login (ISSUE-015)`:
+
+- "5 tentativas erradas bloqueiam a 6ª com 429"
+- "acertar a senha no meio da janela zera o contador" — 4 erradas, 1 certa, mais 5 erradas (nenhuma bloqueada, contador zerou no acerto), a 6ª bloqueia.
+
+`tests/helpers/app-memoria.js` ganhou parâmetro opcional `limitadorLogin` (os demais testes de login continuam com o limitador no-op, sem mudança de comportamento).
 
 ---
 
 ## 5. Critério de aceite para fechar esta issue
 
-- [ ] Piloto de 14 dias encerrado (a partir de 2026-09-13) e o produto priorizou.
-- [ ] 5 erros / 2 min / reset no login ok, no código e nas specs.
-- [ ] Canário permanente com log bruto.
+- [x] Piloto de 14 dias encerrado (2026-09-13) e o produto priorizou.
+- [x] 5 erros / 2 min / reset no login ok, no código e nas specs.
+- [x] Canário permanente com log bruto (ver Seção 6).
 
 ---
 
-## 6. Nota de processo
+## 6. Log bruto do teste
 
-Em 2026-08-30 o operador achou 15 minutos excessivo no balcão e pediu para **não mudar agora** — só anotar e atacar depois do teste. Os 15 minutos **permanecem** até esta issue fechar.
+```
+▶ rate limit do login (ISSUE-015)
+  ✔ 5 tentativas erradas bloqueiam a 6ª com 429
+  ✔ acertar a senha no meio da janela zera o contador
+✔ rate limit do login (ISSUE-015)
+```
+
+---
+
+## 7. Nota de processo
+
+Em 2026-08-30 o operador achou 15 minutos excessivo no balcão e pediu para **não mudar agora** — só anotar e atacar depois do teste. Os 15 minutos valeram até 2026-09-12, quando o piloto fechou e esta issue foi priorizada.

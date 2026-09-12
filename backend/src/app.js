@@ -1,15 +1,16 @@
 import express from 'express';
-import rateLimit from 'express-rate-limit';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import { mapeadorDeErros } from './shared/http/mapeadorDeErros.js';
 import { autenticar, apenasAdmin, temPermissao } from './shared/http/middlewares.js';
 import { uploadCampoLogo } from './shared/http/uploadLogo.js';
 
 export function criarLimitadorLogin() {
   return rateLimit({
-    windowMs: 15 * 60 * 1000,
+    windowMs: 2 * 60 * 1000,
     max: 5,
     standardHeaders: true,
     legacyHeaders: false,
+    keyGenerator: (req) => ipKeyGenerator(req.ip),
     handler: (_req, res) => {
       res.status(429).json({ erro: 'Muitas tentativas. Tente novamente em alguns minutos.' });
     },
@@ -57,6 +58,11 @@ export function criarApp({
   const exigirAuth = autenticar(tokenService);
 
   app.post('/api/auth/login', limitadorLogin, (req, res, next) => {
+    res.on('finish', () => {
+      if (res.statusCode < 400 && typeof limitadorLogin.resetKey === 'function') {
+        limitadorLogin.resetKey(ipKeyGenerator(req.ip));
+      }
+    });
     authController.entrar(req, res, next);
   });
 

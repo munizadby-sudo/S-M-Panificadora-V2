@@ -132,7 +132,7 @@ export class MemoriaLogoStorage {
   }
 }
 
-export function montarAppMemoria() {
+export function montarAppMemoria({ limitadorLogin } = {}) {
   const usuarioRepository = new MemoriaUsuarioRepository();
   const configuracaoRepository = new MemoriaConfiguracaoRepository();
   const hashService = new HashEmMemoria();
@@ -342,7 +342,7 @@ export function montarAppMemoria() {
       }),
       relatorioVendasPorHora: new RelatorioVendasPorHora({ vendaRepository }),
     }),
-    limitadorLogin: (_req, _res, next) => next(),
+    limitadorLogin: limitadorLogin || ((_req, _res, next) => next()),
   });
 
   return {

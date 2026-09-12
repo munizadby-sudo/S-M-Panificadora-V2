@@ -125,7 +125,7 @@ O objeto `usuario` da resposta é passado **inteiro** a `salvarSessao(token, usu
 |---|---|---|
 | 400 | `Informe usuário e senha.` | campo ausente |
 | 401 | `Usuário ou senha incorretos.` | usuário inexistente, inativo ou senha errada (mesma mensagem para os três) |
-| 429 | a que o backend enviar | rate limit (5 tentativas / 15 min por IP) |
+| 429 | a que o backend enviar | rate limit (5 tentativas / 2 min por IP; acertar a senha zera o contador) |
 
 O frontend **nunca** decide se o erro foi “usuário não existe” ou “senha errada”. A mensagem na tela é a do `ApiError` (ou a de rede do core). Não logar `senha` nem `token` no console.
 
