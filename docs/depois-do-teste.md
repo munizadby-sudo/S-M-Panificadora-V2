@@ -11,7 +11,7 @@ Congelado de propósito. Não implementar da lista abaixo enquanto o piloto esti
 |---|---|---|
 | ~~1~~ | ~~Login: 5 erros / **2 min** / acertar a senha **zera**~~ — feito 2026-09-12 | ISSUE-015 |
 | ~~2~~ | ~~Ensaio de verdade: reiniciar o Windows e só o atalho~~ — feito 2026-09-12: reboot real, MySQL subiu sozinho, PM2 ressuscitou os dois processos sem restart, login ok | `deploy/COMO-LIGAR.md` |
-| 3 | Backup diário agendado + um restore de prova | `deploy/backup.ps1`, `deploy/restaurar.ps1` |
+| ~~3~~ | ~~Backup diário agendado + um restore de prova~~ — feito 2026-09-12 | `deploy/backup.ps1`, `deploy/restaurar.ps1` |
 | 4 | E2E além do Chromium da demo | ISSUE-014 — só se doer |
 | ~~5~~ | ~~**CI/CD da V2**~~ — feito 2026-09-12: `.github/workflows/ci.yml` roda `npm test` (backend + frontend) e `cd demo && npm run testar` a cada push/PR na main. Não publica nada sozinho (o caixa continua atalho + PM2) | ADR-006 §5.2; ISSUE-022 |
 | ~~6~~ | ~~Balança: leitor na etiqueta → item na venda~~ — feito 2026-09-12 (falta validar o scan ao vivo no próximo turno, ver ISSUE-019 §4) | Filizola agora; Prix/outra depois — ver abaixo; ISSUE-019 |
