@@ -32,6 +32,8 @@ export class UpdateProduto {
       preco: entrada.preco ?? atual.preco,
       custo: entrada.custo ?? atual.custo,
       ativo: atual.ativo,
+      tipoEstoque: entrada.tipo_estoque ?? atual.tipoEstoque,
+      codigoBalanca: entrada.codigo_balanca !== undefined ? entrada.codigo_balanca : atual.codigoBalanca,
       criadoEm: atual.criadoEm,
     });
 

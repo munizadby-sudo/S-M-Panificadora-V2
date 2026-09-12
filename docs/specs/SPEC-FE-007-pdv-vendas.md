@@ -1,7 +1,7 @@
 # SPEC-FE-007 — PDV / Vendas (Frontend)
 
-- **Status:** Implementada (Passos 1–9 + refinos de balcão 2026-08-26 + pagamento dividido e quantidade manual 2026-09-12)
-- **Data:** 2026-08-17 (atualizada 2026-09-12 — quantidade manual no item (8) e pagamento dividido em duas formas (9), `docs/depois-do-teste.md`)
+- **Status:** Implementada (Passos 1–9 + refinos de balcão 2026-08-26 + leitor de balança, quantidade manual e pagamento dividido 2026-09-12)
+- **Data:** 2026-08-17 (atualizada 2026-09-12 — leitor de balança (6), quantidade manual no item (8) e pagamento dividido em duas formas (9), `docs/depois-do-teste.md`)
 - **Módulo:** `frontend/src/modules/pdv`
 - **Depende de:** SPEC-FE-001 (Fundação), SPEC-FE-003 (`estado.js` do Caixa por Turno — consumido, nunca reimplementado), SPEC-FE-004/005 (produto/estoque, referência de padrão), SPEC-FE-015 §3.4–3.5 (legenda de atalhos e navegação na grade), SPEC-BE-007 (contrato de API), SPEC-BE-003 (identidade pública da loja no cupom)
 - **PRD de origem:** `PRD-003-pdv-vendas.md`
@@ -50,6 +50,7 @@ export default {
 | `api.js` | `POST /api/vendas`, `GET /api/vendas`, `DELETE /api/vendas/:id` e tradução de erro |
 | `lista-turno.js` | Lista compacta das vendas do turno aberto |
 | `modal-estorno-venda.js` | Confirmação de estorno com motivo (só admin) |
+| `leitor-balanca.js` | Perfis de balança, decodificação do código, peso a partir do preço do cadastro (§11.6) |
 
 ---
 
@@ -330,3 +331,21 @@ Testes: `frontend/tests/pdv/pagamento-dividido.test.js`; `backend/tests/sales/ve
 - Carrinho vazio: cinza, sem brilho, sem animação, `disabled`.
 - Com item e total &gt; 0: gradiente `--sucesso`, `--brilho-sucesso`, pulso (`@keyframes pdv-finalizar-pulso`). Hover mais claro; `:active` `scale(0.97)`.
 - Papel de botão: SPEC-FE-015 §3.3 (sucesso).
+
+### 11.6 Leitor da balança (item 6, 2026-09-12)
+
+O PDV **não fala com a balança**. O leitor de código de barras entra no PC como teclado e digita no `#pdv-busca` — módulo novo `leitor-balanca.js` só faz a tradução código → produto + peso.
+
+**Fluxo:** operador pesa na balança (perfil configurado em Configurações, ex. Filizola Platina), a impressora da balança imprime a etiqueta, o caixa passa o leitor. Um `Enter` no `#pdv-busca` com exatamente 13 dígitos numéricos é tratado como possível etiqueta de balança **antes** do fluxo normal de busca por texto (`enterAdicionaDaBusca`, Seção 4.1) — texto comum nunca tem 13 dígitos, então nenhum comportamento de busca muda.
+
+**Decodificação (`decodificarCodigoBalanca`, formato "padrão balança" confirmado com etiqueta real da Filizola em 2026-09-12):** EAN-13 = prefixo (2 dígitos, do perfil) + código do produto/PLU (5) + valor total em centavos (5) + dígito verificador EAN-13. A etiqueta traz o **valor já calculado** (peso × preço/kg), nunca o peso puro — bate com a decisão de não calcular preço na hora do scan (SPEC-BE-004 §3.1). Prefixo errado, 13 dígitos que não formam EAN-13 válido, ou dígito verificador que não bate: `null`, tratado como "não reconheci".
+
+**Peso:** `pesoDoCodigoBalanca(valorCentavos, produto.preco)` = `(valor ÷ 100) ÷ preco_do_cadastro`, arredondado a 3 casas. Produto achado pelo `codigo_balanca` dentro de `estado.produtos` (já carregado da grade, sem round-trip extra à API).
+
+**Sucesso:** `adicionarAoCarrinho(estado.carrinho, produto, peso)` — mesma função do Passo 2, agora aceita quantidade explícita (usada também pelo item 8). Escanear o mesmo produto duas vezes **soma** os pesos na mesma linha, não cria duas linhas nem incrementa 1.
+
+**Falha (código não decodifica, ou PLU sem produto cadastrado):** mensagem "Não reconheci esse código da balança. Lance o item na mão." em `#pdv-aviso-leitor` — **nunca** trava o PDV. "Na mão" é a grade normal (clique/Enter) seguida de editar a quantidade no carrinho (item 8) para o peso real.
+
+**Perfil:** chave `perfil_balanca` em Configurações (pública, padrão `'filizola'`), carregada uma vez em `montar()` (`carregarPerfilBalanca`, best-effort — falha na rede mantém o padrão). Trocar de balança é cadastrar/escolher outro perfil em `PERFIS_BALANCA` — nenhuma mudança no fluxo do PDV.
+
+Testes: `frontend/tests/pdv/leitor-balanca.test.js` (decodificação com a etiqueta real, dígito verificador errado, prefixo fora do perfil, formato inválido, soma de pesos no carrinho, wiring do index.js).

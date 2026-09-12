@@ -150,15 +150,39 @@ export async function aplicarSchemaProdutos(pool) {
       preco DECIMAL(10,2) NOT NULL,
       custo DECIMAL(10,2) NOT NULL,
       ativo TINYINT(1) NOT NULL DEFAULT 1,
+      tipo_estoque ENUM('unidade','peso') NOT NULL DEFAULT 'unidade',
+      codigo_balanca VARCHAR(5) NULL,
       criado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
       nome_unico_ativo VARCHAR(100) GENERATED ALWAYS AS (IF(ativo = 1, nome, NULL)) STORED,
       PRIMARY KEY (id),
       UNIQUE KEY produtos_categoria_nome_unique (categoria_id, nome),
+      UNIQUE KEY produtos_codigo_balanca_unique (codigo_balanca),
       CONSTRAINT produtos_categoria_id_fk
         FOREIGN KEY (categoria_id) REFERENCES categorias(id)
     )
   `);
   await migrarUnicidadeAtivaProdutos(pool);
+  await garantirColunasBalanca(pool);
+}
+
+/** Item 6, docs/depois-do-teste.md — produto por peso e PLU da etiqueta da balança. */
+async function garantirColunasBalanca(pool) {
+  const [tipo] = await pool.query("SHOW COLUMNS FROM produtos LIKE 'tipo_estoque'");
+  if (!tipo.length) {
+    await pool.query(
+      "ALTER TABLE produtos ADD COLUMN tipo_estoque ENUM('unidade','peso') NOT NULL DEFAULT 'unidade' AFTER ativo",
+    );
+  }
+  const [codigo] = await pool.query("SHOW COLUMNS FROM produtos LIKE 'codigo_balanca'");
+  if (!codigo.length) {
+    await pool.query('ALTER TABLE produtos ADD COLUMN codigo_balanca VARCHAR(5) NULL AFTER tipo_estoque');
+  }
+  const [indice] = await pool.query("SHOW INDEX FROM produtos WHERE Key_name = 'produtos_codigo_balanca_unique'");
+  if (!indice.length) {
+    await pool.query(
+      'ALTER TABLE produtos ADD CONSTRAINT produtos_codigo_balanca_unique UNIQUE (codigo_balanca)',
+    );
+  }
 }
 
 export async function aplicarSchemaEstoque(pool) {

@@ -1,9 +1,17 @@
-import { CustoInvalidoError, NomeInvalidoError, PrecoInvalidoError } from './erros.js';
+import {
+  CodigoBalancaInvalidoError,
+  CustoInvalidoError,
+  NomeInvalidoError,
+  PrecoInvalidoError,
+  TipoEstoqueInvalidoError,
+} from './erros.js';
 import { normalizarNome } from './Categoria.js';
 
 export function dinheiro(valor) {
   return Math.round((Number(valor) || 0) * 100) / 100;
 }
+
+export const TIPOS_ESTOQUE = Object.freeze(['unidade', 'peso']);
 
 export class Produto {
   constructor({
@@ -14,6 +22,8 @@ export class Produto {
     preco,
     custo,
     ativo = true,
+    tipoEstoque = 'unidade',
+    codigoBalanca = null,
     criadoEm = null,
   }) {
     this.id = id;
@@ -26,6 +36,8 @@ export class Produto {
     this.preco = validarPreco(preco);
     this.custo = validarCusto(custo);
     this.ativo = Boolean(Number(ativo));
+    this.tipoEstoque = validarTipoEstoque(tipoEstoque);
+    this.codigoBalanca = validarCodigoBalanca(codigoBalanca, this.tipoEstoque);
     this.criadoEm = criadoEm;
   }
 
@@ -48,6 +60,8 @@ export class Produto {
       preco: this.preco,
       custo: this.custo,
       ativo: this.ativo ? 1 : 0,
+      tipo_estoque: this.tipoEstoque,
+      codigo_balanca: this.codigoBalanca,
     };
   }
 }
@@ -66,4 +80,27 @@ function validarCusto(custo) {
     throw new CustoInvalidoError();
   }
   return valor;
+}
+
+function validarTipoEstoque(tipo) {
+  const valor = String(tipo ?? '').trim().toLowerCase();
+  if (!TIPOS_ESTOQUE.includes(valor)) {
+    throw new TipoEstoqueInvalidoError();
+  }
+  return valor;
+}
+
+/** Código da balança (PLU, item 6 de docs/depois-do-teste.md): 5 dígitos, só em produtos por peso. */
+function validarCodigoBalanca(codigo, tipoEstoque) {
+  const valor = codigo == null || String(codigo).trim() === '' ? null : String(codigo).trim();
+  if (tipoEstoque === 'peso') {
+    if (!valor || !/^\d{5}$/.test(valor)) {
+      throw new CodigoBalancaInvalidoError();
+    }
+    return valor;
+  }
+  if (valor !== null) {
+    throw new CodigoBalancaInvalidoError('Código da balança só se aplica a produtos por peso.');
+  }
+  return null;
 }

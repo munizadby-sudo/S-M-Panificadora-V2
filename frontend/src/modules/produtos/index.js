@@ -15,8 +15,9 @@ import {
 import { htmlPainelCategorias, montarSeletorCategoria } from './categorias.js';
 import { htmlTabelaProdutos } from './lista.js';
 import { aplicarErroSalvarProduto, htmlModalProduto } from './modal-produto.js';
-import { validarProduto } from './validacao.js';
+import { parseDecimal, validarProduto } from './validacao.js';
 import { escapar } from './html.js';
+import { atualizarEstoque } from '../estoque/api.js';
 
 export { htmlTabelaProdutos } from './lista.js';
 
@@ -107,6 +108,7 @@ function renderizar() {
         produto: estado.modalProduto.produto,
         erro: estado.modalProduto.erro,
         errosCampos: estado.modalProduto.errosCampos,
+        trocandoTipo: Boolean(estado.modalProduto.trocandoTipo),
       })
     : '';
 
@@ -222,6 +224,18 @@ function ligarEventos(container) {
     await salvarProdutoDoModal(container);
   });
 
+  container.querySelector('#produto-tipo-estoque')?.addEventListener('change', (evento) => {
+    const modal = estado.modalProduto;
+    if (!modal) {
+      return;
+    }
+    const original = container.querySelector('#form-produto')?.getAttribute('data-tipo-estoque-original') || '';
+    const novoTipo = evento.target.value;
+    modal.produto = { ...modal.produto, ...camposDoFormulario(container), tipo_estoque: novoTipo };
+    modal.trocandoTipo = Boolean(original) && novoTipo !== original;
+    renderizar();
+  });
+
   container.querySelector('#form-nova-categoria')?.addEventListener('submit', async (evento) => {
     evento.preventDefault();
     const nome = container.querySelector('#nome-categoria')?.value?.trim();
@@ -298,26 +312,41 @@ function ligarEventos(container) {
   }
 }
 
+function camposDoFormulario(container) {
+  return {
+    nome: container.querySelector('#produto-nome')?.value,
+    categoria_id: container.querySelector('#produto-categoria')?.value,
+    preco: container.querySelector('#produto-preco')?.value,
+    custo: container.querySelector('#produto-custo')?.value,
+    icone: container.querySelector('#produto-icone')?.value,
+    tipo_estoque: container.querySelector('#produto-tipo-estoque')?.value,
+    codigo_balanca: container.querySelector('#produto-codigo-balanca')?.value,
+    novo_saldo: container.querySelector('#produto-novo-saldo')?.value,
+  };
+}
+
 async function salvarProdutoDoModal(container) {
   const modal = estado.modalProduto;
   if (!modal) {
     return;
   }
 
-  const entrada = {
-    nome: container.querySelector('#produto-nome')?.value,
-    categoria_id: container.querySelector('#produto-categoria')?.value,
-    preco: container.querySelector('#produto-preco')?.value,
-    custo: container.querySelector('#produto-custo')?.value,
-    icone: container.querySelector('#produto-icone')?.value,
-  };
+  const entrada = camposDoFormulario(container);
+  const tipoOriginal =
+    container.querySelector('#form-produto')?.getAttribute('data-tipo-estoque-original') || '';
+  const trocandoTipo = Boolean(tipoOriginal) && entrada.tipo_estoque !== tipoOriginal;
 
   const validacao = validarProduto(entrada);
+  if (trocandoTipo && !(parseDecimal(entrada.novo_saldo) >= 0)) {
+    validacao.ok = false;
+    validacao.erros.novo_saldo = 'Informe o novo saldo em estoque (pode ser 0).';
+  }
   if (!validacao.ok) {
     modal.aberto = true;
     modal.produto = { ...modal.produto, ...entrada };
     modal.erro = '';
     modal.errosCampos = validacao.erros;
+    modal.trocandoTipo = trocandoTipo;
     renderizar();
     return;
   }
@@ -328,6 +357,8 @@ async function salvarProdutoDoModal(container) {
     preco: validacao.valores.preco,
     custo: validacao.valores.custo,
     icone: String(entrada.icone || '').trim() || null,
+    tipo_estoque: validacao.valores.tipo_estoque,
+    codigo_balanca: validacao.valores.codigo_balanca,
   };
 
   try {
@@ -338,9 +369,20 @@ async function salvarProdutoDoModal(container) {
       await criarProduto(payload);
     }
     estado.modalProduto = null;
+    // Tipo já trocou no passo acima — se o ajuste de saldo falhar (ex.: falta a permissão
+    // "estoque"), o produto não fica com o tipo trocado e saldo desatualizado sem avisar.
+    if (id && trocandoTipo) {
+      try {
+        await atualizarEstoque(id, { inicial: parseDecimal(entrada.novo_saldo), produzido: 0 });
+      } catch {
+        estado.erroProdutos =
+          'Tipo de estoque trocado, mas não foi possível ajustar o saldo. Peça a um admin para acertar em Estoque.';
+      }
+    }
     await recarregar();
   } catch (erro) {
     modal.produto = { ...modal.produto, ...entrada };
+    modal.trocandoTipo = trocandoTipo;
     aplicarErroSalvarProduto(modal, erro);
     renderizar();
   }

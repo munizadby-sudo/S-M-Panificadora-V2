@@ -14,7 +14,7 @@ Congelado de propósito. Não implementar da lista abaixo enquanto o piloto esti
 | 3 | Backup diário agendado + um restore de prova | `deploy/backup.ps1`, `deploy/restaurar.ps1` |
 | 4 | E2E além do Chromium da demo | ISSUE-014 — só se doer |
 | ~~5~~ | ~~**CI/CD da V2**~~ — feito 2026-09-12: `.github/workflows/ci.yml` roda `npm test` (backend + frontend) e `cd demo && npm run testar` a cada push/PR na main. Não publica nada sozinho (o caixa continua atalho + PM2) | ADR-006 §5.2 |
-| 6 | Balança: leitor na etiqueta → item na venda. Digitação se falhar. Estoque em kg ou unidade; tipo do produto dá para trocar. **Balança não fica presa na Filizola** (Prix ou outra) | Filizola agora; Prix/outra depois — ver abaixo |
+| ~~6~~ | ~~Balança: leitor na etiqueta → item na venda~~ — feito 2026-09-12 (falta validar o scan ao vivo no próximo turno, ver ISSUE-019 §4) | Filizola agora; Prix/outra depois — ver abaixo; ISSUE-019 |
 | 7 | Cielo **L300 V4** na venda: PIX e cartão pela máquina, valor sai do PDV. Só depois de falar com a Cielo | PRD-001 §4.16; máquina da loja — ver abaixo |
 | ~~8~~ | ~~Venda: quantidade manual no item~~ — feito 2026-09-12 | SPEC-FE-007 / PDV; ISSUE-018 |
 | ~~9~~ | ~~Pagamento com **duas formas** na mesma venda~~ — feito 2026-09-12 | SPEC-BE-007 / PDV; ISSUE-017 |
@@ -59,6 +59,8 @@ Regra para quando for fazer:
 - Trocar de marca = trocar o perfil (e, se precisar, cadastrar um perfil novo). Venda, estoque e cadastro **não** reescrevem.
 
 Antes de codar: uma etiqueta real da balança **atual** na mesa (se o código traz peso ou preço). O leitor em geral entra no PC como teclado.
+
+**Feito 2026-09-12, com a etiqueta real do Queijo Mussarela:** o código da Filizola Platina traz o **preço** (já calculado: peso × R$/kg), não o peso puro — confirmado batendo o dígito verificador do EAN-13. Formato: `20` (prefixo) + `00001`...`99999` (PLU, 5 dígitos) + valor em centavos (5 dígitos) + dígito verificador. O peso é derivado de volta (valor ÷ preço/kg do cadastro) na hora do scan. Ver ISSUE-019 para os detalhes técnicos e os testes.
 
 ### O que é o item 7 (Cielo L300), decisão 2026-09-12
 

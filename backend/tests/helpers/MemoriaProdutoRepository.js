@@ -1,6 +1,9 @@
 import { Produto } from '../../src/modules/products/domain/Produto.js';
 import { ProdutoRepository } from '../../src/modules/products/application/ports.js';
-import { NomeDuplicadoNaCategoriaError } from '../../src/modules/products/domain/erros.js';
+import {
+  CodigoBalancaDuplicadoError,
+  NomeDuplicadoNaCategoriaError,
+} from '../../src/modules/products/domain/erros.js';
 
 export class MemoriaProdutoRepository extends ProdutoRepository {
   constructor() {
@@ -40,9 +43,21 @@ export class MemoriaProdutoRepository extends ProdutoRepository {
     );
   }
 
+  async existeCodigoBalanca(codigo, excetoId = null) {
+    if (!codigo) {
+      return false;
+    }
+    return this.itens.some(
+      (item) => item.codigoBalanca === codigo && (excetoId == null || item.id !== Number(excetoId)),
+    );
+  }
+
   async salvar(produto) {
     if (await this.existeNomeNaCategoria(produto.categoriaId, produto.nome)) {
       throw new NomeDuplicadoNaCategoriaError();
+    }
+    if (await this.existeCodigoBalanca(produto.codigoBalanca)) {
+      throw new CodigoBalancaDuplicadoError();
     }
     const salvo = new Produto({
       ...produto,
@@ -57,6 +72,9 @@ export class MemoriaProdutoRepository extends ProdutoRepository {
   async atualizar(produto) {
     if (await this.existeNomeNaCategoria(produto.categoriaId, produto.nome, produto.id)) {
       throw new NomeDuplicadoNaCategoriaError();
+    }
+    if (await this.existeCodigoBalanca(produto.codigoBalanca, produto.id)) {
+      throw new CodigoBalancaDuplicadoError();
     }
     const indice = this.itens.findIndex((item) => item.id === produto.id);
     if (indice < 0) {

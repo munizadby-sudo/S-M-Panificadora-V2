@@ -9,13 +9,18 @@ export function dinheiroPdv(valor) {
   return Math.round((Number(valor) || 0) * 100) / 100;
 }
 
-export function adicionarAoCarrinho(itens, produto) {
+/**
+ * @param {number} [quantidade] Quantidade a somar — 1 por padrão (clique/Enter na grade). A
+ * leitura da balança (item 6, docs/depois-do-teste.md) passa o peso já calculado aqui.
+ */
+export function adicionarAoCarrinho(itens, produto, quantidade = 1) {
   const lista = clonarItens(itens);
   const produtoId = Number(produto?.id ?? produto?.produtoId);
   const preco = dinheiroPdv(produto?.preco ?? produto?.precoUnitario);
+  const qtd = quantidadePdv(quantidade);
   const existente = lista.find((item) => item.produtoId === produtoId);
   if (existente) {
-    existente.quantidade = quantidadePdv(existente.quantidade + 1);
+    existente.quantidade = quantidadePdv(existente.quantidade + qtd);
     existente.subtotal = dinheiroPdv(existente.quantidade * existente.precoUnitario);
     return lista;
   }
@@ -23,8 +28,8 @@ export function adicionarAoCarrinho(itens, produto) {
     produtoId,
     nome: produto?.nome || '',
     precoUnitario: preco,
-    quantidade: 1,
-    subtotal: preco,
+    quantidade: qtd,
+    subtotal: dinheiroPdv(qtd * preco),
   });
   return lista;
 }
@@ -96,7 +101,7 @@ export function htmlCarrinho(itens) {
             data-quantidade-item="${escapar(item.produtoId)}"
             value="${escapar(item.quantidade)}"
             min="0"
-            step="1"
+            step="0.001"
             inputmode="decimal"
             aria-label="Quantidade de ${escapar(item.nome)}"
           >

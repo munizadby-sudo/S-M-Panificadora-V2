@@ -91,7 +91,7 @@ describe('schema configuracoes e auditoria', { skip: !mysqlPronto }, () => {
     const [chaves] = await pool.query('SELECT chave FROM configuracoes ORDER BY chave');
     assert.deepEqual(
       chaves.map((linha) => linha.chave),
-      ['fundo_troco_especie', 'fundo_troco_moedas', 'logo_url', 'nome_loja', 'slogan'],
+      ['fundo_troco_especie', 'fundo_troco_moedas', 'logo_url', 'nome_loja', 'perfil_balanca', 'slogan'],
     );
 
     await pool.query('DELETE FROM auditoria');

@@ -24,6 +24,8 @@ export class CreateProduto {
       preco: entrada.preco,
       custo: entrada.custo,
       ativo: true,
+      tipoEstoque: entrada.tipo_estoque,
+      codigoBalanca: entrada.codigo_balanca,
     });
 
     if (await this.produtoRepository.existeNomeNaCategoria(produto.categoriaId, produto.nome)) {

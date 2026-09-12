@@ -52,6 +52,9 @@ export async function reativarCategoria(id) {
 
 export function mensagemErroProduto(erro) {
   if (erro instanceof ApiError && erro.status === 409) {
+    if (erro.codigo === 'CODIGO_BALANCA_DUPLICADO') {
+      return 'Já existe um produto com esse código de balança.';
+    }
     return 'Já existe um produto com esse nome nessa categoria.';
   }
   if (erro instanceof ApiError) {

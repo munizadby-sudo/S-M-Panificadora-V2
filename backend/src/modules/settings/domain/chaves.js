@@ -2,6 +2,7 @@ export const CHAVES_CONFIGURACAO = {
   nome_loja: { publica: true, padrao: 'S&M Panificadora', numerico: false },
   slogan: { publica: true, padrao: 'Pão fresquinho todo dia', numerico: false },
   logo_url: { publica: true, padrao: '', numerico: false },
+  perfil_balanca: { publica: true, padrao: 'filizola', numerico: false },
   fundo_troco_especie: { publica: false, padrao: '40.00', numerico: true },
   fundo_troco_moedas: { publica: false, padrao: '10.00', numerico: true },
 };

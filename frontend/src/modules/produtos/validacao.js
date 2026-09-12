@@ -5,7 +5,7 @@ export function parseDecimal(valor) {
   return Number(String(valor).trim().replace(',', '.'));
 }
 
-export function validarProduto({ nome, categoria_id, preco, custo } = {}) {
+export function validarProduto({ nome, categoria_id, preco, custo, tipo_estoque, codigo_balanca } = {}) {
   const erros = {};
   const nomeLimpo = String(nome ?? '').trim();
   if (!nomeLimpo) {
@@ -28,6 +28,17 @@ export function validarProduto({ nome, categoria_id, preco, custo } = {}) {
     erros.custo = 'Custo não pode ser negativo.';
   }
 
+  const tipoEstoque = tipo_estoque === 'peso' ? 'peso' : 'unidade';
+  const codigoLimpo = String(codigo_balanca ?? '').trim();
+  let codigoBalanca = null;
+  if (tipoEstoque === 'peso') {
+    if (!/^\d{5}$/.test(codigoLimpo)) {
+      erros.codigo_balanca = 'Código da balança deve ter exatamente 5 dígitos.';
+    } else {
+      codigoBalanca = codigoLimpo;
+    }
+  }
+
   return {
     ok: Object.keys(erros).length === 0,
     erros,
@@ -36,6 +47,8 @@ export function validarProduto({ nome, categoria_id, preco, custo } = {}) {
       categoria_id: categoriaId,
       preco: precoNum,
       custo: custoNum,
+      tipo_estoque: tipoEstoque,
+      codigo_balanca: codigoBalanca,
     },
   };
 }

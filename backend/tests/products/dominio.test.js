@@ -3,9 +3,11 @@ import { describe, test } from 'node:test';
 import { Categoria } from '../../src/modules/products/domain/Categoria.js';
 import { Produto } from '../../src/modules/products/domain/Produto.js';
 import {
+  CodigoBalancaInvalidoError,
   CustoInvalidoError,
   NomeInvalidoError,
   PrecoInvalidoError,
+  TipoEstoqueInvalidoError,
 } from '../../src/modules/products/domain/erros.js';
 import { aplicarSchemaProdutos } from '../../src/infrastructure/database/db.js';
 
@@ -54,7 +56,49 @@ describe('domínio Produto', () => {
       preco: 0.75,
       custo: 0,
       ativo: 1,
+      tipo_estoque: 'unidade',
+      codigo_balanca: null,
     });
+  });
+});
+
+describe('domínio Produto — tipo de estoque e código da balança (item 6, docs/depois-do-teste.md)', () => {
+  const base = { nome: 'Queijo Mussarela', categoriaId: 1, preco: 47, custo: 30 };
+
+  test('padrão é unidade, sem código de balança', () => {
+    const produto = new Produto(base);
+    assert.equal(produto.tipoEstoque, 'unidade');
+    assert.equal(produto.codigoBalanca, null);
+  });
+
+  test('produto por peso exige código de balança com 5 dígitos', () => {
+    assert.throws(
+      () => new Produto({ ...base, tipoEstoque: 'peso' }),
+      CodigoBalancaInvalidoError,
+    );
+    assert.throws(
+      () => new Produto({ ...base, tipoEstoque: 'peso', codigoBalanca: '123' }),
+      CodigoBalancaInvalidoError,
+    );
+    assert.throws(
+      () => new Produto({ ...base, tipoEstoque: 'peso', codigoBalanca: 'abcde' }),
+      CodigoBalancaInvalidoError,
+    );
+
+    const produto = new Produto({ ...base, tipoEstoque: 'peso', codigoBalanca: '00001' });
+    assert.equal(produto.tipoEstoque, 'peso');
+    assert.equal(produto.codigoBalanca, '00001');
+  });
+
+  test('produto por unidade não pode ter código de balança', () => {
+    assert.throws(
+      () => new Produto({ ...base, tipoEstoque: 'unidade', codigoBalanca: '00001' }),
+      CodigoBalancaInvalidoError,
+    );
+  });
+
+  test('tipo de estoque fora da whitelist é rejeitado', () => {
+    assert.throws(() => new Produto({ ...base, tipoEstoque: 'litro' }), TipoEstoqueInvalidoError);
   });
 });
 
@@ -73,5 +117,18 @@ describe('schema produtos e categorias', () => {
     assert.ok(ddl.some((sql) => /nome_unico_ativo/i.test(sql)));
     assert.ok(ddl.some((sql) => /categorias_nome_unique/i.test(sql)));
     assert.ok(ddl.some((sql) => /produtos_categoria_nome_unique/i.test(sql)));
+  });
+
+  test('aplicarSchemaProdutos garante tipo_estoque e codigo_balanca (item 6)', async () => {
+    const ddl = [];
+    const pool = {
+      async query(sql) {
+        ddl.push(String(sql));
+        return [[], []];
+      },
+    };
+    await aplicarSchemaProdutos(pool);
+    assert.ok(ddl.some((sql) => /tipo_estoque ENUM\('unidade','peso'\)/i.test(sql)));
+    assert.ok(ddl.some((sql) => /produtos_codigo_balanca_unique/i.test(sql)));
   });
 });

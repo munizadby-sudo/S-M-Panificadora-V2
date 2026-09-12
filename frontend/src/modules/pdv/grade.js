@@ -13,7 +13,7 @@ export function htmlLegendaAtalhos() {
   </ul>`;
 }
 
-export function htmlGradeProdutos({ produtos = [], busca = '', erro = '' } = {}) {
+export function htmlGradeProdutos({ produtos = [], busca = '', erro = '', avisoLeitor = '' } = {}) {
   const lista = Array.isArray(produtos) ? produtos : [];
   const cards =
     lista.length === 0
@@ -33,6 +33,7 @@ export function htmlGradeProdutos({ produtos = [], busca = '', erro = '' } = {})
       <label>Categoria <select id="pdv-categoria" name="categoria_id"></select></label>
     </form>
     <p id="pdv-erro-grade" class="pdv-erro" role="alert">${escapar(erro)}</p>
+    <p id="pdv-aviso-leitor" class="pdv-erro" role="alert">${escapar(avisoLeitor)}</p>
     <div id="pdv-grade-itens" class="pdv-grade-itens">${cards}</div>
   </section>`;
 }

@@ -57,6 +57,17 @@ export default {
 - Produto desativado, visível com "Mostrar inativos" ligado, exibe um botão **"Reativar"** (`POST /api/produtos/:id/reativar`, SPEC-BE-004, Seção 5.4.1). Se a reativação falhar com 409 (outro produto ativo já ocupa esse nome na categoria), exibir a mesma mensagem de negócio do Passo 3.
 - **Testável:** desativar um produto, confirmar que ele some da lista padrão, ligar "Mostrar inativos" e vê-lo reaparecer, clicar em "Reativar" e vê-lo voltar a aparecer na lista padrão.
 
+### Passo 5 — Tipo de estoque e código da balança (item 6, docs/depois-do-teste.md, 2026-09-12)
+
+- Modal do Passo 3 ganha **Estoque controlado por** (`unidade` / `peso (kg) — balança`) e, só quando `peso`, **Código da balança (PLU, 5 dígitos)** (`#produto-codigo-balanca-wrap[hidden]` quando `unidade`).
+- O `<form>` guarda o tipo **original** do produto em `data-tipo-estoque-original` (vazio em produto novo). Trocar a seleção do tipo, em relação a esse valor original, ativa `trocandoTipo`.
+- **`trocandoTipo`** revela um aviso e um campo **Novo saldo** (rótulo já no plural certo — "unidades" ou "kg" conforme o tipo escolhido): *"Estoque atual (kg) — o saldo de antes não vale mais no tipo novo, acerte na mão"*. Sem isso, 40 pães virariam 40 kg sozinhos (ou o inverso) — decisão explícita: **nunca** recalcula automático.
+- Ao salvar com `trocandoTipo`: primeiro `PUT /api/produtos/:id` (novo `tipo_estoque`/`codigo_balanca`), depois — só se aquele PUT for bem-sucedido — `PUT /api/estoque/:produtoId` com `{ inicial: novoSaldo, produzido: 0 }` (mesmo endpoint do módulo Estoque, SPEC-BE-005). Produto novo (sem tipo original) nunca dispara esse segundo PUT.
+- Trocar pra `unidade` sempre manda `codigo_balanca: null` no payload, mesmo que o campo tenha ficado com texto residual na tela — nunca confia no `hidden` do campo pra decidir o valor enviado (`validarProduto`).
+- Erros de campo novos: `codigo_balanca` (400 "5 dígitos" / 409 "já existe produto com esse código de balança") e `novo_saldo` (obrigatório quando `trocandoTipo`).
+- **PUT /api/estoque exige a permissão `estoque` (SPEC-BE-005), separada de `produtos`.** Se o `PUT /produtos/:id` for bem-sucedido mas o ajuste de saldo falhar (ex.: operador com `produtos` mas sem `estoque`), o tipo **já trocou** — a tela não reabre o modal com dado velho fingindo que nada mudou. Fecha o modal, recarrega a lista, e mostra em `#produtos-erro`: *"Tipo de estoque trocado, mas não foi possível ajustar o saldo. Peça a um admin para acertar em Estoque."*
+- **Testável:** cadastrar um produto por peso com PLU; editar um produto por unidade, trocar pra peso, ver o aviso de saldo aparecer, salvar e conferir os dois `PUT`; trocar de volta pra unidade e ver o PLU sumir do payload.
+
 ---
 
 ## 4. Componentes de UI

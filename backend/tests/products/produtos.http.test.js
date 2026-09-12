@@ -190,3 +190,133 @@ describe('HTTP /api/produtos', () => {
     });
   });
 });
+
+describe('HTTP /api/produtos — tipo de estoque e código da balança (item 6, docs/depois-do-teste.md)', () => {
+  test('cria produto por peso com código de balança e rejeita código duplicado', async () => {
+    const ctx = montarAppMemoria();
+    await comServidor(ctx.app, async (porta) => {
+      const token = await tokenAdmin(porta, ctx);
+      const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+      const categoria = await json(
+        await fetch(`http://127.0.0.1:${porta}/api/categorias`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ nome: 'Frios' }),
+        }),
+      );
+
+      const criado = await fetch(`http://127.0.0.1:${porta}/api/produtos`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          nome: 'Queijo Mussarela',
+          categoria_id: categoria.id,
+          preco: 47,
+          custo: 30,
+          tipo_estoque: 'peso',
+          codigo_balanca: '00001',
+        }),
+      });
+      const corpo = await json(criado);
+      assert.equal(criado.status, 200);
+      assert.equal(corpo.tipo_estoque, 'peso');
+      assert.equal(corpo.codigo_balanca, '00001');
+
+      const duplicado = await fetch(`http://127.0.0.1:${porta}/api/produtos`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          nome: 'Presunto',
+          categoria_id: categoria.id,
+          preco: 30,
+          custo: 20,
+          tipo_estoque: 'peso',
+          codigo_balanca: '00001',
+        }),
+      });
+      const corpoDuplicado = await json(duplicado);
+      assert.equal(duplicado.status, 409);
+      assert.equal(corpoDuplicado.codigo, 'CODIGO_BALANCA_DUPLICADO');
+    });
+  });
+
+  test('produto por unidade rejeita código de balança; peso sem código de 5 dígitos é 400', async () => {
+    const ctx = montarAppMemoria();
+    await comServidor(ctx.app, async (porta) => {
+      const token = await tokenAdmin(porta, ctx);
+      const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+      const categoria = await json(
+        await fetch(`http://127.0.0.1:${porta}/api/categorias`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ nome: 'Padaria' }),
+        }),
+      );
+
+      const comCodigoIndevido = await fetch(`http://127.0.0.1:${porta}/api/produtos`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          nome: 'Pão Francês',
+          categoria_id: categoria.id,
+          preco: 0.75,
+          custo: 0.3,
+          tipo_estoque: 'unidade',
+          codigo_balanca: '00002',
+        }),
+      });
+      assert.equal(comCodigoIndevido.status, 400);
+
+      const semCodigo = await fetch(`http://127.0.0.1:${porta}/api/produtos`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          nome: 'Queijo Coalho',
+          categoria_id: categoria.id,
+          preco: 40,
+          custo: 25,
+          tipo_estoque: 'peso',
+        }),
+      });
+      assert.equal(semCodigo.status, 400);
+    });
+  });
+
+  test('trocar de unidade pra peso via PUT exige e grava o novo código', async () => {
+    const ctx = montarAppMemoria();
+    await comServidor(ctx.app, async (porta) => {
+      const token = await tokenAdmin(porta, ctx);
+      const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+      const categoria = await json(
+        await fetch(`http://127.0.0.1:${porta}/api/categorias`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ nome: 'Padaria 2' }),
+        }),
+      );
+      const produto = await json(
+        await fetch(`http://127.0.0.1:${porta}/api/produtos`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            nome: 'Pão de Queijo',
+            categoria_id: categoria.id,
+            preco: 25,
+            custo: 15,
+          }),
+        }),
+      );
+      assert.equal(produto.tipo_estoque, 'unidade');
+
+      const atualizado = await json(
+        await fetch(`http://127.0.0.1:${porta}/api/produtos/${produto.id}`, {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify({ tipo_estoque: 'peso', codigo_balanca: '00099' }),
+        }),
+      );
+      assert.equal(atualizado.tipo_estoque, 'peso');
+      assert.equal(atualizado.codigo_balanca, '00099');
+    });
+  });
+});

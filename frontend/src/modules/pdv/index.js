@@ -1,8 +1,11 @@
+import { apiGet } from '../../core/api.js';
 import { debounce } from '../../core/utils.js';
 import { ehAdmin } from '../../core/session.js';
 import { getTurnoAtual, obterTurnoId, onMudancaDeTurno, turnoEstaAberto } from '../caixa-turno/estado.js';
 import { listarCategorias, listarProdutos, mensagemErroProduto } from '../produtos/api.js';
 import { montarSeletorCategoria } from '../produtos/categorias.js';
+import { CAMINHO_IDENTIDADE_PUBLICA } from '../auth/identidade-visual.js';
+import { decodificarCodigoBalanca, pesoDoCodigoBalanca } from './leitor-balanca.js';
 import { htmlAvisoCaixaFechado } from './aviso.js';
 import { htmlGradeProdutos, htmlLegendaAtalhos } from './grade.js';
 import { htmlListaVendasTurno } from './lista-turno.js';
@@ -82,6 +85,7 @@ export default {
       tratarAtalhoPdv(evento);
     };
     globalThis.document?.addEventListener?.('keydown', listenerAtalhos);
+    carregarPerfilBalanca();
     await renderizar();
     if (estado.aberto) {
       await carregarVendasTurno();
@@ -114,6 +118,8 @@ function estadoInicial() {
     produtos: [],
     erroGrade: '',
     carrinho: [],
+    perfilBalanca: 'filizola',
+    avisoLeitor: '',
     formaPagamento: '',
     recebido: '',
     dividirPagamento: false,
@@ -179,6 +185,7 @@ async function renderizar(opcoes = {}) {
           produtos: estado.produtos,
           busca: estado.busca,
           erro: estado.erroGrade,
+          avisoLeitor: estado.avisoLeitor,
         })}
         <div class="pdv-lateral">
           ${htmlCarrinho(estado.carrinho)}
@@ -277,6 +284,51 @@ function escaparAviso(valor) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+/** Perfil de balança (item 6, docs/depois-do-teste.md) — não bloqueia o PDV se falhar. */
+async function carregarPerfilBalanca() {
+  try {
+    const dados = await apiGet(CAMINHO_IDENTIDADE_PUBLICA);
+    if (estado && dados?.perfil_balanca) {
+      estado.perfilBalanca = dados.perfil_balanca;
+    }
+  } catch {
+    /* mantém o padrão 'filizola' do estado inicial */
+  }
+}
+
+/**
+ * Leitor de balança (item 6, docs/depois-do-teste.md) — o leitor digita como teclado no #pdv-busca;
+ * um Enter com 13 dígitos passa por aqui em vez da busca por texto. Código que não bate com o
+ * perfil, ou PLU sem produto cadastrado: avisa "não reconheci" e NUNCA quebra o PDV — o operador
+ * lança o item na mão (grade + editar quantidade, item 8).
+ */
+function processarLeituraBalanca(codigo) {
+  if (!estado) {
+    return;
+  }
+  const decodificado = decodificarCodigoBalanca(codigo, estado.perfilBalanca);
+  const produto = decodificado
+    ? estado.produtos.find((item) => String(item.codigo_balanca) === decodificado.codigoProduto)
+    : null;
+  const peso = decodificado && produto
+    ? pesoDoCodigoBalanca(decodificado.valorCentavos, produto.preco)
+    : null;
+
+  estado.busca = '';
+  if (!produto || !(peso > 0)) {
+    estado.avisoLeitor = 'Não reconheci esse código da balança. Lance o item na mão.';
+    renderizar();
+    return;
+  }
+
+  estado.carrinho = adicionarAoCarrinho(estado.carrinho, produto, peso);
+  estado.avisoLeitor = '';
+  estado.ultimaVenda = null;
+  estado.erroVenda = '';
+  estado.avisoFinalizar = '';
+  renderizar();
 }
 
 async function carregarCatalogo() {
@@ -480,6 +532,12 @@ function tratarAtalhoPdv(evento) {
   if (evento.key === 'F10') {
     evento.preventDefault();
     tentarAbrirPagamento();
+    return;
+  }
+
+  if (enterAdicionaDaBusca(evento) && /^\d{13}$/.test(String(evento.target?.value || '').trim())) {
+    evento.preventDefault();
+    processarLeituraBalanca(String(evento.target.value).trim());
     return;
   }
 

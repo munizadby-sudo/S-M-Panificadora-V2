@@ -25,6 +25,33 @@ export class CustoInvalidoError extends Error {
   }
 }
 
+export class TipoEstoqueInvalidoError extends Error {
+  constructor(mensagem = "Tipo de estoque deve ser 'unidade' ou 'peso'.") {
+    super(mensagem);
+    this.name = 'TipoEstoqueInvalidoError';
+    this.status = 400;
+    this.codigo = 'TIPO_ESTOQUE_INVALIDO';
+  }
+}
+
+export class CodigoBalancaInvalidoError extends Error {
+  constructor(mensagem = 'Código da balança deve ter exatamente 5 dígitos.') {
+    super(mensagem);
+    this.name = 'CodigoBalancaInvalidoError';
+    this.status = 400;
+    this.codigo = 'CODIGO_BALANCA_INVALIDO';
+  }
+}
+
+export class CodigoBalancaDuplicadoError extends Error {
+  constructor() {
+    super('Já existe um produto com este código de balança.');
+    this.name = 'CodigoBalancaDuplicadoError';
+    this.status = 409;
+    this.codigo = 'CODIGO_BALANCA_DUPLICADO';
+  }
+}
+
 export class NomeDuplicadoNaCategoriaError extends Error {
   constructor() {
     super('Já existe um produto com este nome nesta categoria.');

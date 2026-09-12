@@ -20,6 +20,7 @@ describe('GetConfiguracoesPublicas', () => {
       nome_loja: 'Padaria Teste',
       slogan: 'Pão quente',
       logo_url: '/uploads/logo.png',
+      perfil_balanca: 'filizola',
     });
     assert.equal('fundo_troco_especie' in saida, false);
     assert.equal('fundo_troco_moedas' in saida, false);

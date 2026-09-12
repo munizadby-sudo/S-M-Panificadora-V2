@@ -1,6 +1,16 @@
 import { Produto, dinheiro } from '../domain/Produto.js';
 import { ProdutoRepository } from '../application/ports.js';
-import { NomeDuplicadoNaCategoriaError } from '../domain/erros.js';
+import { CodigoBalancaDuplicadoError, NomeDuplicadoNaCategoriaError } from '../domain/erros.js';
+
+function mapearDuplicidade(erro) {
+  if (Number(erro?.errno) === 1062) {
+    if (/produtos_codigo_balanca_unique/i.test(String(erro?.message || ''))) {
+      return new CodigoBalancaDuplicadoError();
+    }
+    return new NomeDuplicadoNaCategoriaError();
+  }
+  return erro;
+}
 
 export class MySQLProdutoRepository extends ProdutoRepository {
   constructor(pool) {
@@ -59,8 +69,8 @@ export class MySQLProdutoRepository extends ProdutoRepository {
   async salvar(produto) {
     try {
       const [resultado] = await this.pool.query(
-        `INSERT INTO produtos (nome, categoria_id, icone, preco, custo, ativo)
-         VALUES (?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO produtos (nome, categoria_id, icone, preco, custo, ativo, tipo_estoque, codigo_balanca)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           produto.nome,
           produto.categoriaId,
@@ -68,14 +78,13 @@ export class MySQLProdutoRepository extends ProdutoRepository {
           produto.preco,
           produto.custo,
           produto.ativo ? 1 : 0,
+          produto.tipoEstoque,
+          produto.codigoBalanca,
         ],
       );
       return this.buscarPorId(resultado.insertId);
     } catch (erro) {
-      if (Number(erro?.errno) === 1062) {
-        throw new NomeDuplicadoNaCategoriaError();
-      }
-      throw erro;
+      throw mapearDuplicidade(erro);
     }
   }
 
@@ -83,7 +92,8 @@ export class MySQLProdutoRepository extends ProdutoRepository {
     try {
       await this.pool.query(
         `UPDATE produtos
-            SET nome = ?, categoria_id = ?, icone = ?, preco = ?, custo = ?, ativo = ?
+            SET nome = ?, categoria_id = ?, icone = ?, preco = ?, custo = ?, ativo = ?,
+                tipo_estoque = ?, codigo_balanca = ?
           WHERE id = ?`,
         [
           produto.nome,
@@ -92,15 +102,14 @@ export class MySQLProdutoRepository extends ProdutoRepository {
           produto.preco,
           produto.custo,
           produto.ativo ? 1 : 0,
+          produto.tipoEstoque,
+          produto.codigoBalanca,
           produto.id,
         ],
       );
       return this.buscarPorId(produto.id);
     } catch (erro) {
-      if (Number(erro?.errno) === 1062) {
-        throw new NomeDuplicadoNaCategoriaError();
-      }
-      throw erro;
+      throw mapearDuplicidade(erro);
     }
   }
 }
@@ -114,6 +123,8 @@ function deLinha(linha) {
     preco: dinheiro(linha.preco),
     custo: dinheiro(linha.custo),
     ativo: linha.ativo,
+    tipoEstoque: linha.tipo_estoque,
+    codigoBalanca: linha.codigo_balanca,
     criadoEm: linha.criado_em,
   });
 }
